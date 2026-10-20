@@ -1,0 +1,461 @@
+arXiv:2505.13729v1  [cs.RO]  19 May 2025
+SayCoNav: Utilizing Large Language Models
+for Adaptive Collaboration
+in Decentralized Multi-Robot Navigation
+Abhinav Rajvanshi
+SRI International
+abhinav.rajvanshi@sri.com
+Pritish Sahu
+SRI International
+pritish.sahu@sri.com
+Tixiao Shan
+SRI International
+tixiao.shan@sri.com
+Karan Sikka
+Meta
+karansikka@meta.com
+Han-Pang Chiu
+SRI International
+han-pang.chiu@sri.com
+Abstract: Adaptive collaboration is critical to a team of autonomous robots to
+perform complicated navigation tasks in large-scale unknown environments. An
+effective collaboration strategy should be determined and adapted according to
+each robot’s skills and current status to successfully achieve the shared goal. We
+present SayCoNav, a new approach that leverages large language models (LLMs)
+for automatically generating this collaboration strategy among a team of robots.
+Building on the collaboration strategy, each robot uses the LLM to generate its
+plans and actions in a decentralized way. By sharing information to each other
+during navigation, each robot also continuously updates its step-by-step plans ac-
+cordingly. We evaluate SayCoNav on Multi-Object Navigation (MultiON) tasks,
+that require the team of the robots to utilize their complementary strengths to effi-
+ciently search multiple different objects in unknown environments. By validating
+SayCoNav with varied team compositions and conditions against baseline meth-
+ods, our experimental results show that SayCoNav can improve search efficiency
+by at most 44.28% through effective collaboration among heterogeneous robots.
+It can also dynamically adapt to the changing conditions during task execution.
+Keywords: Multi-Robot Navigation, Robot Collaboration, Large Language Mod-
+els, Decentralized Planning
+1 Introduction
+Enabling a team of heterogeneous robots to collaborate for conducting a complicated navigation
+task in a new large-scale environment is critical to many applications, such as searching multiple
+objects in a big house. The best collaboration approach shall depend on the team composition.
+Robots shall leverage the diverse skills from each other, leading to better outcomes under a joint
+goal. In addition, the collaborative strategy may need to be adjusted during the mission, in response
+to changing conditions from any autonomous robot in the team.
+However, most multi-robot navigation systems rely on either centralized architectures [1] or
+manually-defined distributed processes [2] for collaboration and communication. These systems
+lack the flexibility and efficiency for handling the complexities of navigation tasks in the real word.
+Ideally, as humans do, the multi-robot system should be decentralized and adaptive. Each robot
+reasons its perceived scenes and dynamically shares information to other robots during exploration.
+Based on the gathered information among the team, each robot continuously updates its own plans
+and adjusts the collaboration strategy for achieving the joint mission goal.
+Figure 1: A SayCoNav example: Three heterogeneous robots use LLMs to define and to execute the
+collaboration strategy based on their skills, for searching two target objects in a new house.
+Recent advancements in Large Language Models (LLMs) offer an attractive opportunity to pro-
+mote multi-robot navigation systems to decentralized planning and dynamic collaboration. LLMs
+have demonstrated promising capabilities in robotic planning, human knowledge utilization, and
+dialogue-based communication. However, almost all LLM-based navigation works still focus on
+applications to using either a single robot [3, 4] or a group of homogeneous robots [5, 6]. Leverag-
+ing LLMs for decentralized navigation using heterogeneous robots is still an unexplored area.
+In this paper, we propose SayCoNav, a new approach that leverages LLMs for enabling adaptive
+collaboration among multiple autonomous robots for decentralized planning and navigation. The
+key innovation of SayCoNav is to utilize LLMs to automatically generate the collaboration strategy
+based on the skills of each robot in the team. Specifically, SayCoNav enables each robot to share
+its background information, such as its capability specification and operational constraints, to other
+robots prior to the mission. One randomly selected robot then feeds the assigned team task with
+the team background information into the LLM, for retrieving appropriate knowledge to form the
+collaboration strategy. This mechanism guarantees that the LLM generates feasible collaboration
+strategies that leverage the strengths of different robots to solve complex navigation tasks. When
+any robot has changes in its physical condition during navigation, it can ground the LLM again for
+generating a new collaboration strategy which accommodates its changed condition. The updated
+strategy will then be shared and executed among the team. This way ensures that the team adapts its
+strategies and interactions to effectively work together under dynamic situations.
+SayCoNav utilizes a novel three-level decentralized planning architecture to handle the complex-
+ity from cooperative navigation tasks in large-scale new environments. Each robot uses a top-level
+LLM-based global planner to share information among the team for defining the collaboration strat-
+egy. A middle-level local planner leverages the LLM to dynamically generate step-by-step plans for
+the individual robot based on the collaboration strategy. The step-by-step plan is then executed by a
+bottom-level action planner, that maps each step into a sequence of primitive actions. Figure 1 illus-
+trates an example of SayCoNav using this decentralized planning architecture among three robots,
+for searching a tomato and a spoon in the new house. Based on the LLM-generated collaboration
+strategy, the Red robot utilizes its fast speed to quickly scout the rooms and finds that the kitchen
+is likely to have the two target objects. The Red robot then calls the Blue robot to come to use its
+high-resolution camera for locating the small spoon. It also requests the Green robot, which has the
+manipulation arm, to open the fridge and to check whether the tomato is inside the fridge.
+To fully validate SayCoNav, we create a benchmark dataset via the ProcTHOR framework [7] for a
+complex navigation task, Multi-Object Navigation (MultiON) [8]. We configure a large amount of
+episodes from this benchmark dataset, with a wide variety of room layouts, furniture arrangements,
+and object choices. The design of these episodes requires the robot team to leverage skills from
+2
+each other to efficiently search multiple different objects in an unknown large-scale house. Our
+experiments demonstrate that SayCoNav can effectively enable robots collaborate with each other,
+even for these long horizon tasks in unknown environments. The results also show that SayCoNav
+can generate customized strategies across different team compositions and conditions.
+2 Related Work
+2.1 Using LLMs for Single-Robot Navigation
+Planning with LLMs has become an emergent trend to single-robot navigation. Compared to
+learning-based methods [9] which generally require at least hundreds of millions of iterations for
+training an agent (i.e. a simulated robot) to navigate in new environments, LLMs have demonstrated
+excellent capabilities to perform a new navigation task [3, 4, 10, 11, 12, 13, 14] with only a few
+training examples via in-context learning [15, 16]. These works typically use a two-level planning
+architecture. A high-level planner utilizes either 3D scene graphs [3, 4, 11, 12, 13, 14] or semantic
+maps [10] of the explored environment to ground LLMs for generating step-by-step plans. Each
+planned step is then executed by an oracle (ground truth) planner or a pre-trained low-level planner,
+that maps one step into a sequence of primitive actions for execution.
+Inspired by these works on single-robot navigation, SayCoNav utilizes a novel LLM-based three-
+level decentralized planning architecture for multi-robot navigation. The top-level global planner is
+specifically designed for multi-robot coordination, which is beyond the capabilities of single-robot
+navigation systems. The functionalities of the middle-level local planner from SayCoNav are sim-
+ilar to the high-level planner in single-navigation systems. However, in addition to utilizing LLMs
+to generate the search plan inside a single room, SayCoNav also leverages LLMs to automatically
+construct the transition plan (such as which door or room shall go next) based on the collabora-
+tion strategy. In contrast, the high-level planner from single-robot navigation systems (such as [3])
+typically uses manually-defined heuristic rules for transition across rooms.
+2.2 Multi-Robot Navigation
+There is a long history on using learning-based methods, such as multi-agent reinforcement learn-
+ing (MARL) [17, 18], for multi-robot navigation. Due to the trend in utilizing LLMs for single-
+robot navigation, there are recent works in leveraging the generalization capabilities from LLMs for
+multi-robot navigation. However, almost all these works focus on navigation tasks using a team of
+homogeneous robots [5, 6, 19, 20]. They either use a centralized LLM-based planner to distribute
+the task among the team [5] or manually define the coordination process across decentralized robots
+[6, 19], since the collaboration strategy among robots with identical skills is straightforward.
+The closest work to SayCoNav is MHRC [20], which also touches the decentralized planning prob-
+lem among heterogeneous robots. MHRC only shows one specific team composition (a mobile
+navigator, a mobile manipulator, and a static manipulator) in their experiments. It decomposes a
+task into multiple sub-tasks, and manually assigns a role with sub-tasks to each robot based on its
+skills prior to the mission. The communication process among the robots is also manually designed
+based on the team composition (the mobile manipulator plays the coordinator role). Note, these
+configurations cannot be changed during the mission. Each robot in MHRC then uses a two-level
+planning architecture (similar to [3, 4]), which utilizes 3D scene graphs to ground the LLM for
+generating step-by-step plans, based on communication messages among the team.
+In contrast, SayCoNav utilizes a novel three-level decentralized planning architecture for automatic
+generation and execution of the collaboration strategies among different team compositions. Each
+robot uses the LLM to share background information to other robots. A randomly-chosen agent
+then uses the LLM to generate the entire collaboration strategy, including communication process
+among the team and roles to each robot, based on the team background information. The cooperation
+mechanism can also be updated, if the physical condition of any robot is changed during the mission.
+3
+Figure 2: The SayCoNav framework for a single robot.
+To the best of our knowledge, SayCoNav provides the first LLM-based adaptive collaboration frame-
+work among heterogeneous robots for navigation tasks. The LLM-generated strategy leverages
+different skills from robots to efficiently explore the unknown environments and search the target
+objects. The strategy can be automatically generated based on different team compositions and
+conditions, which is crucial to handle the dynamic and complicated situations in the real world.
+3 SayCoNav
+SayCoNav is designed to enable adaptive collaboration capabilities in a decentralized team of het-
+erogeneous robots, for performing complicated navigation tasks in large-scale new environments.
+To validate SayCoNav, we choose Multi-Object Navigation task (MultiON) [8], which has much
+higher planning complexities than typical object-goal navigation tasks that look for only a single ob-
+ject [21]. Our goal of MultiON is to navigate a team of the agents (simulated robots) in a large-scale
+unknown environment in order to find an instance for each of multiple predefined object categories.
+Each agent is initialized at a random location in the environment. At each time instance during
+navigation, each agent receives environment observations and takes actions. The task execution is
+successful if the team of robots locates (by detection) all three objects within a time period.
+Note, the observation quality and the action space for each agent depends on its skills and condi-
+tions, as shown in Figure 1. For example, a robot with a high-resolution camera perceives better
+RGBD images and semantic segmentation maps. The mobile robot with manipulator arm can issue
+manipulation control commands (open and close) in addition to movement control commands (turn-
+left, turn-right, move-forward, stop, and look-around). Note, we specifically chose many different
+object categories which are either placed inside closed entities (such as a tomato in a fridge) or dif-
+ficult to be observed due to their small sizes (such as a spoon). The team of the robots is required to
+dynamically coordinate the search plan, depending on the perceived surroundings (i.e. the kitchen
+may have the tomato and spoon) and different skills (i.e. high-resolution cameras can better locate
+the spoon) across the agents, based on a collaboration strategy.
+Figure 2 illustrates SayCoNav’s framework for each robot. It includes four modules: (1) Top-Level
+Global Planner, (2) Middle-Level Local Planner, (3) Graph Generator, and (4) Bottom-Level Action
+Planner. Note, both Top-Level Global Planner and Middle-Level Local Planner are LLM-based
+planners, that enable adaptive collaboration and decentralized planning for multi-robot navigation.
+3.1 Top-Level Global Planner
+The Top-Level Global Planner uses the LLM to communicate background information among the
+team for defining the collaboration strategy. Figure 3 (left) shows the system prompt for this pro-
+cess. The prompt includes four components: team task statement, robot skills and conditions, col-
+laboration strategy request, and tips. The component of robot skills and conditions is automatically
+generated based on communication across robots, while other three components are manually spec-
+ified by the human user based on the MultiON task. We use the chain-of-thought (CoT) prompting
+technique [22] in two components (team task statement and tips). This technique guides the LLM
+4
+Figure 3: Prompts for top-level global planner (left) and middle-level local planner (right). The
+global planner prompt includes team task statement (blue), robot skills and conditions (red), collab-
+oration strategy request (purple), and tips (green). The local planner prompt has four components
+prior to the request to LLM: feedback, summary, local scene graph, and communication messages.
+to reason step-by-step as humans do, by decomposing MultiON into logical reasoning steps and
+describing these steps in the prompt. Due to page limitation, we omit some CoT details in Figure 3.
+The global planner from a randomly chosen agent then feeds this prompt to the LLM, for generating
+the collaboration strategy prior to the mission. The strategy includes the role assigned to each
+agent, the communication mechanism among agents, and the task distribution among the team. By
+grounding the LLM using the specifications of robot skills within the prompt, the generated strategy
+shall leverage the strengths of different agents to solve the navigation task. The strategy is then
+shared among the team for execution. The global planner also monitors the condition of the agent.
+When the agent has condition changes during the mission, it can generate the strategy again.
+3.2 Middle-Level Local Planner
+The Middle-Level Local Planner uses the LLM to dynamically generate step-by-step plans for the
+individual agent based on the collaboration strategy from the Top-Level Global Planner. Note, each
+agent is provided with a list of high-level behavior functions, such asNavigationToand OpenObject,
+based on its individual skills. Therefore, the LLM-generated step-by-step plan can be viewed as the
+composition of these behavior functions from the agent.
+Specifically, each agent automatically generates and updates a short-term plan regularly using the
+dynamic prompt in Figure 3 (right) during the mission. The prompt includes four dynamic compo-
+nents that evolve over time: feedback, summary, local scene graph, and communication messages.
+The feedback component describes the response from previous plan execution, such as whether it
+was successful. The summary component illustrates the task status and progress (such as remaining
+target objects and rooms already visited), automatically generated by the execution of behavior func-
+tions. It serves as a memory mechanism, which improves LLM’s capabilities to handle long horizon
+tasks. The component of local scene graph is the abstracted representation of current perceived
+scenes. The communication messages include information received from other agents. These four
+components in the prompt ensure that the plan is continuously refined based on newest information
+among the team, for efficiently achieving the joint goal in a decentralized way.
+Note, the spirit of SayCoNav’s local planner is similar to the high-level planner in LLM-based
+single-robot navigation systems [3, 4]. However, the high-level planner in these systems typically
+combines heuristic rules (such as which rooms to go next) and LLM-enabled planning (such as the
+priorities of potential locations inside a room for searching objects). In contrast, SayCoNav’s local
+planner fully relies on the LLM to generate both search plans within rooms and transition plans
+across rooms, based on the collaboration strategy defined from the global planner.
+5
+3.3 Graph Generator and Bottom-Level Action Planner
+Both the Graph Generator and the Bottom-Level Action Planner in SayCoNav are extended from
+what used in [3]. The graph generator continuously builds and expands a local 3D scene graph of the
+perceived environment being explored by the agent, based on its received RGBD images. The LLM
+also retrieves information from communication messages, such as which rooms have been explored
+by other agents, to augment the local scene graph. The middle-level local planner continuously
+extracts a subgraph from the full local 3D scene graph based on the current agent position, and
+converts it into text in the dynamic prompt (Figure 3 (right)) to the LLM.
+The Bottom-Level Action Planner, which can be either an oracle (ground truth) planner or a pre-
+trained planner, maps each planned step from the local planner into a sequence of primitive actions.
+For example, theNavigationTostep (a short-distance point-goal navigation sub-task) can be executed
+by a combination of control commands ( turn-left, turn-right, and move-forward). Note for our
+experiments, we use A* based oracle planner for navigation (same as in [3]) and oracle actions for
+manipulation in SayCoNav and baseline methods. This way we can focus on evaluating the impact
+from the global planner and the local planner to multi-robot navigation tasks.
+4 Experimental Results
+We used the ProcTHOR framework [7] with the AI2-THOR simulator [23] to conduct MultiON for
+our experiments. Note, we chose ProcTHOR framework due to its capabilities to generate com-
+plicated and realistic large-scale environments for MultiON. Given a house specification (such as
+3 bedrooms, 2 bathrooms, 1 living room, and 1 kitchen), it can generate interactive scenes from
+procedurally-generated full floor plans of a house using 108 object types (including furniture and
+household entities) with realistic and natural placements. We built a benchmark dataset of 50
+episodes using this framework. Each episode is a different house (3-10 rooms) and we select 3
+different objects (such as “laptop”, “tomato”, and “spoon”) in each house as the target objects.
+However, the AI2-THOR simulator with the ProcTHOR framework is originally designed for single-
+agent simulation. Therefore, we also implemented a mechanism on top of it to enable multi-agent
+simulation for our experiments.
+We assume that each agent can have diverse skills based on its sensors and equipment. We de-
+sign three special skills (as shown in Figure 1): Fast Movement (F), Manipulation (M), and High-
+Resolution Cameras (H). Without these special skills, an agent is configured as normal speed, no
+manipulation arm, and with normal RGBD cameras. To validate whether SayCoNav can leverage
+different skills across robots, the three target objects in each episode are configured to include one
+normal household object, one object inside a closed entity (such as a tomato inside a fridge) and one
+small-size object (such as a spoon, a credit card, or a pen).
+We implemented SayNav [3], a LLM-based single-robot navigation system, as the baseline method.
+Note, SayNav is originally designed for robots without manipulation arms. Therefore, we extended
+SayNav with the oracle-based actions to enable manipulation. We conducted experiments to com-
+pare SayCoNav with this SayNav-based method across different team compositions and conditions.
+We use gpt-4o-mini [24] as the LLM to each agent for our experiments. We also conducted ablation
+studies to verify the impact of different implementation choices from SayCoNav. All the simulation
+experiments are conducted using Nvidia GeForce RTX 2080 Ti GPU.
+4.1 Homogeneous Agents
+Table 1 summarizes the evaluation of SayCoNav against the baseline method over different team
+compositions. Note for each experimental setting (a row in the table) over 50 episodes, we report
+successful rate (SR, %), average episode time (seconds), and average number of navigation steps
+for each agent in the team. Note, we do not use SPL metrics for evaluation, because it is difficult
+to identify the ground truth paths for multiple distributed agents. In addition, the average episode
+6
+Table 1: The performance of SayCoNav and baseline methods on MultiON task. A1, A2 & A3
+denote three different agents, with special skills (F:Fast, M:Manipulation, H:High Res. Camera).
+Agent Type #A Agent Skills SR(%) A vg Ep
+Time (s)
+A vg Steps
+A1 A2 A3
+SayNav (Homo) 1 A1(F, M, H) 96.0 363.92 508.85 - -
+SayNav (Homo) 1 A1(M, H) 96.0 435.15 508.85 - -
+SayNav (Homo) 3 All (F, M, H) 96.0 252.17 353.52 351.81 377.83
+SayCoNav (Homo) 96.0 195.98 208.83 202.94 218.81
+SayNav (Hetero) 2 A1(F, H), A2(M) 88.0 441.36 764.25 424.50 -
+SayCoNav (Hetero) 92.0 267.46 386.76 285.85 -
+SayNav (Hetero) 2 A1(H), A2(F, M) 90.0 546.32 627.89 435.09 -
+SayCoNav (Hetero) 90.0 256.17 286.87 305.51 -
+SayNav (Hetero) 3 A1(F), A2(M), A3(H) 90.0 537.43 515.82 456.76 707.98
+SayCoNav (Hetero) 90.0 299.45 393.11 287.67 336.02
+Table 2: Impact of adaptive collaboration within episodes. Based on definition in Table 1, the initial
+skill for agents is A1(F ), A2(M ), and A3(H). The condition of A1 changes within each episode.
+Experiment SR(%) A vg Ep
+Time (s)
+A vg Steps
+A1 A2 A3
+SayCoNav (w/o adaptive strategy) 88.0 331.37 309.23 301.18 332.30
+SayCoNav (w. adaptive strategy) 92.0 319.31 255.17 323.52 307.54
+time and the average number of navigation steps are computed from successful episodes (i.e. failure
+episodes take much more time and steps).
+The top portion of Table 1 shows the results using homogeneous agents. Note, the SayNav-based
+baseline method can complete 96% of episodes using purely one agent, while the fast movement
+skill shortens the navigation time (from 435.15 to 363.92 seconds) using same number of steps.
+When the team includes three agents with identical skills, both SayNav and SayCoNav can complete
+scenarios faster than using only one agent. However, SayCoNav’s LLM-based collaboration strategy
+is to uniformly distribute the search task among the team by continuously sharing the progress to
+each other. Compared to SayNav, which navigates three agents independently without coordination,
+SayCoNav efficiently reduces the search time (from 252.17 to 195.98 seconds). The similar number
+of steps from each agent indicates the successful distribution of the task among the team.
+4.2 Heterogeneous Agents
+The bottom portion of Table 1 shows the results using heterogeneous agents. We tested two cases
+using two agents with different skill sets. For each case, SayCoNav is able to automatically generate
+a customized collaboration strategy to leverage skills from two agents. Compared to SayNav, the
+strategy significantly reduces the search time by utilizing the fast speed skill (more navigation steps)
+for the correspondent agent (A1 in case 1, A2 in case 2) to scout rooms.
+For three heterogeneous agents, SayCoNav automatically defines the strategy (as shown in Figure
+1) to leverage the special skill (A1(F ), A2(M ), A3(H)) from each agent. Compared to SayNav, the
+search time is reduced by 44.28%, indicating the influence from SayCoNav’s collaboration strategy.
+4.3 Impact of Adaptive Collaboration during Task Execution
+Table 2 shows the performance of SayCoNav in response to changes in the physical condition of
+the agent. For these experiments, we set up three heterogeneous agents with different special skills
+(A1(F ), A2(M ), A3(H)) as initial conditions. Then for each of the 50 episodes, we configured the
+fast-speed agent A1 to run out of battery during navigation and then move slower than other agents.
+7
+Table 3: The performance of SayCoNav using collaboration strategies from LLMs and humans.
+Based on definition in Table 1, the skill set for agents is A1(F ), A2(M ), and A3(H).
+Agent Type Collaboration Strategy SR(%) A vg Ep
+Time (s)
+A vg Steps
+A1 A2 A3
+SayCoNav (Hetero) LLM-Generated 90.0 299.45 393.11 287.67 336.02
+SayCoNav (Hetero) Human-Refined 90.0 309.90 383.40 303.62 296.31
+Table 4: Additional ablation studies using three heterogeneous agents (A1(F ), A2(M ), and A3(H)),
+based on the definition in Table 1.
+Experiment LLM SR A vg Ep
+Time (s)
+A vg Steps
+(%) A1 A2 A3
+SayCoNav gpt-4o-mini 90.0 299.45 393.11 287.67 336.02
+SayCoNav (w/o feedback) gpt-4o-mini 84.0 325.90 407.10 323.05 315.98
+SayCoNav (w/o feedback & summary) gpt-4o-mini 78.0 321.60 446.46 323.59 308.44
+SayCoNav o4-mini 92.0 293.87 351.78 255.43 301.50
+For this physical condition change in A1, the global planner in A1 can automatically ground the
+LLM again using the prompt (Figure 3 (left)) with an updated component of robot skill and condi-
+tion. It then generates a new collaboration strategy to accommodate the condition change from A1.
+Specifically, the new strategy moves more responsibilities (such as scouting) from A1 to A2. The
+reason is that A3 requires more time to conduct detailed search by using its high-resolution camera
+to search small objects inside a new room. In comparison, A2 is more suitable to play more roles
+even it has same moving speed as A3. The new strategy also assigns A1 to assist A3 when needed.
+By adapting the collaboration strategy within the episode, SayCoNav is able to increase the suc-
+cessful rate (from 88% to 92%) and to reduce the search time (from 331.37 to 319.31 seconds),
+compared to using the same strategy from beginning to the end. From Table 2, with adaptive strat-
+egy, it is clear that the number of steps taken by A1 becomes lower while A2 takes more steps. It
+indicates the influence from adaptive collaboration in response to the condition change of A1.
+4.4 Difference between Strategies from LLMs and Humans
+To verify whether the LLM-generated collaboration strategy is ideal, we also asked a human expert
+to review and revise the strategy generated from the global planner. We configured three hetero-
+geneous agents with different special skills (A1(F ), A2(M ), A3(H)). The human expert augments
+the LLM’s collaboration strategy (Figure 1), by explicitly requesting each agent to avoid searching
+rooms which are currently being explored by other robots unless there is no room left to explore.
+The expert also recommends the agent to remember the recently used doors and look to explore
+other doors for transition across rooms. Table 3 shows the human-refined strategy achieves similar
+performance, which validates the feasibility and effectiveness of LLM-generated strategies.
+4.5 Additional Ablation Study
+We also conducted additional ablation studies for different implementation choices in SayCoNav,
+with results using three heterogeneous agents in Table 4. The first set of experiments verifies the
+contribution of different components to the dynamic prompt in the local planner (Figure 3 (right)).
+It is clear that the performance becomes worse, without either feedback or summary in the prompt.
+The second set of experiments uses different LLMs (gpt-4o-mini [24] and o4-mini [25]) for Say-
+CoNav. We focus on evaluating small-size LLMs, due to our plan on incorporating LLMs into
+the processor with real robots in the future. The performance is slightly improved using o4-mini,
+which is a reasoning model designed specifically for planning tasks. These results demonstrate that
+SayCoNav can leverage different LLMs for collaborative navigation applications.
+8
+Figure 4: Example of failure cases where a small pencil is present inside a box (left) and a small egg
+is inside a fridge (right).
+5 Conclusion
+We present SayCoNav, a new approach that utilizes LLMs for generating and executing collabora-
+tion strategies among a decentralized team of heterogeneous robots, to efficiently search multiple
+different objects in unknown environments. SayCoNav enables adaptive collaboration capabilities,
+by automatically designing the collaboration strategy that leverages diverse skills among the team
+and accommodates the physical condition changes from any robot. We validate SayCoNav with
+varied team compositions and conditions against baseline methods. Our experimental results and
+ablation studies demonstrate the effectiveness and efficiency of SayCoNav for complicated multi-
+robot navigation tasks in large-scale unknown environments.
+6 Limitation
+In this section, we would like to discuss two limitations of SayCoNav that we discovered from the
+failure episodes in Section 4. First, SayCoNav leverages LLMs to generate strategies for efficient
+collaborations among a team of robots. Yet, we encountered certain scenarios in our experiments
+which would demand very complex collaboration strategies beyond what LLMs generate to suc-
+cessfully complete the task. For example, there were cases which required opening of an object to
+find a tiny object inside it, such as a pencil inside a closed box or a small egg deep inside a fridge,
+as shown in Figure 4. Detection of such target objects requires both manipulation arms and high-
+resolution cameras. It’s an easy task for a single agent with both these capabilities. However, for
+a team of agents in Figure 1, it requires the green robot (has arm) and the blue robot (with high
+resolution camera) to work closely together to achieve this task. This was something we found that
+LLM couldn’t handle it well and was majorly the reason of failure cases in our experiments.
+Second, we employed various mechanisms in minimizing LLM hallucinations, such as providing
+feedback and summary at every stage (Figure 3) and making LLMs generate an explanation for each
+step. However, we still came across a few cases with common LLM hallucination problems. These
+examples include ignoring an unexplored door and doing redundant searches. We provide more
+details about our algorithms, including how we deal with LLM hallucinations, and experiments in
+the supplementary material.
+As a part of future work, we would like to port SayCoNav to a real multi-robot system. LLM-
+based single-agent systems, such as [3, 4, 11, 14], have been successfully ported to a real robot for
+operation. Since our graph generator and bottom level planner were extended from [3], we expect
+that the transition of SayCoNav to real robots can be natural and straightforward.
+9
+References
+[1] Y . Rizk, M. Awad, and E. W. Tunstel. Cooperative heterogeneous multi-robot systems: A
+survey. ACM Computing Surveys (CSUR), 52(2):1–31, 2019.
+[2] O. Shorinwa, T. Halsted, J. Yu, and M. Schwager. Distributed optimization methods for multi-
+robot systems: Part 2 - a survey. IEEE Robotics & Automation Magazine, 2024.
+[3] A. Rajvanshi, K. Sikka, X. Lin, B. Lee, H. Chiu, and A. Velasquez. Saynav: Grounding large
+language models for dynamic planning to navigation in new environments. In International
+Conference on Automated Planning and Scheduling, 2024.
+[4] K. Rana1, J. Haviland, S. Garg, J. Abou-Chakra, I. Reid, and N. Suenderhauf. Sayplan:
+Grounding large language models using 3d scene graphs for scalable robot task planning. In
+Conference on Robot Learning (CoRL), 2023.
+[5] B. Yu, H. KAsaei, and M. Cao. Co-navgpt: Multi-robot cooperative visual semantic navigation
+using large language models. In arXiv:2310.07937v2, 2023.
+[6] Z. Shen, H. Luo, K. Chen, F. Lv, and T. Li. Enhancing multi-robot semantic navigation through
+multimodal chain-of-thought score collaboration. In Proceedings of the AAAI Conference on
+Artificial Intelligence, 2025.
+[7] M. Deitke, E. VanderBilt, A. Herrasti, L. Weihs, J. Salvador, K. Ehsani, W. Han, E. Kolve,
+A. Farhadi, A. Kembhavi, and R. Mottaghi. Procthor: Large-scale embodied ai using procedu-
+ral generation. Advances in neural information processing systems, 35:5982–5994, 2022.
+[8] N. Gireesh, A. Agrawal, A. Datta, S. Banerjee, M. Sridharan, B. Bhowmick, and M. Krishna.
+Sequence-agnostic multi-object navigation. InIEEE International Conference on Robotics and
+Automation (ICRA), 2023.
+[9] E. Wijmans, A. Kadian, A. Morcos, S. Lee, I. Essa, D. Parikh, M. Savva, and D. Batra. Dd-
+ppo: Learning near-perfect pointgoal navigators from 2.5 billion frames. In International
+Conference on Learning Representations (ICLR), 2019.
+[10] B. Yu, H. Kasaei, and M. Cao. L3mvn: Leveraging large language models for visual target
+navigation. In IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS),
+2023.
+[11] V . N. Devarakonda, R. G. Goswami, A. U. Kaypak, N. Patel, R. Khorrambakht, P. Krishna-
+murthy, and F. Khorrami. Orionnav: Online planning for robot autonomy with context-aware
+llm and open-vocabulary semantic scene graphs. In arXiv:2410.06239v2, 2024.
+[12] H. Yin, X. Xu, L. Zhao, Z. Wang, J. Zhou, and J. Lu. Unigoal: Towards universal zero-shot
+goal-oriented navigation. In arXiv:2503.10630v3, 2025.
+[13] H. Yin, X. Xu1, Z. Wu, J. Zhou, and J. Lu. Sg-nav: Online 3d scene graph prompting for
+llm-based zero-shot object navigation. Advances in neural information processing systems ,
+37:5285–5307, 2024.
+[14] T. Shan, A. Rajvanshi, N. Mithun, and H. Chiu. Graph2nav: 3d object-relation graph gen-
+eration to robot navigation. In IEEE Intenational Conference on Robotics and Automation
+(ICRA), 2025.
+[15] T. Brown, B. Mann, N. Ryder, M. Subbiah, J. D. Kaplan, and P. Dhariwal. Language models
+are few-shot learners. Advances in neural information processing systems , 33:1877–1901,
+2020.
+[16] L. Ouyang, J. Wu, X. Jiang, D. Almeida, C. Wainwright, P. Mishkin, and C. Zhang. Training
+language models to follow instructions with human feedback. Advances in neural information
+processing systems, 35:27730–27744, 2022.
+10
+[17] C. Yu, X. Yang, J. Gao, H. Yang, Y . Wang, and Y . Wu. Learning efficient multi-agent cooper-
+ative visual exploration. In European Conference on Computer Vision (ECCV), 2022.
+[18] C. Yu, X. Yang, J. Gao, J. Chen, Y . Li, J. Liu, and Y . Xiang. Asynchronous multi-agent rein-
+forcement learning for efficient real-time multi-robot cooperative exploration. InInternational
+Conference on Autonomous Agents and Multiagent Systems, 2023.
+[19] J. Zobel, R. Kundel, and R. Steinmetz. Camon: Aerial-ground cooperation system for disaster
+network detection. In ISCRAM, 2022.
+[20] W. Yu, J. Peng, Y . Ying, S. Li, J. Ji, and Y . Zhang. Mhrc: Closed-loop decentralized multi-
+heterogeneous robot collaboration with large language models. In arXiv:2409.16030, 2024.
+[21] D. S. Chaplot, D. Gandhi, A. Gupta, and R. Salakhutdinov. Object goal navigation using
+goaloriented semantic exploration. Advances in neural information processing systems , 33:
+4247–4258, 2020.
+[22] J. Wei, X. Wang, D. Schuurmans, M. Bosma, B. Ichter, F. Xia, E. Chi, Q. Le, and D. Zhou.
+Chain-of-thought prompting elicits reasoning in large language models. Advances in neural
+information processing systems, 35:24824–24837, 2022.
+[23] E. Kolve, R. Mottaghi, W. Han, E. VanderBilt, L. Weihs, A. Herrasti, and M. Deitke. Ai2-thor:
+An interactive 3d environment for visual ai. In arXiv:1712.05474, 2017.
+[24] OpenAI. Gpt-4o mini. In https://platform.openai.com/docs/models/gpt-4o-mini, 2024.
+[25] OpenAI. o4-mini. In https://platform.openai.com/docs/models/o4-mini, 2025.
+11

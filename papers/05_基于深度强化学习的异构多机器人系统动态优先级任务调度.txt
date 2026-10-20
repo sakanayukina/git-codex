@@ -1,0 +1,1511 @@
+ 
+Contents lists available at ScienceDirect
+Neurocomputing
+journal homepage: www.elsevier.com/locate/neucom  
+Dynamic and prioritized task scheduling of heterogeneous multi-robot 
+systems using deep reinforcement learning
+Jiabing Zhang, Qingxuan Jia, Shiyu Zhang
+ ∗, Gang Chen
+School of Intelligent Engineering and Automation, Beijing University of Posts and Telecommunications, Xitucheng Road 10, Beijing, 100876, China
+A R T I C L E  I N F O
+Communicated by Y. Wang
+Keywords:
+Heterogeneous multi-robot system
+Collaborative task scheduling
+Deep reinforcement learning
+Dynamic task sequence
+Priority task scheduling
+Multi-robot collaboration
+Global optimization
+ A B S T R A C T
+With the ongoing development of heterogeneous multi-robot systems technology, the challenges related to 
+scheduling extended sequences of dynamic and prioritized tasks have become progressively more pronounced. 
+To address this issue, this paper proposes an online task scheduling framework for efficient collaboration 
+in heterogeneous multi-robot systems. First, a collaboration strategy for heterogeneous multi-robot systems 
+is proposed to facilitate efficient parallel work, incorporating online updates to task sequences and priorities. 
+Second, a deep reinforcement learning based dynamic task scheduling method employing actor–critic attention 
+mechanisms is proposed for online optimal task sequence generation. In addition, task priority is integrated 
+into the objective function, encouraging the rapid execution of high-priority tasks. Experimental results with 
+randomly generated tasks of varying scales demonstrate the flexibility, efficiency and generalization of the 
+method. Task sequences for the heterogeneous robots are generated online as the task set to be executed 
+evolves, optimizing the global travel distances while ensuring the timely execution of high-priority tasks.
+1. Introduction
+As the complexity of heterogeneous multi-robot systems (HMRS) 
+is steadily increasing, they show significant potential for application 
+in various fields including industry, healthcare, exploration, logistics, 
+etc. In these systems, a key challenge lies in effectively performing 
+task scheduling and assignment to ensure both efficient operation and 
+optimized performance. In fields such as intelligent manufacturing, 
+logistics, search and rescue, intelligent inspection, and planetary ex-
+ploration, HMRS must adapt to dynamic changes in tasks and priority 
+adjustments to achieve efficient and optimized task execution. Task 
+scheduling in this context must consider not only the dynamic char-
+acteristics of the task sequence, including the length of task sequence 
+changes over time, but also must incorporate the priority attributes of 
+tasks to optimize and adjust the overall task execution sequence.
+In designing task scheduling and assignment strategies, it is essential 
+to consider the following key factors in an integrated manner: (1) The 
+dynamic nature of tasks: The entire sequence of tasks may change due 
+to environmental variations or the addition of new tasks. Therefore, 
+the task scheduling mechanism must exhibit flexibility and adaptability 
+to handle these unpredictable changes. (2) Task prioritization: In a 
+multitasking environment, certain tasks may be assigned higher priority 
+based on their urgency or significance. The task allocation system must 
+be capable of recognizing these priorities and incorporating them into 
+∗ Corresponding author.
+E-mail address: shiyu.zhang@bupt.edu.cn (S. Zhang).
+resource scheduling. (3) Periodic updating: In specific application sce-
+narios, such as regular production scheduling or periodic maintenance, 
+task allocation needs to be updated at predefined intervals to ensure 
+the orderly execution of tasks and rational distribution of resources. (4) 
+Scalability in terms of task volume: As the number of tasks increases, 
+the scheduling and allocation strategy should scale without relying on 
+an increase in the number of robots, thus ensuring system stability and 
+efficiency. Therefore, developing advanced task scheduling and alloca-
+tion algorithms to meet these complex requirements is crucial for the 
+effective operation of HMRS in diverse task environments. The state-
+of-the-art technologies currently focus mainly on static task allocation 
+and fixed priority scheduling, but there are still limitations, particularly 
+in dynamic task scheduling, task priority adjustment, periodic updates, 
+and system scalability [1–3].
+This paper aims to enable highly efficient collaboration of HMRS, 
+and addresses the challenges of optimal task scheduling accounting for 
+the dynamic factors and task priority within the task sets. We propose 
+a collaborative strategy for HMRS, accompanied by a task scheduling 
+method that accounts for dynamic changes and priority properties 
+arising from collaboration. The main contributions of this paper are as 
+follows:
+1. A collaborative strategy for HMRS is proposed, enabling multi-
+ple robots with complementary capabilities to work in parallel 
+https://doi.org/10.1016/j.neucom.2025.130184
+Received 19 January 2025; Received in revised form 19 March 2025; Accepted 29 March 2025
+Neurocomputing 638 (2025) 130184 
+Available online 7 April 2025 
+0925-2312/© 2025 Elsevier B.V. All rights are reserved, including those for text and data mining, AI training, and similar technologies. 
+J. Zhang et al.
+efficiently. The task sequence and priority for certain robots can 
+be updated online during the task execution by other robots.
+2. A dynamic task scheduling method based on deep reinforcement 
+learning (DRL) is proposed, which sequentially generates the 
+next optimal task as the entire set of tasks to be performed is 
+constantly updated.
+3. The task priority is integrated into the aforementioned DRL-
+based optimal scheduling process, encouraging tasks with higher 
+priority to be executed sooner.
+2. Related work
+2.1. Task scheduling and allocation in multi-robot systems
+Task scheduling and allocation, a critical challenge in optimizing 
+robotic systems, has become a prominent research focus in recent 
+years. In multi-robot systems, task scheduling and allocation involve 
+the efficient assignment of tasks to multiple robots to maximize overall 
+benefits or achieve specific performance objectives. In recent years, 
+multi-robot systems have garnered significant attention due to their 
+promising real-world applications. One of the most critical challenges 
+in these systems is Multi-Robot Task Allocation (MRTA). This problem 
+involves efficiently scheduling and assigning a set of tasks to a group 
+of robots to optimize an objective function (e.g., minimizing task 
+completion time or distance). The key decision-making challenge lies 
+in determining which robot should execute each specific task [2,4].
+As the number of tasks and robots grows, developing an effective 
+task-scheduling strategy can significantly enhance system efficiency. 
+Multi-robot task scheduling involves assigning unfinished tasks to avail-
+able robots within specific time and space constraints. Each robot 
+performs tasks in the designated order. This requires rapid analysis of 
+the task environment, robot capabilities, and task details, as well as 
+quick decomposition of the task set and determination of task sequences 
+under constraints to maximize benefits and minimize costs. This is an 
+NP-hard problem in combinatorial optimization [5,6].
+Task allocation for robots and the optimization of a given objective 
+function (whether maximization or minimization) is a critical process 
+in dynamically changing environments. These environments may be 
+influenced by factors such as robot failures, evolving tasks, moving 
+obstacles, unknown surroundings, or other unforeseen events, which 
+add significant complexity to the problem. As a result, task scheduling 
+and allocation in dynamic environments is considered one of the most 
+challenging aspects of the problem, requiring decision-making that 
+accounts for various constraints that may emerge during task execu-
+tion [7,8]. In recent years, the academic community has seen a growing 
+body of research focused on dynamic task allocation.
+Robot task scheduling and allocation is inherently a combinatorial 
+optimization problem. Solving it requires applying optimization tech-
+niques to address this combinatorial nature. Some common combina-
+torial optimization problems include the Traveling Salesman Problem 
+(TSP), the Vehicle Routing Problem (VRP), the Job Shop Scheduling 
+Problem, and the Knapsack Problem, among others, which can be 
+transformed and extended appropriately to obtain the task scheduling 
+and allocation problem model for multi-robot systems [9–11]. For 
+example, TSP can be extended to the Multiple Traveling Salesmen 
+Problem (mTSP). This problem not only involves task allocation but 
+also the optimization of multiple paths, which must visit several task 
+locations and return to a common origin [12–14]. By replacing the 
+salesmen with robots and the cities with tasks, the mTSP transforms 
+into the MRTA problem [15,16].
+In some research, the Hungarian algorithm, an operations research 
+method known for its high efficiency, was widely used to solve task-
+scheduling problems [17]. Other algorithms, such as genetic algo-
+rithms, particle swarm optimization, ant colony optimization, were 
+also explored [18–20]. So far, traditional methods for solving combi-
+natorial optimization problems can be broadly categorized into two 
+types: exact approaches and approximate approaches. (1) Exact ap-
+proaches are algorithms that can find the global optimal solution 
+to a problem, primarily including branch-bound and dynamic pro-
+gramming. (2) Approximate approaches are methods that find a local 
+optimal solution, primarily including Approximation Algorithms and 
+Heuristic Algorithms [21–23]. Exact methods are capable of finding 
+the global optimal solution to a combinatorial optimization problem, 
+but they consume substantial computational resources as the problem 
+size increases, making them difficult to apply to large-scale problems. 
+In contrast, approximate methods can find good solutions within an 
+acceptable computation time. However, when the problem size is very 
+large, even approximate methods require a significant number of iter-
+ative searches, leading to a substantial increase in computation time. 
+Therefore, approximate methods still face challenges when addressing 
+online real-time optimization problems.
+2.2. Combinatorial optimization problems with deep reinforcement learning
+With the rapid advancement of artificial intelligence, DRL has 
+achieved significant breakthroughs across various fields, overcoming 
+the limitations of traditional approaches. Notably, in solving combina-
+torial optimization problems like the TSP, VRP, and knapsack problems, 
+DRL-based methods have shown remarkable effectiveness. Compared to 
+traditional algorithms, DRL offers advantages such as faster solution 
+speeds and better generalization, making it a key focus of current 
+research.
+A major breakthrough in using neural networks for combinatorial 
+optimization occurred in 2015 when Vinyals et al. introduced the 
+Pointer Network model [24,25], enabling neural networks to directly 
+generate solutions. This opened new research avenues in the field. 
+Recently, the rise of graph neural networks (GNNs) has led researchers 
+to explore their application in combinatorial optimization. Unlike the 
+Pointer Network, GNN-based methods focus on learning node features 
+to perform tasks like link and node prediction, facilitating optimization. 
+For instance, Dai et al. were the first to combine GNNs with DRL to 
+tackle problems like the Minimum Vertex Cover (MVC) and TSP [26–
+30].
+The methods described above are ‘‘end-to-end’’ approaches, where a 
+trained deep neural network directly outputs the solution to a problem 
+instance. These methods typically use DRL to train the network param-
+eters. Compared to traditional iterative algorithms, end-to-end methods 
+eliminate the need for a search process, significantly improving so-
+lution speed. Once trained, the model can handle all instances with 
+similar distribution characteristics, showcasing strong generalization 
+capabilities.
+DRL algorithms have achieved local and even global optimal solu-
+tions for certain combinatorial optimization problems, with successful 
+applications in multi-robot task allocation. However, existing models 
+often overlook dynamic task changes and the impact of task priority 
+attributes on optimization outcomes. Additionally, research on HMRS 
+addressing priority tasks and dynamic changes remains limited [2,3,
+31]. This study aims to explore solutions to these critical issues using 
+DRL.
+This study focuses on optimizing task scheduling in multi-robot 
+systems, addressing two key challenges: task sequence planning for het-
+erogeneous robots and dynamic scheduling for their collaborative tasks. 
+Complex collaborative tasks are decomposed into the classic TSP and its 
+extended forms, based on which task scheduling models are developed 
+(see details in Section 3. A deep reinforcement learning framework 
+incorporating attention mechanisms is proposed to enable a collabo-
+rative scheduling system with end-to-end autonomous decision-making 
+capabilities Section 4.1.
+Neurocomputing 638 (2025) 130184 
+2 
+J. Zhang et al.
+Fig. 1. Schematic diagram of reconnaissance and excavation robots working collaboratively.
+3. Problem description
+This section presents a scenario involving heterogeneous robot sys-
+tems collaborating to execute tasks, drawn from applications such as 
+intelligent inspection or exploration.
+Then we define the tasks along with their parameters. Finally, the 
+section outlines key issues, and consequently introduces the dynamic 
+and prioritized task scheduling problem.
+3.1. Heterogeneous multi-robot collaboration scenario
+This section presents a scenario, where a heterogeneous team of 
+robots collaboratively travel among a set of target locations and per-
+form tasks such as inspection and excavation. This work scenario has 
+broad application potential in areas such as intelligent inspection robot 
+systems, automatic guided vehicle scheduling, drone patrol missions, 
+and cleaning robots, etc.
+In a fixed area, multiple stationary targets require inspection, and 
+the collaborative work of two heterogeneous robots, as illustrated 
+in Fig.  1, demonstrates how the task is performed. This preliminary 
+collaboration demonstrates the synergy between the robots, but the 
+system is designed to be scalable for larger deployment.
+This system includes two types of mobile robots: a reconnaissance 
+robot and an excavation robot. These robots collaborate, each pursuing 
+its respective objectives, to efficiently complete complex tasks. In this 
+scenario, the reconnaissance robot 𝑅1 is responsible for exploring and 
+identifying target locations. It first plans the order of visits, then 
+evaluates the urgency and importance of tasks at each location based 
+on its reconnaissance. The robot determines task priorities and shares 
+this information with the excavation robot to guide its excavation 
+scheduling. The excavation robot 𝑅2 performs excavation tasks upon 
+reaching target locations. It considers both the task priorities shared 
+by the reconnaissance robot and the travel distances to determine the 
+order of visits, plan, and schedule the excavation tasks accordingly.
+To ensure efficient collaboration in the HMRS, the reconnaissance 
+robot’s task scheduling must be optimized first. This step aims to 
+design the shortest travel path, enabling the robot to complete its 
+exploration tasks efficiently. Thus, the scheduling of the reconnaissance 
+robot can be modeled as a TSP. The excavation robot, on the other 
+hand, must consider both task priorities shared by the reconnaissance 
+robot and travel distances, using advanced decision-making algorithms 
+to determine the optimal real-time schedule. Hence, the task scheduling 
+for the excavation robot can be modeled as a dynamic and prioritized 
+TSP.
+The two robots collaborate through the following mechanism. Ini-
+tially, the reconnaissance robot 𝑅1 executes tasks based on its own 
+mission plan. After completing some tasks, 𝑅1 shares task information 
+with priority attributes with the excavation robot 𝑅2. The excavation 
+robot integrates these tasks, combining those with priority labels from 
+𝑅1 and those without, for comprehensive scheduling and planning. 
+Tasks not completed by 𝑅1 are assigned low priority, while tasks 
+labeled with priority are given higher priority in the schedule. At each 
+Table 1
+Symbol definitions.
+ Symbol Description Type  
+ 𝑇1 Original task set of reconnaissance robot 𝑅1 Input variable 
+ 𝑇 𝑝
+1 Planned task set to be executed by 𝑅1 State variable 
+ 𝑇 𝑐
+1 Priority-labeled task set of 𝑅1 State variable 
+ 𝑇 𝑢
+1 Remaining unlabeled task set of 𝑅1 State variable 
+ 𝑇 𝑐+
+1 Newly labeled prioritized task set of 𝑅1 State variable 
+ 𝑇2 Integrated global task sequence of excavation robot 𝑅2 State variable 
+ 𝑇 𝑐
+2 Completed task set of 𝑅2 State variable 
+ 𝑇 𝑢
+2 Unfinished remaining task set of 𝑅2 State variable 
+ 𝑇 new
+2 Updated global task sequence of 𝑅2 State variable 
+ 𝑉𝑖 Coordinates of unplanned tasks {𝑥𝑖, 𝑦𝑖} Parameter  
+ 𝑉 𝑝
+𝑖 Coordinates of planned tasks {𝑥𝑝
+𝑖 , 𝑦𝑝
+𝑖 } Parameter  
+ 𝑉 𝑐
+𝑖 Coordinates and priority of prioritized tasks {𝑥𝑝
+𝑖 , 𝑦𝑝
+𝑖 , 𝑝𝑖} Parameter  
+cycle, 𝑅1 shares new task completion and labeling information, prompt-
+ing 𝑅2 to replan and reschedule based on both its remaining tasks and 
+the new information from 𝑅1. This collaborative approach ensures effi-
+cient scheduling, optimal global path planning, and task prioritization 
+throughout task execution. Ultimately, it maximizes resource utiliza-
+tion, accelerates task completion, and ensures high-quality execution 
+in complex environments.
+3.2. Task and priority update mechanism
+It is assumed that tasks are independent, with no interdependencies 
+between them. The notations used in this formulation are summarized 
+in Table  1 for clarity.
+(1) As shown in Fig.  1, there are 𝑛 stationary targets to be inspected, 
+implying that the reconnaissance robot 𝑅1 has 𝑛 tasks. The objective 
+task for 𝑅1 is defined in (Eq.  (1)): 
+𝑇1 = {𝑉1, 𝑉2, … , 𝑉𝑛} (1)
+Here, 𝑇1 denotes the reconnaissance robot 𝑅1, with 𝑖 representing 
+one of the 𝑛 tasks to be scouted (1 ≤ 𝑖 ≤ 𝑛). Each 𝑉𝑖 contains the target 
+task’s position {𝑥𝑖, 𝑦𝑖}, and 𝑅1 must determine the task execution order 
+based on these positions.
+The reconnaissance robot 𝑅1 autonomously determines the globally 
+shortest travel path based on the task sequence and completes the 
+exploration along this route. The target task sequence after decision-
+making is assumed to be: 
+𝑇 𝑝
+1 = {𝑉 𝑝
+1 , 𝑉 𝑝
+2 , … , 𝑉 𝑝
+𝑛 } (2)
+Here, 𝑇 𝑝
+1  indicates that reconnaissance robot 𝑅1 has completed the 
+planning and scheduling of target tasks and now needs to assess their 
+priority. 𝑉 𝑝
+𝑖 = { 𝑥𝑝
+𝑖 , 𝑦𝑝
+𝑖 } denotes the positional information of the tasks 
+to be executed by the robot after the decision-making process.
+During task execution, the reconnaissance robot 𝑅1 evaluates the 
+priority of target tasks based on urgency and importance at designated 
+locations, dynamically updating the task sequence. It is assumed that, 
+Neurocomputing 638 (2025) 130184 
+3 
+J. Zhang et al.
+within a given period, the priority of the 𝑖th task is determined, and 
+the task completion sequence of 𝑅1 is as follows: 
+𝑇 𝑐
+1 = {𝑉 𝑐
+1 , 𝑉 𝑐
+2 , … , 𝑉 𝑐
+𝑖 } (3)
+The superscript 𝑐 on 𝑇 𝑐
+1 indicates that the reconnaissance robot 𝑅1
+has completed the priority assessment and labeling of target tasks. Each 
+𝑉 𝑐
+𝑖 = { 𝑥𝑝
+𝑖 , 𝑦𝑝
+𝑖 , 𝑝𝑖} contains both positional and priority information. 𝑅1
+shares this prioritized task sequence with the excavation robot 𝑅2 to 
+assist in task scheduling and planning. Additionally, based on 𝑇 𝑝
+1  and 
+𝑇 𝑐
+1 , the remaining tasks for 𝑅1, denoted as 𝑇 𝑢
+1 , are as follows: 
+𝑇 𝑢
+1 = {𝑉 𝑝
+𝑖+1, … , 𝑉 𝑝
+𝑛 } (4)
+(2) The excavation robot 𝑅2 considers both the optimal distance and 
+the priority of target tasks. To make a comprehensive and optimal de-
+cision, 𝑅2 schedules and plans tasks based on the prioritized sequence 
+𝑇 𝑐
+1 from 𝑅1 and the unprioritized tasks 𝑇 𝑢
+1 . Assuming 𝑅2 integrates both 
+task sets, it autonomously determines the task execution sequence as 
+follows: 
+𝑇2 = 𝑇 𝑐
+1 ∪ 𝑇 𝑢
+1 = {𝑉 𝑐
+1 , … , 𝑉 𝑐
+𝑖 , 𝑉 𝑝
+𝑖+1, … , 𝑉 𝑝
+𝑛 } (5)
+𝑇2 denotes the excavation robot 𝑅2. It represents the task sequence 
+developed by 𝑅2 based on 𝑇 𝑐
+1 and 𝑇 𝑢
+1 . 𝑅2 schedules tasks by considering 
+both travel paths and priorities from the global task sequence. It prior-
+itizes tasks with assigned priorities from 𝑅1, while tasks not prioritized 
+by 𝑅1 are considered lower priority, i.e., 𝑝𝑖 ≪ 𝑝 𝑗 (for 𝑖 + 1 ≤ 𝑗 ≤ 𝑛). In 
+this way, 𝑅2 achieves global optimization by executing higher-priority 
+tasks first.
+(3) Additionally, the reconnaissance robot 𝑅1 continues labeling 
+the remaining tasks. Within a given period, 𝑅1 labels 𝑚 more tasks 
+(1 ≤ 𝑚 ≤ (𝑛 − 𝑖)) from 𝑇 𝑢
+1 , resulting in an updated task sequence with 
+priority labels: 
+𝑇 𝑐+
+1 = {𝑉 𝑐
+𝑖+1, … , 𝑉 𝑐
+𝑖+𝑚} (6)
+The superscript 𝑐+ of 𝑇 𝑐+
+1  indicates the newly labeled tasks com-
+pleted by the reconnaissance robot 𝑅1.
+Assuming the robot 𝑅2 has completed 𝑘 tasks (1 ≤ 𝑘 ≤ 𝑖) based on 
+𝑇2, the sequence of tasks completed by 𝑅2 is: 
+𝑇 𝑐
+2 = {𝑉 𝑐
+1 , … , 𝑉 𝑐
+𝑘 } (7)
+The superscript on 𝑇 𝑐
+2 denotes the tasks completed by the excavation 
+robot 𝑅2. The remaining task sequence for 𝑅2 is then: 
+𝑇 𝑢
+2 = {𝑉 𝑐
+𝑘+1, … , 𝑉 𝑐
+𝑖 , 𝑉 𝑝
+𝑖+1, … , 𝑉 𝑝
+𝑛 } (8)
+To update the tasks, robot 𝑅2 integrates the newly completed tasks 
+by robot 𝑅1 (𝑇 𝑐+
+1 ) with its remaining unfinished tasks (𝑇 𝑢
+2 ), creating a 
+new task schedule. 𝑅2 then re-plans for the following combined task 
+sequence:
+𝑇 new
+2 = 𝑇 𝑢
+2 ∪ 𝑇 𝑐+
+1
+= {𝑉 𝑐
+𝑘+1, 𝑉 𝑐
+𝑘+2, … , 𝑉 𝑐
+𝑖 , 𝑉 𝑝
+𝑖+1, … , 𝑉 𝑝
+𝑛 }
+∪ {𝑉 𝑐
+𝑖+1, … , 𝑉 𝑐
+𝑖+𝑚}
+= {𝑉 𝑐
+𝑘+1, … , 𝑉 𝑐
+𝑖 , 𝑉 𝑐
+𝑖+1, … , 𝑉 𝑐
+𝑖+𝑚, 𝑉 𝑝
+𝑖+𝑚+1, … , 𝑉 𝑝
+𝑛 } (9)
+This mechanism reveals the periodic dynamic updating of 𝑅2’s 
+task sequence: By continuously receiving newly labeled priority tasks 
+𝑇 𝑐+
+1  from 𝑅1, 𝑅2 accumulates high-priority task sequences, and sub-
+sequently performs dynamic scheduling through joint optimization of 
+priority weights and path costs (see Section 3.3 for details). Once 
+the reconnaissance robot 𝑅1 completes task labeling and shares the 
+information with 𝑅2, 𝑅1 finishes its tasks. Upon receiving the priority 
+information of the target points, 𝑅2 makes the final plan and completes 
+the remaining work according to the final task schedule.
+3.3. Key issues
+(1) The first step involves decision-making for the task scheduling of 
+reconnaissance robot 𝑅1, with an emphasis on optimal path planning. 
+This strategy requires 𝑅1 to consider the locations of all known station-
+ary targets and determine the globally shortest travel path, ensuring 
+efficient completion of the exploration task.
+(2) Next, the task scheduling decision for excavation robot 𝑅2 is 
+calculated, considering both path and priority in a multi-objective 
+optimization. 𝑅2 accounts for the dynamic task sequence, priority 
+information from 𝑅1, and task completion distances. A model decision-
+making algorithm is used to determine the optimal scheduling. The 
+process applies multi-stage planning, with each stage achieving a local 
+optimum, which is combined to form a global optimum solution.
+3.4. Dynamic and prioritized task scheduling problem
+The key issues in Section 3.3 involve two combinatorial optimiza-
+tion problems. Part (1) corresponds to the classic TSP, while part 
+(2) is a dynamic TSP with priority, a variant of the TSP. Below, the 
+objective functions and constraints for optimizing these two problems 
+are presented.
+(1) Objective Function For the reconnaissance robot 𝑅1, the goal is 
+to visit all task nodes while optimizing the global path. Given 𝑛 target 
+tasks, each task 𝑉𝑖 has positional coordinates {𝑥𝑖, 𝑦𝑖}. The objective is 
+to find the shortest closed path that enables 𝑅1 to visit each task node 
+once and return to the starting point. The objective function is defined 
+as: 
+Minimize 𝐿 =
+𝑛∑
+𝑖=1
+𝑛∑
+𝑗=1,𝑗≠𝑖
+𝑐𝑖𝑗 𝑥𝑖𝑗 (10)
+Here, 𝑐𝑖𝑗 denotes the distance between task nodes 𝑖 and 𝑗, and 𝑥𝑖𝑗 is a 
+binary decision variable. If the reconnaissance robot 𝑅1 travels directly 
+from node 𝑖 to node 𝑗, then 𝑥𝑖𝑗 = 1; otherwise, 𝑥𝑖𝑗 = 0.
+For the excavation robot 𝑅2, the objective is to minimize the path 
+length 𝐿 while considering the priority of target tasks 𝑝𝑖. Each task 
+includes both positional {𝑥𝑖, 𝑦𝑖} and priority 𝑝𝑖 information, where the 
+priority 𝑝𝑖 reflects the significance of each task node in the path. Thus, 
+a new objective function is defined to balance the minimization of the 
+path length and the maximization of the sum of task node priorities.
+Let 𝜋 denote a decision made by the excavation robot 𝑅2, repre-
+senting the visiting order of all target tasks. Specifically, 𝜋(𝑖) is the 
+position of task node 𝑖 in the path. To quantify the impact of task 
+node priorities on path optimization, a Priority Weighted Sum Index 
+(PWSI) is introduced. This index is the weighted sum of the priorities of 
+each task node, highlighting the significance of priorities in the overall 
+decision-making process. The calculation is as follows: 
+PWSI =
+𝑛∑
+𝑖=1
+𝛽𝜋(𝑖)𝑝𝑖 (11)
+Here, the sequence priority weight coefficient 𝛽𝜋(𝑖) serves as the 
+weight coefficient for node 𝑖, quantifying the relative importance of that 
+node in the optimization. Consequently, PWSI takes into account both 
+the priority 𝑝𝑖 of each node 𝑖 and its priority weight coefficient 𝛽𝜋(𝑖), 
+offering a weighted measure of priority for each task node.
+To incorporate PWSI into the objective function, a positive priority 
+weight adjustment factor 𝛼 is introduced to balance the relationship 
+between PWSI and the path length 𝐿, let 𝑃 = 𝛼 ⋅ PWSI. The ultimate 
+goal is to maximize the sum of priorities while minimizing the path 
+length. Therefore, the objective function for the excavation robot 𝑅2
+is: 
+Minimize 𝐿 − 𝑃 (12)
+(2) Constraints
+Neurocomputing 638 (2025) 130184 
+4 
+J. Zhang et al.
+The constraints for the excavation robot 𝑅2 are the same as those 
+for the reconnaissance robot 𝑅1. To ensure that each node is visited 
+exactly once, the following condition must be satisfied: 
+𝑛∑
+𝑗=1,𝑗≠𝑖
+𝑥𝑖𝑗 = 1, ∀𝑖 ∈ 𝑉 (13)
+This ensures that there is exactly one direct path from each node. 
+Here, 𝑉  represents the set of all task nodes. Additionally, to guarantee 
+that the path is closed, the following condition must be satisfied: 
+𝑛∑
+𝑖=1
+𝑥𝑖𝑛 = 1 (14)
+4. Optimal task scheduling with deep reinforcement learning
+In this section, We propose an Actor–Critic attention mechanism-
+based DRL model (AC-Attn-DRL) to address the optimization chal-
+lenges described in Section 3. The model utilizes the REINFORCE 
+training strategy to optimize performance parameters. Unlike existing 
+approaches [25], our method introduces task node priority alongside 
+spatial positions in task scheduling. Additionally, we extend beyond 
+traditional static models by adopting a dynamic input model, which 
+adapts to real-time changes in data, enhancing the flexibility and 
+adaptability of task scheduling.
+4.1. AC-Attn-DRL model
+The following section introduces the DLR model, AC-Atten-DRL, de-
+signed to handle the distinct task requirements of reconnaissance robot 
+𝑅1 and excavation robot 𝑅2. The model processes inputs differently for 
+𝑅1 and 𝑅2, reflecting their roles:
+According to the problem description in Section 3, the research 
+involves a set of inputs 𝑋
+.
+= {𝑥𝑖, 𝑖 = 1, 2, … , 𝑀}, where each input 𝑥𝑖 is 
+represented as a tuple 𝑥𝑖 = (𝑠𝑖, 𝑝𝑖). Here, 𝑠𝑖 and 𝑝𝑖 denote the positional 
+and priority elements, respectively. These elements are treated as tuples 
+depending on the objective, whether focusing solely on the shortest 
+path (reconnaissance robot 𝑅1) or incorporating both path and priority 
+factors (excavation robot 𝑅2).
+Reconnaissance robot 𝑅1 focuses on shortest-path optimization: 
+(a)Input features: Positional data 𝑠𝑖 derived from 𝑇 𝑝
+1  (planned task 
+coordinates). Priority labels 𝑝𝑖 are excluded (since 𝑅1 does not handle 
+prioritization). (b)Objective:The objection of 𝑅1 is to minimize travel 
+distance in 𝑇 𝑝
+1  (Eq.  (10)).
+Excavation robot 𝑅2 incorporates both path and priority factors: 
+(a)Input features: Positional data 𝑠𝑖 aggregated from 𝑇2 and 𝑇 new
+2  (ini-
+tial and updated task coordinates). Priority labels 𝑝𝑖 mapped from 𝑇 𝑐
+1
+and 𝑇 𝑐+
+1  (prioritized tasks). Set to 𝑝𝑖 very small for unprioritized tasks 
+in 𝑇 𝑢
+1 . (b)Objective: maximize the sum of priorities while minimizing 
+the path length 𝑇 new
+2  (Eq.  (12)).
+To model these processes, the input 𝑋 is defined as a structured 
+representation that unifies the states of all tasks,i.e. 𝑋
+.
+= { 𝑥𝑖, 𝑖 =
+1, 2, … , 𝑀} to abstract different task sets including 𝑇 𝑝
+1 , 𝑇2 and 𝑇 new
+2 . 
+The unified representation input 𝑋 is structured as a task-state graph 
+where each node represents a task with features:
+𝑥𝑖 =
+{
+(𝑠𝑖, null) for 𝑅1 tasks in 𝑇 𝑝
+1
+(𝑠𝑖, 𝑝𝑖) for 𝑅2 tasks in 𝑇2 and 𝑇 new
+2
+Previous research focused solely on the TSP, neglecting task prior-
+ity. In contrast, this study incorporates both task priority and path costs, 
+transforming the problem into a more complex variant of the TSP. By 
+addressing these multi-dimensional factors, the proposed model offers 
+an efficient solution for dynamic, extended-sequence, and prioritized 
+task scheduling and planning.
+The model is designed for task scheduling and planning in a dy-
+namic environment, where the number or attributes of task nodes may 
+change over time. At each time step 𝑡, the model evaluates the set of 
+accessible task nodes based on the current state and selects the next 
+task node to visit. This decision-making process considers the model’s 
+current position and the set of task nodes accessible at time step 𝑡. The 
+set of input states at time step 𝑡, denoted as 𝑋𝑡, represents the task 
+nodes that can be visited at decoding time step 𝑡, that is, the task nodes 
+that have not yet been visited at time 𝑡. The time step 𝑡 represents the 
+stages in the model’s path construction, with each step corresponding 
+to a decision to visit a new task node.
+The model commences with an arbitrary input 𝑋0 that encompasses 
+the positional and priority information of all task nodes (for 𝑅1, only 
+positional information is considered), denoted as 𝑋0 = {( 𝑥𝑖, 𝑝𝑖)|𝑖 =
+1, 2, … , 𝑀}. In scenarios where only positional information is consid-
+ered, 𝑋0 contains solely the positional data. The model employs a 
+pointer 𝑦0 to reference this input.
+At each decoding step 𝑡, the set 𝑋𝑡 represents the task nodes that the 
+model has not yet visited. As the model successively visits each task, 𝑋𝑡
+will correspondingly decrease. Concurrently, at time step 𝑡, the model 
+selects the next task node to visit, denoted as 𝑦𝑡+1, based on the current 
+position and the task nodes present in 𝑋𝑡. Following this selection, 𝑦𝑡+1
+is removed from 𝑋𝑡, thereby forming a new set 𝑋𝑡+1, which represents 
+the set of task nodes that remain unvisited for the subsequent step.
+The termination condition is that all task nodes are visited once, 
+and the model returns to the starting position. This can be determined 
+by checking whether 𝑋𝑡 is empty; if it is, it indicates that all task nodes 
+have been visited. The entire process generates a visitation sequence 
+𝑌 = {𝑦𝑡, 𝑡 = 0, 1, … , 𝑇 }, where 𝑦𝑡 is the task node selected for visitation 
+at time step 𝑡. The length of this sequence is consistent with the length 
+of the input 𝑀. Additionally, 𝑦𝑡 is used to represent the sequence 
+decoded up to time 𝑡, that is, 𝑌𝑡 = {𝑦0, 𝑦1, … , 𝑦𝑡}.
+The ultimate goal of the model is to identify a stochastic policy 𝜋
+that generates sequence 𝑌 in a manner that minimizes the loss objective 
+while satisfying the problem constraints. The optimal policy 𝜋∗ will 
+generate the optimal solution with a probability of 1. The objective is to 
+make 𝜋 as close as possible to 𝜋∗. Similar to the approach by Sutskever 
+et al. [32], the model uses the probability chain rule to factorize the 
+probability of generating sequence 𝑌 , given the initial input 𝑋0, which 
+is expressed as 𝑃 (𝑌 ∣ 𝑋0), as shown below: 
+𝑃 (𝑌 ∣ 𝑋0) =
+𝑇∏
+𝑡=0
+𝑃 (𝑦𝑡+1 ∣ 𝑌𝑡, 𝑋𝑡), (15)
+𝑋𝑡+1 = 𝑓 (𝑦𝑡+1, 𝑋𝑡) (16)
+Eq.  (16) represents the recursive update of the problem, which is 
+related to the state transition function 𝑓 . Each component on the right-
+hand side of Eq.  (15) is calculated through the attention mechanism, 
+that is, 
+𝑃 (𝑦𝑡+1 ∣ 𝑌𝑡, 𝑋𝑡) = softmax(𝑔(ℎ𝑡, 𝑋𝑡)), (17)
+𝑔 is a projection function that outputs a vector of the same size 
+as the input.ℎ𝑡 is the state of the RNN decoder, summarizing the 
+information from the previous decoding steps 𝑦0, . . . , 𝑦𝑡.
+As shown in Fig.  2, the schematic diagram illustrates the deep 
+reinforcement learning model used in this study, which consists of two 
+main components. The first component is a set of embeddings that 
+map inputs into a 𝐷-dimensional vector space. Multiple embeddings 
+may correspond to different input elements, but they are shared across 
+inputs. The second component is a decoder that selects an input at 
+each decoding step. As commonly found in the literature [32–34], an 
+RNN is used to model the decoder network. The model inputs each 
+tuple element into the decoder, including the positional and priority 
+information of the task nodes.
+The attention mechanism is a differentiable processing framework 
+capable of distinguishing the importance of various parts of the input 
+data. As shown in Fig.  2, the model demonstrates the use of a context-
+aware attention mechanism based on Actor–Critic, which draws on 
+the research findings of Vinyals et al. [35]. This mechanism is similar 
+to the ‘‘glimpse’’ mechanism proposed by Vinyals et al. It filters key 
+Neurocomputing 638 (2025) 130184 
+5 
+J. Zhang et al.
+Fig. 2. Model Structure Schematic: The model first employs an embedding layer to transform positional and priority information of each task node into a high-dimensional vector 
+(for 𝑅1, only positional information is provided). On the right side of the model, a Recurrent Neural Network (RNN) decoder is responsible for maintaining the decoded sequence 
+information. The RNN’s hidden state is then combined with the embedded input data, and a probability distribution for the next input is computed using an attention mechanism, 
+which guides the model’s prediction process.
+information from the input data through a dynamic alignment vector. 
+Specifically, it defines the relevance of each input data point in the 
+upcoming decoding phase. This mechanism allows the model to focus 
+more accurately on the information most critical to the current task.
+The embedding result for each input 𝑖 is defined as ̄ 𝑥𝑖 = ( ̄ 𝑠𝑖, ̄ 𝑝𝑖), 
+where ℎ𝑡 ∈ R𝐷 represents the memory state of the RNN unit at decoding 
+step 𝑡, encompassing all the information from the decoding steps up 
+to the current point. The alignment vector 𝑎𝑡 is used to ascertain the 
+significance of each input for the subsequent decoding step, calculated 
+as follows:
+𝑎𝑡 = 𝑎𝑡( ̄ 𝑥𝑖, ℎ𝑡) = softmax(𝑢𝑡),
+𝑢𝑖
+𝑡 = 𝑣𝑇
+𝑎 tanh(𝑊𝑎[ ̄ 𝑥𝑖; ℎ𝑡]). (18)
+This mechanism allows the model to dynamically assess and weigh 
+the relevance of each input feature in the context of the current decod-
+ing step, facilitating a more nuanced and context-aware processing of 
+the input data.
+The term 𝑢𝑡 represents the unnormalized alignment scores. 𝑊𝑎 and 
+𝑣𝑎 are the weight matrices and the output vector trained by the actor 
+network, respectively. The ‘tanh’ function serves as the activation func-
+tion. The notation [ ̄ 𝑥𝑖; ℎ𝑡] signifies the concatenation of the embedded 
+input and the memory state, where the semicolon (‘;’) is used to denote 
+the joining of two vectors. The alignment vector is then transformed 
+into a probability distribution through the softmax function, with each 
+component 𝑎𝑖
+𝑡 indicating the significance of input 𝑖 in the subsequent 
+decoding step. This allows the model to weigh the importance of each 
+input feature dynamically, focusing on the most relevant information 
+for the current task.
+The model calculates the conditional probability by combining the 
+context vector 𝑐𝑡 with the following elements. The computation process 
+is as follows: 
+𝑐𝑡 =
+𝑀∑
+𝑖=1
+𝑎𝑖
+𝑡𝑥𝑖, (19)
+The context vector 𝑐𝑡 encapsulates all the information from the 
+inputs, with its significance weighted by 𝑎𝑖
+𝑡. Here, 𝑀 denotes the 
+number of inputs, and 𝑎𝑖
+𝑡 represents the alignment score for the 𝑖th 
+input. By combining the context vector 𝑐𝑡 with the embedded inputs and 
+normalizing the values through the softmax function, the conditional 
+probability for the next decoding step is obtained:
+𝑃 (𝑦𝑡+1 ∣ 𝑌𝑡, 𝑋𝑡) = softmax( ̃ 𝑢𝑗
+𝑡 ),
+̃ 𝑢𝑖
+𝑡 = 𝑣𝑇
+𝑐 tanh(𝑊𝑐 [ ̄ 𝑥𝑖; 𝑐𝑡]). (20)
+where ̃ 𝑢𝑖
+𝑡 represents the normalized scores, 𝑊𝑐 and 𝑣𝑐 are the trainable 
+weight matrices and output vectors of the critic network, and [ ̄ 𝑥𝑖; 𝑐𝑡]
+indicates the concatenation of the embedded state and the context 
+vector. The embedding and attention mechanisms are invariant to the 
+order of inputs, meaning that the model’s behavior will not alter based 
+on variations in the sequence of inputs.
+In this model, ̃ 𝑢𝑖
+𝑡 represents the normalized scores, 𝑊𝑐 and 𝑣𝑐 are 
+the trainable weight matrices and output vectors of the critic network, 
+and [ ̄ 𝑥𝑖; 𝑐𝑡] denotes the concatenation of the embedded state and the 
+context vector. The embedding and attention mechanisms within this 
+model are invariant to the order of inputs, meaning that the model’s 
+behavior remains unchanged regardless of variations in the sequence 
+of inputs.
+4.2. REINFORCE algorithm
+This study employs the classic REINFORCE method to train the 
+policy gradient, also known as the Monte Carlo policy gradient al-
+gorithm [36]. A detailed description of the REINFORCE algorithm is 
+provided in Table  2. The research considers a problem set 𝑀, with 
+its probability distribution defined by 𝛷𝑀 . During training, problem 
+instances are generated according to 𝛷𝑀 , and the same distribution is 
+used to generate test samples during the inference phase.
+The algorithm in Table  2 outlines the core steps of the REINFORCE 
+algorithm. This study employs a composite network architecture, con-
+sisting of an actor network for decision-making and a critic network 
+for evaluating decision quality. The weight vectors of the actor and 
+critic are denoted as 𝜃 and 𝜙, respectively, with each network playing 
+a complementary role in policy optimization.
+Initially, 𝑁 sample problems are randomly selected from the prob-
+lem set 𝑀. These samples generate feasible sequences based on the 
+current policy 𝜋𝜃, employing a Monte Carlo simulation to decode 
+Neurocomputing 638 (2025) 130184 
+6 
+J. Zhang et al.
+Table 2
+REINFORCE algorithm.
+Step Description
+1: Initialize actor network weights 𝜃 and critic network weights 𝜙 to random values.
+2: For each iteration = 1, 2, … do
+3:  Reset gradients: 𝑑𝜃 ← 0, 𝑑𝜙 ← 0
+4:  Sample 𝑁 instances based on 𝛷𝑀
+5:  For 𝑛 = 1, … , 𝑁 do
+6:  Initialize step counter 𝑡 ← 0
+7:  Repeat
+8:  Choose 𝑦𝑛
+𝑡+1 according to 𝑃 (𝑦𝑛
+𝑡+1|𝑌 𝑛
+𝑡 , 𝑋𝑛
+𝑡 )
+9:  Observe new state 𝑋𝑛
+𝑡+1
+10: 𝑡 ← 𝑡 + 1
+11:  Until termination condition is met
+12:  Calculate reward 𝑅𝑛 = 𝑅(𝑌 𝑛, 𝑋𝑛
+0 )
+13:  End for loop
+14: 𝑑𝜃 ← 1
+𝑁
+∑𝑁
+𝑛=1
+(𝑅𝑛 − 𝑉 (𝑋𝑛
+0 ; 𝜙)) ∇𝜃 log 𝑃 (𝑌 𝑛|𝑋𝑛
+0 )
+15 𝑑𝜙 ← 1
+𝑁
+∑𝑁
+𝑛=1 ∇𝜙
+(𝑅𝑛 − 𝑉 (𝑋𝑛
+0 ; 𝜙))2
+16  Update 𝜃 using 𝑑𝜃 , and 𝜙 using 𝑑𝜙
+17 End for loop
+sequences for each sample. The superscript 𝑛 denotes the variables of 
+the 𝑛th instance.
+After decoding all 𝑁 problems, the algorithm computes the reward 
+and policy gradient for each instance. The policy gradient is then used 
+to update the actor network in step 14, refining the policy 𝜋𝜃. The 
+critic network calculates the reward approximation 𝑉 (𝑋𝑛
+0 ; 𝜙) for the 𝑛th 
+instance, which evaluates the policy’s performance and guides the actor 
+network update.
+In step 15, the critic network is updated to minimize the discrepancy 
+between expected rewards from the Monte Carlo simulation and actual 
+observed rewards. By optimizing the critic’s parameters 𝜙, the reward 
+function is estimated more accurately, improving the overall learning 
+effectiveness.
+The REINFORCE algorithm combines actor and critic networks for 
+dynamic policy optimization. The actor generates and refines the pol-
+icy, while the critic provides feedback to minimize estimation errors. 
+This collaboration enables progressive policy improvement and more 
+efficient learning in complex environments.
+4.3. Greedy search strategy and beam search strategy
+In recent years, search strategies have become crucial in deep 
+learning, with applications in areas like natural language processing, 
+machine translation, and task planning. Effective decoding methods, 
+such as the greedy and beam search strategies, are key to solving com-
+plex sequential decision-making problems. The greedy strategy selects 
+the best option at each step, while beam search considers multiple 
+options for a more thorough solution. Both have been extensively 
+developed to balance speed and solution quality, making them essential 
+for task scheduling and planning in deep learning [33,37–39].
+In this study, two distinct search strategies were employed to eval-
+uate their effectiveness in solving task scheduling and planning prob-
+lems:
+(i) Greedy Strategy Decoder: This method selects the node with the 
+highest probability as the next target to visit at each decoding step. 
+𝑦𝑡+1 = arg max
+𝑦
+𝑃 (𝑦𝑡+1 ∣ 𝑌𝑡, 𝑋𝑡) (21)
+The greedy search strategy decoder advances task planning by 
+selecting the optimal node at each step. However, it may get stuck in 
+local optima, neglecting the potential for global optima, as it does not 
+consider future choices in depth. While the greedy decoder is fast and 
+simple to implement, its limitations may prevent it from finding the 
+optimal solution, affecting the quality of the final plan.
+(ii) Beam search Strategy Decoder: This method maintains a set of 
+the most likely task nodes, expanding them and selecting the path with 
+the smallest total length. Considering multiple options at each step, it 
+provides a more comprehensive evaluation. The beam search selects 
+Table 3
+Training example data for different task scales.
+ Task scale Number of instances Task location Training epochs 
+ 𝑁 = 10 50,000 [0, 1] × [0, 1] 1000  
+ 𝑁 = 20 50,000 [0, 1] × [0, 1] 1000  
+ 𝑁 = 50 10,000 [0, 1] × [0, 1] 1000  
+ 𝑁 = 100 10,000 [0, 1] × [0, 1] 1000  
+one of the top 𝐵𝑤 elements from the probability distribution as the 
+output. 
+Beam(𝑦𝑡+1, 𝐵w) = { 𝑦 ∈ 𝑌 ∶ 𝑃 (𝑦𝑡+1 ∣ 𝑌𝑡, 𝑋𝑡), the top 𝐵w values} (22)
+An element from this set is then selected as the final output. The 
+width of the beam, 𝐵𝑤, defines the number of candidates considered. 
+Although the beam search increases computational complexity, it im-
+proves solution quality by evaluating multiple task scheduling paths, 
+potentially finding a better global optimum than the greedy decoder. Its 
+key advantage lies in avoiding local optima, enhancing task scheduling 
+accuracy. However, its higher computational cost may be challeng-
+ing for large-scale problems. Thus, this experiment will compare the 
+performance of both methods in task scheduling and planning.
+5. Experiment
+5.1. Experimental configuration and environmental setup
+Experimental Environment: The reinforcement learning algorithm 
+was implemented on Windows 11, using Python 3.6.13 and TensorFlow 
+(version 1.9.0). The system featured an Intel(R) Core(TM) i7-14700KF 
+processor, 32 GB of RAM, and a 2 TB SSD. A virtual environment was 
+created using Anaconda, with libraries such as torch 1.0.0, tqdm 4.63.0, 
+and scipy 1.5.2. The experiment generated a dataset based on an offline 
+data distribution and conducted model training and inference.
+Task Generation and Training: The number of tasks varies per in-
+stance, with task sequences optimized based on the objective function. 
+Random instances for different scales (𝑁 = 10(small), 𝑁 = 20(smaller), 
+𝑁 = 50 (medium), and 𝑁 = 100 (large)) were generated, as shown 
+in Table  3. Training was conducted over 1000 epochs, with instance 
+numbers varying per the scale. Task locations are uniformly distributed 
+within the unit square [0, 1] × [0, 1] for both training and testing.
+Reproducibility and Reliability of the Experiment: The model 
+input consists of node positions in task sequences of varying lengths, 
+with the output being the task access sequence generated based on 
+the optimization objective. Due to probabilistic randomness, different 
+models or even the same model may produce varying results. To 
+guarantee reproducibility and reliability, each model was tested on 
+Neurocomputing 638 (2025) 130184 
+7 
+J. Zhang et al.
+Fig. 3. The change of batch average reward over training epochs.
+1000 instances across different scales. By comparing the results, we 
+assess model performance and verify the consistency and reliability of 
+the experiment, minimizing the impact of random factors.
+5.2. Optimal path model training and performance analysis
+5.2.1. Model training-part I
+For the reconnaissance robot 𝑅1, generate the sequence for visiting 
+task nodes based on the issues associated with each node.
+At the same time, 𝑅1 focuses on the shortest path to complete all 
+tasks, with the objective function defined in Eq.  (10). The change in 
+average reward per batch over the training epochs is shown in Fig.  3.
+The original reward curve (blue) shows the average immediate re-
+ward per batch during training, with fluctuations reflecting the model’s 
+exploration of the environment. As training progresses, reward values 
+stabilize at a lower level, consistent with the objective of minimizing 
+min(𝐿), indicating the model’s strategy is optimizing rewards. Despite 
+some fluctuations, the decreasing amplitude suggests the model is 
+nearing a stable state, with convergence occurring over time. The 
+smoothed reward curve (red), calculated over 5 steps, reduces random 
+fluctuations and further confirms the model’s strategy effectiveness and 
+learning stability.
+Fig.  4 shows the value estimates, computed by the critic network 
+based on reward approximations for the 𝑛th instance, reflecting the 
+model’s evaluation of environmental states. Ideally, these estimates 
+should converge to the true value as training progresses. Stability 
+and accuracy in value estimation are key indicators of the model’s 
+predictive performance. Experimental results indicate that the value 
+curve increases from lower values and stabilizes, aligning with the 
+reward curve trend, suggesting continuous improvement in predictive 
+accuracy.
+Figs.  5 and 6 show the performance of the actor and critic networks 
+during training. The actor network generates actions, and a reduction 
+in the absolute value of its loss typically indicates policy optimization. 
+A sustained decrease in actor loss reflects continuous improvement in 
+decision-making to maximize rewards. The critic loss plot illustrates 
+the critic network’s performance in estimating state or action values. 
+Accurate value estimation is crucial for guiding the actor network. A 
+reduction in critic loss signals progress in value estimation and policy 
+optimization.
+Figs.  7 and 8 display the average rewards and standard devia-
+tions for the greedy policy and beam search policy, revealing the 
+effectiveness of the corresponding decision-making strategies.
+The training results show that average rewards for both strategies 
+decrease over time. For cases with more task nodes, both beam and 
+greedy search exhibit significant fluctuations, likely due to increased 
+search difficulty. Despite this, the results tend to stabilize, indicating 
+a balance between exploration and exploitation. The greedy strategy 
+selects the optimal action at each step, while beam search considers 
+multiple actions, leading to different convergence values. Compared to 
+greedy search, beam search generally yields a lower average reward, 
+suggesting it may be more likely to find the optimal solution. Further 
+analysis based on inference results is needed for a more detailed 
+comparison.
+Experiments with varying task scales show that the model’s training 
+process maintains a consistent trend and performance. These results 
+demonstrate stable convergence and continuous performance improve-
+ment, indicating ongoing optimization of the model’s strategy. This 
+provides a solid foundation for further inferential studies.
+5.2.2. Model performance analysis-part I
+After extensive training, the model has developed the ability to 
+reason effectively about specific instances. Two instances with task 
+node counts 𝑁 = 10 and 𝑁 = 20 were selected, and the task order and 
+results to be performed by 𝑅1, as deduced by the model, are shown in 
+Figs.  9 and 10. Computational analysis reveals significant performance 
+differences between the greedy and beam search algorithms across 
+these instances.
+Although both algorithms may yield the same initial decoding re-
+sults, the beam search algorithm often produces better solutions in 
+the final stages. This suggests that beam search more effectively ex-
+Neurocomputing 638 (2025) 130184 
+8 
+J. Zhang et al.
+Fig. 4. The results of the Value values changing with training epochs.
+Fig. 5. The change of loss values calculated through the Actor network over training epochs.
+plores the solution space, identifying superior task scheduling paths. 
+Its advantage lies in its systematic approach, considering a broader 
+range of potential solutions, as opposed to the greedy algorithm’s focus 
+on local optima. However, when the algorithms diverge early in the 
+decoding process, the greedy algorithm may outperform beam search, 
+as it can quickly converge to a seemingly good solution, while beam 
+search requires more iterations to achieve a better global optimum.
+To evaluate the model’s performance with two decoder strategies, 
+1000 instances were generated during the inference phase to assess its 
+reasoning ability and efficiency across different problem scales. The 
+path lengths of these instances served as a benchmark for comparison. 
+For each instance, if the beam search produced a better result, the count 
+for ‘‘shorter’’ was incremented; if the greedy search was superior, the 
+count for ‘‘larger’’ was incremented; and if both methods yielded the 
+Neurocomputing 638 (2025) 130184 
+9 
+J. Zhang et al.
+Fig. 6. The change of loss values calculated through the Critic network over training epochs.
+Fig. 7. The average reward and standard deviation of the greedy search Strategy.
+same result, the count for ‘‘equal’’ was incremented. The results of these 
+1000 instances are shown in Fig.  11.
+The results show that for task node counts of 𝑁 = 10 and 𝑁 = 
+20, greedy search identifies shorter paths in only 0.2% of instances, 
+likely due to its reliance on local optima. As 𝑁 increases, particularly 
+at 𝑁 = 50, the proportion rises to 36.7%, suggesting that greedy 
+search can occasionally find effective paths in more complex search 
+spaces. However, at 𝑁 = 100, this proportion decreases to 16.8%, 
+indicating that the limitations of greedy search become more apparent 
+in larger-scale problems.
+For smaller task node counts (𝑁 = 10 and 𝑁 = 20), beam search 
+demonstrates high efficiency, finding shorter paths in 89.7% and 91.2% 
+of instances, respectively, indicating its effectiveness in small-scale 
+problems. As 𝑁 increases to 50, its performance declines to 61.3%, 
+though it still outperforms greedy search. This suggests that beam 
+search faces challenges in larger search spaces, but adjusting the beam 
+width can improve its efficiency. At 𝑁 = 100, beam search finds shorter 
+paths in 80.2% of instances, showing its continued superiority over 
+greedy search in larger-scale problems.
+The experimental results indicate that, despite variations in task 
+node counts, greedy search and beam search exhibit consistency in their 
+Neurocomputing 638 (2025) 130184 
+10 
+J. Zhang et al.
+Fig. 8. The average reward and standard deviation of the beam search Strategy.
+Fig. 9. Decoding results for two task sequences with N = 10 using the Greedy Algorithm (top row) and the beam search Algorithm (bottom row).
+inference results for certain instances. Although this consistency is rel-
+atively low, it suggests that both strategies may share similar decision 
+tendencies in specific contexts. This alignment indicates that, despite 
+their different search-space exploration methods, both strategies can 
+sometimes identify the same optimal path. Notably, the proportion of 
+consistent results decreases as the number of nodes increases, likely 
+due to the growing impact of search-space differences between the two 
+strategies.
+The experimental results also show that beam search outperforms 
+greedy search in most cases, particularly for smaller task node counts 
+(𝑁 = 10 and 𝑁 = 20), where it finds shorter paths in the majority 
+of instances. As the number of nodes increases, greedy search may 
+perform similarly or better in some cases, such as at 𝑁 =50, where its 
+success rate increases. However, adjusting the beam width can enhance 
+beam search’s performance.
+A key characteristic of this method is its ability to handle problems 
+of varying scales with a model trained on a fixed number of tasks. 
+For example, a model trained on 𝑁 = 10 task nodes can generalize to 
+tasks with 𝑁 = 5 or 𝑁 = 8, achieving near-optimal solutions when the 
+problem differences are small, as confirmed in the literature [25]. This 
+capability is applied in this study to implement dynamic scheduling and 
+planning for evolving extended-sequence tasks.
+5.3. Model training and performance analysis for path and priority multi-
+objective optimization
+5.3.1. Model training-part II
+For the excavation robot 𝑅2, the task is to determine the optimal 
+order for visiting task nodes, considering both their positions and 
+priorities. The objective is to minimize the total travel distance while 
+Neurocomputing 638 (2025) 130184 
+11 
+J. Zhang et al.
+Fig. 10. Decoding results for two task sequences with N = 20 using Greedy Algorithm (top row) and beam search Algorithm (bottom row).
+Fig. 11. Performance comparison of greedy search and beam search in path opti-
+mization shows that, across different task scales, the beam search method generally 
+outperforms the greedy search method.
+maximizing the cumulative task priority. The objective function is 
+defined as Eq.  (12). In this experiment, task priorities 𝑝𝑖 are assigned 
+integer values from 1 to 5, where 1 represents the lowest priority and 5 
+the highest. The node visit sequence is influenced by these priorities. To 
+capture the effect of the visit order on the optimization, we introduce 
+the sequence priority weight coefficient 𝛽𝜋(𝑖), defined as follows: 
+𝛽𝜋(𝑖) = 𝑛
+𝑛0
+×
+(
+1 − 𝑖 − 1
+𝑛
+)
+, 𝑖 = 1, 2, … , 𝑛 (23)
+In the equation, 𝑛 denotes the total number of task nodes. The initial 
+task priority parameter 𝑛0 influences the priority weight of the first 
+visited node. In this experiment, 𝑛0 is set to a specific value, ensuring 
+a higher priority weight for the first node, with a gradual decrease 
+thereafter. The priority weight adjustment factor 𝛼 affects the entire 
+task sequence. A larger 𝛼 emphasizes higher priorities in the objective 
+function, while a smaller 𝛼 prioritizes optimizing the path for visiting 
+all task nodes.
+During training, random instances with task sequence lengths of 
+𝑁 = 10, 20, 50, 100 were generated for different problem scales, 
+the dataset information for different task scales is similar to Table  2, 
+but each task node includes priority information, with task priorities 
+represented as random integers between 1 and 5. The final training 
+process followed the approach outlined in Section 5.2.1, demonstrating 
+consistent trends in both the training process and results, indicating 
+stable convergence and performance improvement. For the sake of 
+brevity, such details are omitted.
+5.3.2. Model performance analysis-part II
+Similarly, instances with task node counts of 𝑁 = 10 and 𝑁 = 
+20 were selected. The model’s inference determined the optimal task 
+execution order, considering both path and priority, as shown in Figs. 
+12 and 13.
+Through detailed computational analysis, it can be observed that 
+there are still significant differences in the performance of the Greedy 
+Algorithm and the beam search Algorithm across these instances with 
+different scales of task node counts. Overall, regardless of whether 
+𝑁 =10 or 𝑁 = 20, it can be seen that the model’s solutions for the 
+tasks are no longer path-optimal, as the execution paths exhibit self-
+intersection, which is never the case for path-optimality in Euclidean 
+instances. This indicates that the model is not only considering the path 
+but also capturing the priority information of the tasks and providing 
+a comprehensively optimal solution.
+Additionally, the priority weight adjustment factor 𝛼 significantly 
+influences the final optimization plan. Once the task node positions 
+are determined, an optimal path exists. However, due to the model’s 
+consideration of priority, tasks with higher priority are prioritized to 
+align with the optimization goal. A larger 𝛼 increases P(i.e., 𝛼⋅PWSI). 
+In both instances, the beam search strategy provides a superior solution, 
+consistent with previous cases focused solely on path optimality.
+To further evaluate the comparative performance of the greedy 
+search method and the beam search method under the changed opti-
+mization objectives, and to verify the rationality and effectiveness of 
+the design of PWSI and 𝛽𝜋(𝑖), 1000 instances were generated for infer-
+ence across different problem scales, and the results were calculated to 
+obtain the outcomes shown in Table  4.
+In this context, 𝐺𝛼 and 𝐵𝑆𝛼 are priority weight adjustment factors 
+𝛼 for the model, given a fixed number of task nodes. 𝐺 represents the 
+greedy search strategy, while 𝐵𝑆 represents the beam search strategy. 
+For example, when 𝑁 = 10, 𝐺𝛼 and 𝐵𝑆𝛼 take values 0.1 and 0.05. 
+By varying 𝛼 for the same search strategy, the effect of 𝛼 on model 
+performance can be assessed. Conversely, fixing 𝛼 allows for a com-
+parison between the greedy and beam search strategy. If the beam 
+search yields a better optimization objective with fixed 𝛼, the count for 
+‘‘Smaller’’ is incremented. If the results are equal, the count for ‘‘Equal’’ 
+is incremented; if the greedy search performs better, the count for 
+‘‘Larger’’ is incremented. By fixing the search strategy and evaluating 
+Neurocomputing 638 (2025) 130184 
+12 
+J. Zhang et al.
+Fig. 12. The results of decoding a task sequence with 𝑁 = 10 using the Greedy Algorithm (top row) and the beam search Algorithm (bottom row), with the left side showing 
+the priority weight adjustment factor 𝛼 = 0.1, and the right side showing 𝛼 = 0.05.
+Fig. 13. The results of decoding a task sequence with 𝑁 = 10 using the Greedy Algorithm (top row) and the beam search Algorithm (bottom row), with the left side showing 
+the priority weight adjustment factor 𝛼 = 0.1, and the right side showing 𝛼 = 0.05.
+Table 4
+The comparison results of different search strategies under different task scales and the impact of the priority weight adjustment factor 𝛼.
+ 𝑁 = 10 𝐺𝛼 = 𝐵𝑆𝛼 = 0.1 𝐺𝛼 = 𝐵𝑆𝛼 = 0.05 𝐺𝛼 = 0.1, 𝐺𝛼 = 0.05 𝐵𝑆𝛼 = 0.1, 𝐵𝑆𝛼 = 0.05  
+ Smaller 0.896 0.938 0.980 0.989  
+ Equal 0.052 0.060 0.000 0.000  
+ Larger 0.052 0.002 0.020 0.011  
+ 𝑁 = 20 𝐺𝛼 = 𝐵𝑆𝛼 = 0.1 𝐺𝛼 = 𝐵𝑆𝛼 = 0.05 𝐺𝛼 = 0.1, 𝐺𝛼 = 0.05 𝐵𝑆𝛼 = 0.1, 𝐵𝑆𝛼 = 0.05  
+ Smaller 0.866 0.894 0.686 0.587  
+ Equal 0.079 0.008 0.000 0.000  
+ Larger 0.055 0.098 0.314 0.413  
+ 𝑁 = 50 𝐺𝑎 = 𝐵𝑆𝑎 = 0.01 𝐺𝛼 = 𝐵𝑆𝛼 = 0.001 𝐺𝛼 = 0.01, 𝐺𝛼 = 0.001 𝐵𝑆𝛼 = 0.01, 𝐵𝑆𝛼 = 0.001 
+ Smaller 0.823 0.809 0.972 0.987  
+ Equal 0.002 0.020 0.000 0.000  
+ Larger 0.175 0.171 0.028 0.013  
+ 𝑁 = 100 𝐺𝑎 = 𝐵𝑆𝑎 = 0.01 𝐺𝛼 = 𝐵𝑆𝛼 = 0.001 𝐺𝛼 = 0.01, 𝐺𝛼 = 0.001 𝐵𝑆𝛼 = 0.01, 𝐵𝑆𝛼 = 0.001 
+ Smaller 0.968 0.837 0.578 0.783  
+ Equal 0.000 0.026 0.000 0.000  
+ Larger 0.032 0.137 0.422 0.217  
+Neurocomputing 638 (2025) 130184 
+13 
+J. Zhang et al.
+the impact of the weight factor, the objective function should ideally 
+decrease as the priority weight adjustment factor 𝛼 increases. Thus, if a 
+larger 𝛼 results in a smaller optimization outcome, increment the count 
+for ‘‘Smaller’’; if the results are equal, increment ‘‘Equal’’; and if the 
+outcome is larger, increment ‘‘Larger’’.
+Computational results show that, in scenarios with a small number 
+of task nodes, the greedy search strategy is generally preferred for its 
+speed and simplicity. However, the beam search strategy still demon-
+strates superior performance. Even for a small subset of instances, 
+the two strategies may yield identical solutions, or the greedy search 
+may outperform in a few cases. This suggests that, even in small-scale 
+tasks, the beam search method, by exploring the solution space more 
+comprehensively, often finds better solutions. As the number of task 
+nodes increases and the search space expands, the beam search method 
+effectively explores a broader solution space, often finding the optimal 
+solution and outperforming the greedy search strategy. Thus, the beam 
+search strategy outperforms the greedy search across tasks of various 
+scales, with significantly better overall performance. This suggests that, 
+particularly for large-scale and complex tasks, the beam search method 
+should be prioritized in model design and strategy selection. These find-
+ings offer valuable insights for optimizing models in diverse application 
+scenarios, particularly for tasks of varying scales. Future research can 
+further explore the beam search method’s performance across different 
+scales and refine strategies to better meet specific task requirements.
+To systematically investigate the effect of the priority weight ad-
+justment factor 𝛼 across varying task node counts 𝑁, a detailed experi-
+mental design and computational analysis were conducted. The results 
+show that 𝛼 significantly impacts the model’s reasoning.
+Computational results show that for different task node counts, such 
+as 𝑁 = 10, larger values of 𝛼 generally improve performance, whether 
+using a greedy or beam search strategy. This is because, in small-scale 
+tasks, higher 𝛼 values lead to more focused optimization, significantly 
+influencing the search process and the final solution. Similar trends are 
+observed for larger values of 𝑁.
+Ideally, for a given task instance, once the task node order is fixed, 
+there exists an optimal path. However, the comprehensive objective 
+function must also account for priority, where a larger 𝛼 increases the 
+weight of priority in the function. Conversely, a smaller 𝛼 emphasizes 
+minimizing the path length to complete all tasks. As 𝛼 increases, the 
+objective function becomes more influenced by priority, showing an 
+inverse relationship with the shortest path. Experimental results con-
+firm this behavior, validating the rationality of the priority-weighted 
+sum index (PWSI) and the sequential priority weight coefficient 𝛽𝜋(𝑖).
+As the number of task nodes increases from 𝑁 = 10 to 𝑁 = 
+20, computational results show that the influence of 𝛼 becomes less 
+pronounced. Although larger values of 𝛼 still affect the outcome, the 
+impact is notably reduced compared to 𝑁 = 10. This can be explained 
+by the varying total path length as the task nodes increase, which, when 
+coupled with a fixed priority weight parameter, diminishes 𝛼’s effect 
+on the comprehensive objective function. This trend holds as 𝑁 grows 
+from 50 to 100.
+Through analyzing 𝛼 under varying total task nodes 𝑁, the follow-
+ing conclusions can be drawn: when 𝑁 is fixed, the priority weight 
+factor significantly influences the model, regardless of task scale. A 
+larger 𝛼 emphasizes priority in task sequencing, while a smaller 𝛼
+focuses more on the path. This highlights the need to adapt 𝛼 based 
+on task scale and complexity for optimal model performance. These 
+findings guide future model optimization, especially for tasks of varying 
+scales. Future research can explore the interaction between 𝛼 and task 
+scale, as well as more precise adjustments of 𝛼 to meet specific task 
+requirements.
+The results demonstrate that the multi-objective optimization model 
+with priority embedding effectively handles extended-sequence pri-
+oritized tasks, fulfilling 𝑅2’s requirement for priority-driven dynamic 
+scheduling.
+Table 5
+Main parameter settings for collaborative task experiments.
+ Task number 𝑇 𝑐+
+1 𝑇 𝑐+
+2 𝑇 𝑐0
+1 𝐵W 
+ 𝑁 = 10 3–5 1–2 5 5  
+ 𝑁 = 20 3–5 1–2 5 5  
+ 𝑁 = 50 15–25 5–10 10 10  
+ 𝑁 = 100 15–25 5–10 10 10  
+Table 6
+For different problem sizes, the number of periodic updates required by 𝑅2 for a single 
+instance and the total time required for 1000 instances.
+ Task number Number of periodic updates Total time(hour) 
+ 𝑁 = 10 2 to 3 1 to 1.2  
+ 𝑁 = 20 5 to 6 3.7 to 4.1  
+ 𝑁 = 50 3 to 4 7.5 to 8.1  
+ 𝑁 = 100 5 to 6 21.5 to 23.7  
+5.4. Heterogeneous multi-robot system path and priority multi-objective 
+optimization analysis
+Within each 𝑅1-𝑅2 collaborative scheduling cycle, 𝑅1 shares newly 
+labeled priority tasks (𝑇 𝑐+
+1 ) with 𝑅2. 𝑅2 then triggers priority-
+embedding rescheduling by integrating remaining unfinished tasks 
+(𝑇 𝑢
+2 ) with the updated priority information. This mechanism maintains 
+scheduling efficiency during task volume scaling.
+To systematically evaluate and adjust various parameters, and fur-
+ther analyze the performance of two primary search strategies in han-
+dling tasks of different scales in HMRS, a detailed explanation of the 
+key experimental parameters is provided below. The parameter design 
+is shown in Table  5.
+The total number of tasks 𝑁 represents the tasks that the reconnais-
+sance robot 𝑅1 and the excavation robot 𝑅2 must complete. It serves as 
+a key indicator for task scale in the experimental setup. Four values of 
+𝑁 are still considered: 10, 20, 50, and 100, representing small to large 
+task environments.
+𝑇 𝑐+
+1  represents the number of new tasks completed by 𝑅1 in a single 
+update, using either the greedy or beam search method. 𝑇 𝑐+
+2  denotes 
+the tasks completed by 𝑅2 in one update. Due to its slower processing 
+speed, 𝑅2 completes fewer tasks before each update compared to 𝑅1. 
+Additionally, 𝑇 𝑐0
+1  is the number of tasks completed by 𝑅1 when 𝑅2
+begins (That is, the initial value of 𝑇 𝑐
+1 completed by 𝑅1 when 𝑅2 per-
+forms the first task update.), indicating their initial coordination. 𝐵W is 
+a key parameter in the beam search method, determining the number of 
+candidate solutions considered, which influences the search’s breadth 
+and depth. It is set to 5 for 𝑁 = 10 and 𝑁 = 20, and 10 for 𝑁 = 50 
+and 𝑁 = 100, to accommodate different task scales.
+Experimental analysis reveals that the number of periodic updates 
+required by 𝑅2 during task execution varies with 𝑁 and is linked to 
+the number of tasks completed per update. For different problem sizes, 
+the number of periodic updates required by 𝑅2 for a single instance 
+and the total time required for 1000 instances as shown in Table  6. 
+The beam search generally requires more time than the greedy search, 
+a trend consistent across tests for both 𝑅1 and 𝑅2. These experimental 
+parameters provide a comprehensive evaluation of the performance of 
+both search methods across different task scales. The following results 
+were obtained from the calculations.
+The performance of two search methods under varying task node 
+counts and priority weight parameters 𝛼 was compared to evaluate 
+their impact on the model’s reasoning ability. Performance was assessed 
+using the metrics ‘‘Smaller’’ and ‘‘Larger’’: ‘‘Smaller’’ indicates the ad-
+vantage of beam search over greedy search or larger 𝛼 values within the 
+same method, while ‘‘Larger’’ represents the opposite. The experiments 
+revealed differing reasoning results for the same instance using the two 
+methods. The results are shown in Table  7.
+Through comparative analysis, it was observed that in small-scale 
+tasks with 𝑁 = 10, despite the relatively lower task complexity, beam 
+Neurocomputing 638 (2025) 130184 
+14 
+J. Zhang et al.
+Table 7
+The comparison results of different search strategies under different task scales and the impact of the priority weight adjustment factor 𝛼.
+ 𝑁 = 10 𝐺𝛼 = 𝐵𝑆𝛼 = 0.1 𝐺𝛼 = 𝐵𝑆𝛼 = 0.05 𝐺𝛼 = 0.1, 𝐺𝛼 = 0.05 𝐵𝑆𝛼 = 0.1, 𝐵𝑆𝛼 = 0.05  
+ Smaller 0.580 0.596 0.785 0.813  
+ Larger 0.420 0.404 0.215 0.187  
+ 𝑁 = 20 𝐺𝛼 = 𝐵𝑆𝛼 = 0.1 𝐺𝛼 = 𝐵𝑆𝛼 = 0.05 𝐺𝛼 = 0.1, 𝐺𝛼 = 0.05 𝐵𝑆𝛼 = 0.1, 𝐵𝑆𝛼 = 0.05  
+ Smaller 0.556 0.594 0.951 0.941  
+ Larger 0.444 0.406 0.049 0.059  
+ 𝑁 = 50 𝐺𝑎 = 𝐵𝑆𝑎 = 0.01 𝐺𝛼 = 𝐵𝑆𝛼 = 0.001 𝐺𝛼 = 0.01, 𝐺𝛼 = 0.001 𝐵𝑆𝛼 = 0.01, 𝐵𝑆𝛼 = 0.001 
+ Smaller 0.582 0.564 0.881 0.887  
+ Larger 0.418 0.436 0.119 0.113  
+ 𝑁 = 100 𝐺𝑎 = 𝐵𝑆𝑎 = 0.01 𝐺𝛼 = 𝐵𝑆𝛼 = 0.001 𝐺𝛼 = 0.01, 𝐺𝛼 = 0.001 𝐵𝑆𝛼 = 0.01, 𝐵𝑆𝛼 = 0.001 
+ Smaller 0.543 0.550 0.992 0.998  
+ Larger 0.457 0.450 0.008 0.002  
+search methods began to demonstrate their advantages over greedy 
+search methods. The higher proportion of ‘‘Smaller’’ solutions in beam 
+search methods suggests that, even with a smaller search space, the 
+systematic exploration mechanism inherent in beam search allows for 
+more effective identification of optimal solutions. Moreover, under 
+settings of 𝛼 = 0 .1 and 𝛼 = 0 .05, beam search methods exhibit a 
+higher proportion of ‘‘Smaller’’ solutions compared to greedy search 
+methods. This indicates that in small-scale tasks, beam search methods 
+can consistently maintain their performance advantage across different 
+values of 𝛼.
+In tasks of moderate scale with 𝑁 = 20, as the task size increases, 
+beam search methods continue to demonstrate performance advan-
+tages, owing to their ability to more thoroughly explore the solution 
+space. Additionally, as the value of 𝛼 decreases, the performance ad-
+vantage of beam search methods in terms of the ‘‘Smaller’’ proportion 
+becomes more pronounced. This suggests that, in moderate-scale tasks, 
+reducing the value of 𝛼 may facilitate a more effective exploration of 
+the solution space by beam search methods.
+In larger-scale tasks with 𝑁 = 50 and 𝑁 = 100, the beam search 
+strategy, due to its meticulous search strategy and comprehensive 
+exploration capability of the solution space, continues to outperform 
+greedy search methods. Moreover, beam search methods significantly 
+outperform greedy search methods across all settings of 𝛼 values. As 
+the value of 𝛼 decreases, the performance advantage of beam search 
+methods in terms of the ‘‘Smaller’’ proportion is still enhanced.
+For different task scales, in the design of different priority weight 
+adjustment factors 𝛼, the beam search strategy is superior to greedy 
+search methods. However, when reducing the values of different prior-
+ity weight adjustment factors𝛼, it is observed that the performance of 
+beam search methods increases compared to the greedy search strategy. 
+This may indicate that smaller values of the priority weight parameter 
+𝛼 enhance the performance of beam search methods, allowing for more 
+effective exploration of the solution space.
+In practical applications, it is essential to select appropriate search 
+strategies and priority weight parameters based on the scale of the 
+task. The priority weight adjustment factor 𝛼 plays a crucial role in the 
+reasoning process of the model. Adjustments to the value of 𝛼 under 
+different total task node counts 𝑁 have a significant impact on task 
+scheduling and planning. This indicates that in practical applications, 
+it is necessary to flexibly choose search strategies and priority weight 
+adjustment factors𝛼 according to the scale and complexity of the task to 
+achieve optimal model performance. These findings provide important 
+insights for the design and optimization of search algorithms and can 
+guide future research and practice. Future research can further explore 
+the performance of different search strategies and parameter settings, as 
+well as how to more precisely adjust these parameters to meet specific 
+task requirements.
+6. Conclusion
+This paper proposes a collaborative strategy for heterogeneous 
+multi-robot systems. A deep reinforcement learning based task schedul-
+ing method is further developed for online task sequence generation, 
+accounting for dynamic updates and priority properties of the tasks 
+arising from the collaboration. An Actor–Critic attention mechanism-
+based deep reinforcement learning model (AC-Attn-DRL model) inte-
+grating the priority information is proposed. Two decoding strategies, 
+namely greedy search and beam search, are employed. Experimental 
+results demonstrate that the method can generate task sequences online 
+in a flexible and adaptive manner as the task set to be executed evolves. 
+Furthermore, the method shows good generalization across different 
+task scales and the effectiveness of considering task priorities. This 
+approach enhances the efficiency and flexibility of collaboration in 
+heterogeneous multi-robot systems. In the future, we would like to 
+further optimize key parameters and refine collaboration strategies, 
+with the aim of substantially improving global efficiency.
+CRediT authorship contribution statement
+Jiabing Zhang: Writing – original draft, Validation, Software, 
+Methodology, Investigation, Formal analysis. Qingxuan Jia: Writing 
+– review & editing, Supervision, Resources, Project administration, 
+Conceptualization. Shiyu Zhang: Writing – review & editing, Super-
+vision, Project administration, Methodology, Investigation, Funding 
+acquisition, Conceptualization. Gang Chen: Writing – review & 
+editing, Supervision, Resources, Methodology, Conceptualization.
+Declaration of competing interest
+All authors declare that they have no financial or personal 
+relationships with any individuals or organizations that could 
+inappropriately influence or bias the work presented in this 
+publication. Specifically, the authors disclose that they have no 
+competing interests related to:
+1. Employment
+2. Consultancies
+3. Stock ownership
+4. Honoraria
+5. Paid expert testimony
+6. Patent applications or registrations
+7. Grants or any other funding
+The authors affirm that they have completed the Declaration of 
+Interests tool as required.
+Acknowledgments
+This work was supported by the National Natural Science Foun-
+dation of China under Grant 62303067, the State Administration of 
+Science, Technology and Industry for National Defense under Grant 
+HTKJ2024KL502009, and the Fundamental Research Funds for the 
+Central Universities, China under Grant 2023RC60.
+Neurocomputing 638 (2025) 130184 
+15 
+J. Zhang et al.
+Data availability
+No data was used for the research described in the article.
+References
+[1] J. Yin, Y. Zhao, H. Wang, A static task allocation and scheduling algorithm for 
+kubernetes cluster, in: 2024 IEEE 7th International Conference on Information 
+Systems and Computer Aided Education, ICISCAE, 2024, pp. 175–179, http:
+//dx.doi.org/10.1109/ICISCAE62304.2024.10761792.
+[2] H. Chakraa, F. Guérin, E. Leclercq, D. Lefebvre, Optimization techniques for 
+multi-robot task allocation problems: Review on the state-of-the-art, Robot. 
+Auton. Syst. 168 (2023).
+[3] A. Khamis, A. Hussein, A. Ehnogy, Multi-robot task allocation: A review of the 
+state-of-the-art, 2015.
+[4] G.A. Korsah, A. Stentz, M.B. Dias, A comprehensive taxonomy for multi-robot 
+task allocation, Int. J. Robot. Res. 32 (12) (2013) 1495–1512.
+[5] E. Bischoff, F. Meyer, J. Inga, S. Hohmann, Multi-robot task allocation and 
+scheduling considering cooperative tasks and precedence constraints, in: 2020 
+IEEE International Conference on Systems, Man, and Cybernetics, SMC, 2020, 
+pp. 3949–3956, http://dx.doi.org/10.1109/SMC42975.2020.9283215.
+[6] J. Zhou, L. Zheng, W. Fan, Multirobot collaborative task dynamic scheduling 
+based on multiagent reinforcement learning with heuristic graph convolution 
+considering robot service performance, J. Manuf. Syst. 72 (2024) 122–141.
+[7] J. Maja, Matarić, S. Gaurav, Sukhatme, H. Esben, Østergaard, Multi-robot task 
+allocation in uncertain environments, Auton. Robots (2003).
+[8] K. Lerman, C. Jones, A. Galstyan, M. Mataric, Analysis of dynamic task allocation 
+in multi-robot systems, Int. J. Robot. Res. 25 (3) (2006) 225–241.
+[9] B.R. Secrest, Traveling salesman problem for surveillance mission using particle 
+swarm optimization, in: IEEE Congress on Evolutionary Computation, 2012, pp. 
+1–3, URL https://api.semanticscholar.org/CorpusID:202882626.
+[10] K.P. O’Rourke, T.G. Bailey, R.R. Hill, W.B. Carlton, Dynamic routing of un-
+manned aerial vehicles using reactive tabu search, Military Oper. Res. 6 (2001) 
+5–30, URL https://api.semanticscholar.org/CorpusID:110891722.
+[11] K. Nygard, P. Chandler, M. Pachter, Dynamic network flow optimization models 
+for air vehicle resource allocation, in: Proceedings of the 2001 American Control 
+Conference. (Cat. No.01CH37148), Vol. 3, 2001, pp. 1853–1858, http://dx.doi.
+org/10.1109/ACC.2001.946006, vol.3.
+[12] S.C. Sarin, H.D. Sherali, A. Bhootra, New tighter polynomial length formulations 
+for the asymmetric traveling salesman problem with and without precedence 
+constraints, Elsevier Sci. Publ. B. V. 33 (1) (2005) 62–70.
+[13] T. Bektas, The multiple traveling salesman problem: an overview of formulations 
+and solution procedures, Omega 34 (3) (2006) 209–219.
+[14] O. Cheikhrouhou, I. Khoufi, A comprehensive survey on the multiple traveling 
+salesman problem: Applications, approaches and taxonomy, Comput. Sci. Rev. 
+40 (4) (2021) 100369.
+[15] A. Hussein, A. Khamis, Market-based approach to multi-robot task alloca-
+tion, in: 2013 International Conference on Individual and Collective Behaviors 
+in Robotics, ICBR, 2013, pp. 69–74, http://dx.doi.org/10.1109/ICBR.2013.
+6729278.
+[16] M.U. Arif, S. Haider, An evolutionary traveling salesman approach for multi-
+robot task allocation, in: 9th International Conference on Agents and Artificial 
+Intelligence, 2017, URL https://api.semanticscholar.org/CorpusID:8948146.
+[17] R. Prasad, S.U. Llah, A comparative study for finding the cost of assignment 
+problem using hungarian method and genetic algorithm of artificial intelligence, 
+Int. J. Math. Trends Technol. 60 (2018) 220–224.
+[18] J. aw, Zdrojewski, Sandra, migiel, ukasz, Z. udowski, Damian, Ledzinski, Task 
+scheduling algorithms for multi-carrying robots, Diffus. & Defect Data. Solid State 
+Data Part B. Solid State Phenom. (2015).
+[19] Y. Wang, P. Bai, X. Liang, W. Wang, Q. Fu, Reconnaissance mission conducted 
+by UAV swarms based on distributed pso path planning algorithms, IEEE Access 
+7 (99) (2019).
+[20] L. Xiong, Path planning of multiple autonomous marine vehicles for adaptive 
+sampling using voronoi-based ant colony optimization, Robot. Auton. Syst. 115 
+(000) (2019) 14.
+[21] R. Almadhoun, T. Taha, L. Seneviratne, J. Dias, G. Cai, A survey on inspecting 
+structures using robotic systems, 13, (6) 2016, 
+[22] R. Murphy, S. Tadokoro, A. Kleiner, Search and Rescue Robotics, Search and 
+rescue robotics, 2008.
+[23] D. Portugal, R. Rocha, A survey on multi-robot patrolling algorithms, in: Doctoral 
+Conference on Computing, Electrical and Industrial Systems, 2011.
+[24] O. Vinyals, M. Fortunato, N. Jaitly, Pointer networks, in: International Conference 
+on Neural Information Processing Systems, 2015.
+[25] M. Nazari, A. Oroojlooy, L.V. Snyder, M. Takáč, Reinforcement learning for 
+solving the vehicle routing problem, in: Proceedings of the 32nd International 
+Conference on Neural Information Processing Systems, 2018, pp. 9861–9871, 
+URL https://arxiv.org/abs/1802.04240.
+[26] K. Li, T. Zhang, R. Wang, Deep reinforcement learning for multiobjective 
+optimization, IEEE Trans. Cybern. PP (99) (2020) 1–12.
+[27] H. Dai, E.B. Khalil, Y. Zhang, B. Dilkina, L. Song, Learning combinatorial 
+optimization algorithms over graphs, in: Proceedings of the 31st International 
+Conference on Neural Information Processing Systems, 2017, pp. 6351–6361.
+[28] Z. Li, Q. Chen, V. Koltun, Combinatorial optimization with graph convolutional 
+networks and guided tree search, 2018.
+[29] X. Diao, W. Chi, J. Wang, Graph neural network based method for robot path 
+planning, Biomim. Intell. Robot. 4 (1) (2024).
+[30] T. Lei, T. Sellers, C. Luo, D.W. Carruth, Z. Bi, Graph-based robot optimal 
+path planning with bio-inspired algorithms, Biomim. Intell. Robot. (2023) URL 
+https://api.semanticscholar.org/CorpusID:261001709.
+[31] C. Shyalika, T. Silva, A. Karunananda, Reinforcement learning in dynamic task 
+scheduling: A review, SN Comput. Sci. 1 (6) (2020) 306.
+[32] I. Sutskever, O. Vinyals, Q.V. Le, Sequence to sequence learning with neural 
+networks, Adv. Neural Inf. Process. Syst. (2014).
+[33] D. Bahdanau, K. Cho, Y. Bengio, Neural machine translation by jointly learning 
+to align and translate, Comput. Sci. (2014).
+[34] K. Cho, B. Van Merrienboer, C. Gulcehre, D. Bahdanau, F. Bougares, H. Schwenk, 
+Y. Bengio, Learning phrase representations using RNN encoder-decoder for 
+statistical machine translation, Comput. Sci. (2014).
+[35] O. Vinyals, S. Bengio, M. Kudlur, Order matters: Sequence to sequence for sets, 
+in: ICLR, 2016.
+[36] I. Bello, H. Pham, Q.V. Le, M. Norouzi, S. Bengio, Neural combinatorial 
+optimization with reinforcement learning, 2016.
+[37] I. Sutskever, O. Vinyals, Q.V. Le, Sequence to sequence learning with neural 
+networks, 2014, arXiv:1409.3215 URL https://arxiv.org/abs/1409.3215.
+[38] M. Freitag, Y. Al-Onaizan, Beam search strategies for neural machine translation, 
+in: Proceedings of the First Workshop on Neural Machine Translation, 2017.
+[39] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A.N. Gomez, L. 
+Kaiser, I. Polosukhin, Attention is all you need, 2017, arXiv:1706.03762 URL 
+https://arxiv.org/abs/1706.03762.
+Jiabing Zhang received B.S. degree in school of Mechanical and Electrical Engineering 
+at the University of Electronic Science and Technology of China in 2020. He is 
+currently working towards the master’s degree at the School of Intelligent Engineering 
+and Automation at Beijing University of Posts and Telecommunications, His research 
+interests include deep reinforcement learning, machine learning, robotics and task 
+scheduling and allocation.
+Qingxuan Jia received the B.S. and M.S. degrees in mechanical engineering from the 
+Shandong University of Technology, Shandong, China, in 1988 and 1991, respectively, 
+and the Ph.D. degree in electromechanical engineering and automation from the Beijing 
+University of Aeronautics and Astronautics, Beijing, China, in 2005. He is currently a 
+Professor with the School of Intelligent Engineering and Automation, Beijing University 
+of Posts and Telecommunications, Beijing, China. His research interests include space 
+robotics and artificial intelligence technology.
+Shiyu Zhang received her B.Eng in Automation from Hefei University of Technology in 
+2014 and Ph.D. in Navigation, Guidance and Control from Beihang University in 2019. 
+She was a Postdoctoral Researcher with the Centre for Applied Autonomous Sensor 
+Systems, Örebro University from 2019 to 2022. She is currently an Associate Professor 
+with the School of Intelligent Engineering and Automation, Beijing University of Posts 
+and Telecommunications. Her research interests include multi-robot coordination and 
+human–robot interaction.
+Gang Chen received the B.S. degree in mechanical design-manufacture and automation 
+from the Beijing Institute of Petrochemical Technology, Beijing, China, in 2004, and 
+the Ph.D. degree in mechatronic engineering from the Beijing University of Posts 
+and Telecommunications, Beijing, China, in 2011. He is currently a Professor with 
+the School of Intelligent Engineering and Automation, Beijing University of Posts and 
+Telecommunications. His research interests include space robotics, motion planning, 
+and artificial intelligence technology.
+Neurocomputing 638 (2025) 130184 
+16 

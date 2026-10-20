@@ -1,0 +1,913 @@
+IEEE ROBOTICS AND AUTOMATION LETTERS, VOL. 11, NO. 1, JANUARY 2026 33
+Collaborative Task Allocation for Heterogeneous
+Multi-Robot Systems Through Iterative Clustering
+David R. Martin , Graduate Student Member , IEEE, Brooks A. Butler , Member , IEEE,
+Scott Nivison , Member , IEEE, Magnus Egerstedt , Fellow, IEEE, Mohammad Abdullah Al
+Faruque , Senior Member , IEEE, and Pramod Khargonekar , Life Fellow, IEEE
+Abstract—Multi-robot systems face the challenge of efﬁciently
+allocating teams of heterogeneous robots to tasks. The task alloca-
+tion problem is complicated by collaborative interactions between
+robots where teams of robots develop emergent capabilities that
+enable them to complete tasks that would be inefﬁcient or impos-
+sible for individual robots. To address these challenges, we present
+an iterative clustering algorithm for collaborative task allocation
+in heterogeneous multi-robot systems. This approach partitions
+the computationally intractable global optimization problem into
+smaller, tractable subproblems by iteratively forming clusters of
+robots and tasks, then optimizing assignments within each cluster .
+By ensuring robots remain clustered with their currently assigned
+tasks, we guarantee monotonic improvement in overall utility with
+each iteration. We analyze the convergence of the algorithm and
+characterize how cluster size constraints determine which subopti-
+mal assignments could trap the algorithm. In simulation, iterative
+clustering consistently outperforms simulated annealing, and a
+group-based auction in both computation time and solution quality,
+and outperforms a hedonic game approach in solution quality.
+Index Terms—Multi-robot systems, task planning, multi-robot
+task allocation (MRTA), cooperating robots.
+I. I NTRODUCTION
+M
+ULTI-ROBOT systems have demonstrated signiﬁcant
+potential in numerous domains, including disaster re-
+lief [1], sensor fusion [2], construction [3], warehousing [4],
+[5], and beyond [6], [7]. Of particular interest are robot teams
+where collaboration enables new capabilities, allowing them to
+complete tasks that would be impossible or highly inefﬁcient
+for individual robots. Recent examples highlight this synergistic
+potential: in [2], multiple drones equipped with cameras collab-
+oratively estimate 3D object depth with higher accuracy than
+lidar, in [8], aquatic robots transport terrestrial robots across
+Received 7 July 2025; accepted 22 October 2025. Date of publication 12
+November 2025; date of current version 18 November 2025. This article was
+recommended for publication by Associate Editor J.-H. Lee and Editor C.-B.
+Y an upon evaluation of the reviewers’ comments. This work was supported in
+part by the Air Force Research Laboratory, Munitions Directorate (RWTA),
+Eglin AFB, FL. (Corresponding author: David R. Martin.)
+David R. Martin, Brooks A. Butler, Magnus Egerstedt, Mohammad Abdullah
+Al Faruque, and Pramod Khargonekar are with the Department of Electrical
+Engineering and Computer Science, Henry Samueli School of Engineering,
+University of California, Irvine, CA 92697 USA (e-mail: davidrm3@uci.edu;
+alfaruqu@uci.edu; pramod.khargonekar@uci.edu).
+Scott Nivison is with Air Force Research Laboratory, Munitions Directorate,
+Eglin AFB Okaloosa County, FL 32542 USA.
+Digital Object Identiﬁer 10.1109/LRA.2025.3632086
+water bodies to reach otherwise inaccessible goals, in[3] and [5],
+robot teams collaborate to carry oversized payloads.
+A challenge in collaborative multi-robot systems is the multi-
+robot task allocation (MRTA) problem, which is the process
+of determining optimal robot-to-task assignments that max-
+imize system performance [7]. Researchers have addressed
+MRTA using diverse approaches, including the Hungarian al-
+gorithm [9], mixed integer programming [10], auctions [5],
+[11], game-theoretic approaches [12], [13], metaheuristics
+(such as simulated annealing [14] and evolutionary algo-
+rithms [15], [16]), clustering techniques [17], [18], and ma-
+chine learning methods [3], [19]. Distributed algorithms such as
+group-based auctions [11] and game theoretic approaches [13]
+have shown a remarkable ability to scale efﬁciently to large
+systems.
+Despite recent advances, existing algorithms struggle to ac-
+count for collaborative synergy in multi-robot teams. Most exist-
+ing approaches assume predetermined team sizes and capability
+requirements for each task [3], [10], [15]. However, in many
+systems, the optimal team size may be unclear. When resources
+are abundant and tasks are few, it may be advantageous to
+assign more resources to each task. Conversely, when resources
+are constrained, it may be necessary to reduce team sizes or
+omit less important tasks completely. Collaborative dynamics
+complicate resource allocation. Existing works that allow vari-
+able team sizes generally rely on assigning individual robots to
+tasks where they provide the greatest marginal contribution[12],
+[20]. However, these approaches struggle in situations where
+robots’ contributions are not easily separable from those of
+their teammates. For instance, a task requiring three robots
+might yield no utility until all three are assigned. In general,
+these methods fail in scenarios requiring simultaneous multi-
+robot reassignments, where a single reassignment provides no
+beneﬁt.
+To account for collaborative team effects, we model the
+MRTA problem as a coalition structure generation problem[21],
+partitioning robots into coalitions assigned to each task with
+the goal of optimizing total utility. While coalition structure
+generation is NP-hard [22], we propose a novel iterative clus-
+tering algorithm that scales effectively. The proposed method
+directly addresses the key limitations of existing methods by: (1)
+providing a computationally efﬁcient solution to the coalition
+structure generation problem, (2) modeling team utility as a
+nonlinear function that can be greater than the sum of the
+2377-3766 © 2025 IEEE. All rights reserved, including rights for text and data mining, and training of artiﬁcial intelligence and similar technologi es.
+Personal use is permitted, but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index. html for more information.
+Authorized licensed use limited to: Zhejiang Normal University. Downloaded on September 24,2026 at 07:19:24 UTC from IEEE Xplore.  Restrictions apply. 
+34 IEEE ROBOTICS AND AUTOMATION LETTERS, VOL. 11, NO. 1, JANUARY 2026
+individual robot contributions, and (3) determining appropri-
+ate team compositions for each task while accounting for this
+collaborative synergy.
+The proposed method iteratively forms clusters of robots
+and tasks, then optimizes assignments within each cluster. We
+develop two variants of this approach: one that forms clusters
+randomly and another that uses heuristics to guide cluster forma-
+tion. We prove that assignment utility increases monotonically
+with each iteration and analyze how cluster size constraints
+affect the algorithm’s ability to escape suboptimal solutions.
+In simulation, the iterative clustering approach achieves 99.9%
+of optimal utility for small problems, outperforms exisiting
+methods for large problems, and exhibits fast convergence that
+scales effectively to problems with up to 1000 robots and 500
+tasks.
+II. S
+YSTEM MODEL AND PROBLEM FORMULA TION
+This work focuses on ST-MR-IA [23] problems where ST
+indicates single-task robots (each robot can perform only one
+task at a time), MR denotes multi-robot tasks (tasks may be
+performed by multiple robots), and IA refers to instantaneous
+assignment (planning without considering future allocations).
+A. System Model
+Consider a set ofν robotsR = {r
+1,r 2,...,r ν} to be assigned
+to a set of μ tasks T = {t1,t 2,...,t μ}.
+1) Assignments: The individual assignment of each robot ri
+is represented as an integer ai ∈{ 0,1,...,μ } such that ai =0
+meansri is unassigned andai = j forj ⁄=0 meansri is assigned
+to tasktj . A global assignmentA = {S0,S 1,...,S μ} partitions
+the set of all robots R into μ+1 teams S0,S 1,...,S μ ⊆R
+where team Sj = {ri ∈R : ai = j} contains the robots as-
+signed to tasktj forj ⁄=0 andS0 = {ri ∈R : ai =0 } contains
+all unassigned robots. Because each robot is assigned to no more
+than one task, an assignmentA = {S0,S 1,...,S μ} forms a par-
+tition ofR meaningSα ∩Sβ = ∅ forα ⁄= β and ⋃μ
+j=0 Sj = R.
+LetA denote the set of all possible assignments.
+2) Robot Types: Each robot ri ∈R is characterized by a
+single robot type that represents different hardware or software
+capabilities (e.g. UA V , rover... etc.). Robot type for robot r
+i is
+denotedzi ∈{ 1,2,...κ }, whereκ is the total number of distinct
+robot types. Robots of the same type are considered identical in
+terms of their capabilities.
+3) Teams: Each robot team S
+j has an associated team com-
+position vectorCj =[ c1,c 2,...,c κ] wherecλ denotes the num-
+ber of robots of type λ in the team. While the team size is
+variable, we constrain the maximum team size to an integer
+limit L: |S
+j|≤ L for j ⁄=0 . The number of unassigned robots
+|S0| is unconstrained.
+4) Team Utility Modeling: Each task tj ∈T is associated
+with a beneﬁt function Bj(C): Nκ
+0 → R, which speciﬁes the
+utility of assigning a team of robots with team composition vec-
+torC =[ c1,...,c κ] to tasktj . Intuitively, it captures how good a
+particular team is for completing the task. For example, consider
+a search and rescue mission with two robot types (κ =2 ): drones
+and ground vehicles. A single drone may be unable to complete
+the rescue and provide no beneﬁt ( Bj([1,0]) = 0). A team
+with one drone for victim localization and one ground vehicle
+for extraction could provide high utility ( Bj([1,1]) = 100),
+while adding another drone may provide quicker localization
+(Bj([2,1]) = 120). Beneﬁt functions thus provide a quantitative
+model to directly represent complex team interactions, including
+collaborative synergies and marginally decreasing returns. We
+do not impose any particular structure or form on the beneﬁt
+functions since they depend on the speciﬁcs of tasks, robots, and
+mission priorities. Within the task assignment problem, beneﬁt
+functions are treated as known inputs, under the assumption that
+the system designer can specify or evaluate them using domain
+expertise or data-driven methods.
+Assumption 1: We assume that the beneﬁt functions of all
+tasks, robot capabilities, and locations of robots and tasks are
+fully known and deterministic.
+5) Team F ormation Cost: Each task t
+j has a team formation
+cost function Jj(Sj):2 |R| → R which quantiﬁes the cost of
+assembling the team Sj prior to task initiation. This cost may
+encompass factors such as travel time and energy, as well as any
+time spent waiting for team members to arrive. Like the beneﬁt
+function, the team formation cost function depends on the nature
+of the task and the assigned robots. For the simulated problems,
+eachJ
+j(Sj) is the cumulative distance traveled by robots to the
+task location:
+Jj(Sj)=
+∑
+ri∈Sj
+√
+(xi −xj)2 +(yi −yj)2 (1)
+where (xi,yi) is the location of robot ri and (xj,yj) is the
+location of task tj .
+6) Utility: The net utility of completing a task tj with team
+Sj is the beneﬁt subtracted by the team formation cost:
+U(Sj)= Bj(Cj)−Jj(Sj). (2)
+The utility of the unassigned robots is deﬁned to be zero:
+U(S0)=0 . Deﬁne the function U(A) to be be the total utility
+produced by an assignment A:
+U(A)=
+∑
+Sj∈A
+U(Sj) (3)
+B. Problem F ormulation
+The objective of collaborative task assignment is to maximize
+the total utility generated across all teams. We include a user-
+deﬁned team size limitL which represents the largest reasonable
+number of robots for any single task.
+max
+A∈A
+∑
+Sj∈A
+U(Sj)
+subject to |Sj|≤ L, ∀j ∈{ 1,2,...,μ } (4)
+This is a special case of the coalition structure generation prob-
+lem discussed in [22], where each team Sj ∈ A has its own
+utility function associated with a speciﬁc task. As discussed
+in [22], coalition formation is an NP-hard problem, making it
+computationally challenging even under restrictive assumptions.
+Authorized licensed use limited to: Zhejiang Normal University. Downloaded on September 24,2026 at 07:19:24 UTC from IEEE Xplore.  Restrictions apply. 
+MARTIN et al.: COLLABORA TIVE TASK ALLOCA TION FOR HETEROGENEOUS MULTI-ROBOT SYSTEMS THROUGH ITERA TIVE CLUSTERING 35
+Fig. 1. Illustration of one iteration of Algorithm 1. First, robots and tasks are partitioned into clusters without separating robots from their currently assigned
+task. Then, an optimal assignment algorithm optimizes the assignments within each cluster. The clusters are then dissolved and the process is repeat ed.
+The proposed iterative clustering approach provides a computa-
+tionally efﬁcient method for obtaining quick, anytime solutions
+to this otherwise intractable problem.
+III. M ETHODOLOGY
+The task allocation problem is addressed using an iterative
+approach where each iteration has two phases. In the ﬁrst
+phase, robots and tasks are split into a set of clusters G =
+{G
+1,...,G 𝓁}, where the number of clusters 𝓁may vary. Each
+clusterGk =( Gr
+k,Gt
+k
+) is deﬁned by a subset of robots Gr
+k ⊆R
+and a subset of tasks Gt
+k ⊆T . Clustering in this way partitions
+the large, computationally intractable problem into a set of
+smaller, tractable subproblems. In the second phase, an optimal
+assignment algorithm is used to compute the optimal assign-
+ments within the clusters i.e., A
+∗
+k = {Sk
+0}∪{ Sj : tj ∈ Gt
+k} for
+allk =1 ,2,...,𝓁 whereSj ⊆ Gr
+k is the set of robots assigned to
+tasktj ∈ Gt
+k andSk
+0 ⊆ Gr
+k includes any robots not assigned to a
+task. Recall our problem formulation does not require all robots
+to be assigned to tasks. We construct the global assignment
+by combining cluster assignments, with all unassigned robots
+merged into S
+0:
+A =
+⋃𝓁
+k=1
+A∗
+k :=
+{
+S0 =
+𝓁⋃
+k=1
+Sk
+0}∪
+𝓁⋃
+k=1
+{Sj ∈ A∗
+k : j ⁄=0
+}
+.
+(5)
+While a single iteration produces optimal assignments within
+each cluster, it does not ensure global optimality. However,
+by repeatedly re-clustering the problem while ensuring robots
+remain clustered with their currently assigned tasks, we show
+that the global assignment progressively improves. Algorithm 1
+outlines our overall solution framework. Each choice of cluster
+formation algorithm and optimal assignment algorithm leads to
+a concrete and distinct algorithm for solving the main problem.
+A. Cluster F ormation
+The cluster formation algorithm builds clusters of robots and
+tasks, limiting each cluster to user-deﬁned maximums of L
+r
+robots and Lt tasks while ensuring robots are clustered with
+Algorithm 1: Task Assignment Through Iterative Cluster-
+ing.
+Input: Robots R, TasksT , Number of iterations.
+Output: AssignmentA = {S0,S 1,...,S μ}
+Initialize A = {R,∅,..., ∅} with all robots unassigned;
+for each iteration do
+G ← ClusterFormation(A,R,T ); (Algorithm 2)
+for each cluster Gk ∈ G do
+A∗
+k ← OptimalAssignment(Gk); (Section III-C)
+end for
+A ← ⋃𝓁
+k=1A∗
+k; (F orm global assignment per Eq. 5)
+end for
+Return A
+their currently assigned tasks. Cluster size constraints present a
+trade-off: increasing Lt and Lr reduces the number of subopti-
+mal assignments that could trap Algorithm 1, but also increases
+the computational complexity of the task assignment problem
+within each cluster.
+Deﬁnition 1: Ac l u s t e rG
+k =( Gr
+k,Gt
+k
+) is feasible if it satis-
+ﬁes the following constraints:
+|Gr
+k|≤ Lr (6a)
+|Gt
+k|≤ Lt (6b)
+Sj ⊆ Gr
+k ∀j : tj ∈ Gt
+k (6c)
+where constraints 6a and 6b limit the number of robots and
+tasks in the cluster and 6c guarantees robots are clustered with
+their currently assigned task.
+Any clustering algorithm can be employed that ensures all
+clusters are feasible. Ensuring robots remain clustered with
+their currently assigned tasks guarantees that the utility of the
+assignment is monotonically increasing with each iteration.
+Lemma 1: Let A
+i and Ai+1 denote the assignments before
+and after thei-th iteration of Algorithm1, respectively. If clusters
+are feasible and assignments within each cluster are optimal,
+then U(A
+i) ≤U (Ai+1).
+Authorized licensed use limited to: Zhejiang Normal University. Downloaded on September 24,2026 at 07:19:24 UTC from IEEE Xplore.  Restrictions apply. 
+36 IEEE ROBOTICS AND AUTOMATION LETTERS, VOL. 11, NO. 1, JANUARY 2026
+Algorithm 2: Clustering Algorithm.
+Input: AssignmentA, RobotsR, TasksT , LimitsLr,Lt.
+Output: ClusteringG = {G1...G 𝓁}
+Create initial incomplete clusters Gi by grouping tasks
+with their assigned robots. Any unassigned robot or task
+will form its own cluster;
+Initialize empty list of complete clusters: Gc ←∅ ;
+whileGi ⁄= ∅ do
+Select an incomplete cluster: Gα ∼ Uniform(Gi);
+Find merge candidates: M ←{ Gγ ∈ Gi :
+|Gr
+α|+|Gr
+γ|≤ Lr,|Gt
+α|+|Gt
+γ|≤ Lt,α ⁄= γ};
+ifM = ∅ then
+Add Gα to complete clusters list: Gc ← Gc ∪Gα;
+Remove from incomplete clusters list:
+Gi ← Gi \Gα;
+else
+Choose a cluster to merge with:
+Gβ ∼ MergePolicy(M,Gα); (Section III-B)
+Merge clusters: Gi ← Gi \{Gα,Gβ}∪ (Gα ∪Gβ);
+end if
+end while
+Return G
+c
+Proof: Let G = {G1...G 𝓁} be a feasible clustering. Since
+robots are clustered with their currently assigned tasks, the
+assignment A
+i can be written as the combination of the assign-
+ments within each cluster: Ai = ⋃𝓁
+k=1Ai
+k ( (5)). The value of
+the assignment Ai is the sum of the utilities generated within
+each cluster.
+U(Ai)=
+𝓁∑
+k=1
+U(Ai
+k)=
+𝓁∑
+k=1
+∑
+Sj∈Ai
+k
+U(Sj) (7)
+Optimal assignmentsA∗
+k are made within each clusterGk. Since
+U(Ai
+k) ≤U (A∗
+k) it follows that after one iteration:
+U(Ai)= ∑𝓁
+k=1 U(Ai
+k) ≤ ∑𝓁
+k=1 U(A∗
+k)= U(Ai+1). ■
+The cluster formation algorithm (Algorithm 2)b e g i n sb y
+creating initial clusters by grouping each task with the robots
+assigned to it, while any unassigned task or robot starts as its own
+cluster. The algorithm then keeps track of two lists: incomplete
+clusters (G
+i), which can still be enlarged, and complete clusters
+(Gc), which cannot grow further without violating the robot limit
+Lr or the task limit Lt. At each step, the algorithm randomly
+picks an incomplete cluster Gα and searches for other clusters
+that can be merged with it without exceeding the size limits.
+If such candidates exist, one is chosen and merged with G
+α;
+if none exist, Gα is moved to the complete clusters list. This
+process repeats until every cluster is complete, meaning no
+further merges are possible within the given limits.
+This work considers two merge policies for selecting which
+clusters to merge. The ﬁrst is a uniform random selection of
+all feasible merge candidates. The second is a heuristic-based
+selection that forms higher-quality clusters by accounting for
+robot capabilities and spatial locations.
+B. Merge Candidate Selection Heuristics
+This section develops heuristics that guide cluster formation
+by aligning robot capabilities with task requirements while
+promoting spatial proximity.
+1) Capability Matching: Robots should be clustered with
+tasks for which their capabilities are well suited. Therefore,
+clustersG
+α andGβ are only merged if at least one robotri ∈ Gα
+can contribute to a task tj ∈ Gβ or vice versa. A robot ri is
+considered to be capable of contributing to a task tj if there
+exists a team composition vector C with at least one robot of
+type zi such that Bj(C) > 0. Deﬁne a symmetric capability
+matching function m(Gα,Gβ):
+m(Gα,Gβ)=
+⎧
+⎪⎪
+⎪
+⎪⎪⎪
+⎨
+⎪⎪
+⎪⎪⎪
+⎪
+⎩
+1 if∃r
+i ∈ Gr
+α,tj ∈ Gt
+β,C ∈ Nκ
+0 :
+Bj(C) > 0 and C[zi] > 0
+1 if∃ri ∈ Gr
+β,tj ∈ Gt
+α,C ∈ Nκ
+0 :
+Bj(C) > 0 and C[zi] > 0
+0 otherwise
+(8)
+2) Distance-Based Cluster Merging Probability: To min-
+imize travel distance, we prioritize merging clusters that
+are closer together. Deﬁne a cluster Gk’s center of mass
+CoM(Gk)=( xk,yk) to be the average of all robot locations
+(xi,yi) and task locations(xj,yj) for allri,∈ Gr
+k andtj ∈ Gt
+k.
+CoM(Gk)=
+∑
+ri∈Gr
+k
+(xi,yi)+ ∑
+tj∈Gt
+k
+(xj,yj)
+|Gr
+k|+|Gt
+k| (9)
+Distances between CoM(Gα) and CoM(Gγ) for all merge can-
+didates Gγ ∈ M are converted into a probability mass func-
+tion P(Gβ|Gα) using a temperature-controlled softmax func-
+tion [24]:
+PGβ|Gα(Gβ = Gγ|Gα)= exp(−d(Gα,Gγ)/τ)∑
+G′∈M exp(−d(Gα,G′)/τ)
+(10)
+where d(Gα,Gγ) represents the Euclidean distance between
+CoM(Gα) and CoM(Gγ), and τ is a tunable temperature
+parameter that controls the selectivity of the distribution. This
+probabilistic merging strategy favors combining nearby clusters
+while still exploring less obvious combinations.
+3) Heuristic Selection Approach: The capability matching
+and spatial heuristics are combined into a single merge policy.
+First, the policy removes any merge candidates that do not satisfy
+the capability matching function (8):
+M
+′= {Gγ ∈ M : m(Gα,Gγ)=1 } (11)
+Then merge candidate Gβ ∈ M′is chosen according to the
+spatial probability distribution deﬁned in (10).
+Gβ ∼ PGβ|Gα(Gβ = Gγ|Gα)∀Gγ ∈ M′ (12)
+C. Optimal Assignment Within Clusters
+G i v e nac l u s t e rGk ofn robots andm tasks, we seek an optimal
+assignmentA∗
+k that maximizes the cluster’s utility by assigning
+the cluster’s robotsGr
+k to its tasksGt
+k. The optimization problem
+for each cluster closely mirrors the global problem in Equation
+Authorized licensed use limited to: Zhejiang Normal University. Downloaded on September 24,2026 at 07:19:24 UTC from IEEE Xplore.  Restrictions apply. 
+MARTIN et al.: COLLABORA TIVE TASK ALLOCA TION FOR HETEROGENEOUS MULTI-ROBOT SYSTEMS THROUGH ITERA TIVE CLUSTERING 37
+(4), but with much smaller sets of robots and tasks:
+max
+Ak∈Ak
+∑
+Sj∈Ak
+U(Sj)
+subject to |Sj|≤ L, ∀j : j ⁄=0 (13)
+whereAk is the set of all possible assignments within the cluster.
+Any method that ﬁnds the optimal assignment within the clus-
+ter can be used. We employ a branch and bound approach using
+integer partitions following the examples of [25] and [26] where
+the search space is divided into partitions based on how many
+robots are assigned to each task, with upper bounds calculated
+for each partition. By exploring subspaces in descending order of
+these bounds and pruning those below our current best solution,
+the algorithm efﬁciently converges to the optimal assignment
+within each cluster.
+IV . A
+NAL YSIS
+This section analyzes the complexity and convergence of
+Algorithm 1 and how cluster size constraints determine which
+suboptimal assignments can trap the algorithm.
+A. Computational Complexity
+There are(μ+1)ν possible assignments ofν robots toμ tasks
+plus an unassigned option. For a single clusterGk, containing at
+most Lr robots and Lt tasks, the worst-case branch-and-bound
+complexity is (Lt +1)Lr . The number of clusters is bounded
+above by ν +μ, as it cannot exceed the total number of robots
+and tasks, and bounded below by max(ν/Lr,μ/Lt) due to
+cluster size constraints. Both bounds scale linearly withν andμ,
+so the total number of clusters grows linearly with problem size.
+Consequently, the per-iteration time complexity of Algorithm 1
+is
+O
+(
+(Lt +1)Lr ·(ν +μ)
+)
+which is linear in ν and μ. However, Algorithm 1 may require
+multiple iterations for convergence as discussed in the next
+section.
+B. Convergence
+We model the progression of Algorithm 1 as a ﬁnite Markov
+chain M =( A,P ), where A is the state space comprising all
+possible assignments, and P(A,A
+′) gives the probability of
+transitioning from assignment A to A′after one iteration of
+Algorithm 1. Lemma 1 shows that the utility of the assign-
+ment cannot decrease so P(A,A′)=0 when U(A′) < U(A).
+However, it could change between assignments of equal utility
+(U(A′)= U(A)).
+Deﬁnition 2: At r a ps e tΩ(u) ⊆A is a set of assignments
+that all produce the same utility value u and cannot transition to
+any assignment outside the trap set.
+Ω(u)= {A ∈A : U(A)= u and
+P(A,A′)=0 for all A′/∈ Ω(u)} (14)
+Note that there is always at least one nonempty trap set
+associated with the set of globally optimal assignments A∗
+since any globally optimal assignment A∗ ∈A ∗ will produce
+the same optimal utility u∗ and by Lemma 1 cannot transition
+to an assignment that is suboptimal.
+Deﬁnition 3: The global trap set Ω= ⋃
+u∈R Ω(u) includes
+all assignments that trap the algorithm at any utility levelu ∈ R.
+Deﬁnition 4: An assignmentA′is reachable from assignment
+A (or equivalently A can reach A′) if there exists a ﬁnite
+sequence of assignmentsA = A0,A 1,...A h = A′such that the
+probability of transitioning from Ai to Ai+1 is non-zero for all
+0 ≤ i<h .
+Theorem 1: Let A0,A 1,A 2,... denote the sequence of as-
+signments produced by Algorithm 1.L e tAN be the assignment
+obtained after N iterations of Algorithm 1. Then
+lim
+N→∞
+P(AN ∈ Ω) = 1.
+Proof: First we show that every assignmentAi ∈A can reach
+an assignment ˆA ∈ Ω in the global trap set. Let Ar be the set of
+assignments reachable fromAi, and letumax =m a xA∈Ar U(A)
+be the maximum utility produced by any assignment reach-
+able from Ai. Deﬁne ˆA = {A ∈A r : U(A)= umax} to be
+the set of assignments reachable from A that produce utility
+umax. Consider any assignment ˆA ∈ ˆA and A′∈A .W es h o w
+P( ˆA,A′) > 0 ⇒ A′∈ ˆA, meaning any assignment in ˆA only
+transitions to other assignments in ˆA.
+First note that if P( ˆA,A′) > 0, then by Deﬁnition 4,A′must
+be reachable fromAi, meaningA′∈A r . By deﬁnition of umax,
+U(A′) ≤ umax. By Lemma 1, the utility cannot decrease, so
+U(A′)= umax.I tf o l l o w st h a t :
+P( ˆA,A′) > 0 ⇒ A′∈ Ar andU(A′)= umax
+⇒ A′∈ ˆA.
+Therefore, ˆA satisﬁes Deﬁnition 2, meaning ˆA⊆ Ω(umax).
+It follows that for any assignment Ai ∈A , there exists an
+assignment ˆA ∈ Ω in the global trap set that is reachable from
+Ai. By Deﬁnition 4, this means there exists a ﬁnite sequence of
+assignments Ai,A 1,...,A h = ˆA where each transition Ai →
+Ai+1 has non-zero probability. SinceA is ﬁnite,h ≤| A |for any
+such sequence. This implies that starting from any assignment
+Ai ∈A , there is a non-zero probability of entering the global trap
+setΩ within|A| iterations. Letϵdenote the minimum probability
+of entering Ω within|A| steps, taken over all Ai ∈A .
+Now consider the algorithm afterN = k|A| iterations for any
+positive integerk:
+P(Ak|A| /∈ Ω) ≤ (1−ϵ)k
+P(Ak|A| ∈ Ω) ≥ 1−(1−ϵ)k
+limN→∞ P(AN ∈ Ω) = limk→∞ P(Ak|A| ∈ Ω) = 1. ■
+Because the global trap set Ω may contain local optima,
+the iterative clustering algorithm is not guaranteed to converge
+to the globally optimal solution. This is only to be expected
+since the underlying combinatorial optimization problem is NP
+hard. That said, techniques such as restarting the algorithm or
+introducing random perturbations could be employed to modify
+Authorized licensed use limited to: Zhejiang Normal University. Downloaded on September 24,2026 at 07:19:24 UTC from IEEE Xplore.  Restrictions apply. 
+38 IEEE ROBOTICS AND AUTOMATION LETTERS, VOL. 11, NO. 1, JANUARY 2026
+our proposed algorithm to escape local optima. However, a
+detailed investigation of these strategies is left for future work.
+C. Characterizing Algorithm 1 Optimal Assignments
+We call any assignment ˆA ∈ Ω in the global trap set an
+Algorithm 1 optimal assignment, since by Deﬁnition 2, it will
+never transition to an assignment with greater utility.
+The cluster size constraints Lr and Lt determine which as-
+signments are Algorithm 1 optimal. In the extreme case where
+Lr = ν and Lt = μ, a single cluster would contain all robots
+and tasks. When optimized, this cluster would yield a globally
+optimal assignment. Tightening these constraints reduces com-
+putational complexity, but introduces more Algorithm1 optimal
+assignments by limiting the algorithm’s ability to explore larger
+reassignments.
+Deﬁnition 5: A cluster formation algorithm is called uni-
+versally reachable if for each feasible cluster (Deﬁnition 1), the
+probability of forming that cluster is non-zero.
+Note that the uniform random clustering method is universally
+reachable, while the heuristic approach in Section III-B is not,
+as it only merges clusters that fulﬁll speciﬁc capability matching
+criteria. Any algorithm that lacks universal reachability can be
+modiﬁed to achieve it by incorporating a small probability of
+random clustering.
+Theorem 2: Let Ln =m i n (Lr/L−1,Lt −1). If Algo-
+rithm 1 employs a universally reachable cluster formation algo-
+rithm, then for any assignment ˆA ∈ Ω in the global trap set, any
+utility improvement requires reassigning more than Ln robots.
+Proof: We show that any assignmentA = {S0,S 1,...,S μ}
+that can be improved by reassigning x ≤ Ln robots to reach a
+new assignment A′= {S′
+0,S′
+1,...,S ′
+μ} with U(A) < U(A′) is
+not in the trap set. We demonstrate this by constructing a feasible
+cluster containing all robots and tasks necessary to perform a
+reassignment that increases utility.
+Model the reassignment fromA toA′as a graph(N,E ) where
+nodes N = {Sj ∈ A : Sj ⁄= S′
+j} represent teams modiﬁed by
+the reassignment, and each edge e ∈ E represents a transfer of
+robots between two teams. We show that if graph (N,E ) is
+connected, then a feasible cluster can produce assignment A′,
+and if the graph is disconnected, then a smaller reassignment
+exists that increases utility.
+Case 1: (N,E ) is a connected graph. Then to reassign x
+robots, there are at most|E|≤ x edges and at most|N|≤ x+1
+modiﬁed teams.
+We construct a cluster G1 containing all robots and tasks
+required to perform the reassignment from A to A′.I f S0
+(unassigned robots) is one of the modiﬁed teams ( S0 ∈ N ), the
+cluster only needs to include the speciﬁc robots in S0 being
+reassigned. However, for any assigned teamSj ⁄= S0, constraint
+(6c) requires including the entire team Sj and its task tj to
+ensure robots are clustered with their currently assigned task.
+To determine maximum cluster size, we assume the worst case
+scenario where all robots are assigned to tasks: S0 /∈ N .
+Let G1 =( Gr
+1,Gt
+1) where Gr
+1 = ⋃
+Sj∈N Sj contains all
+robots in the modiﬁed teams and Gt
+1 = {tj : Sj ∈ N,j ⁄=0 }
+contains their associated tasks. This cluster enables the reas-
+signment from A toA′.
+Since |N|≤ x+1 , then |Gr
+1|≤ L(x+1) and |Gt
+1|≤ (x+
+1) whereL is the maximum team size. Therefore, cluster G1 is
+feasible when:
+L(x+1) ≤ Lr ⇒ x ≤ Lr
+L −1 (15)
+x+1 ≤ Lt ⇒ x ≤ Lt −1 (16)
+This is equivalent to x ≤ min(Lr/L−1,Lt −1) =Ln which
+is the condition given in the theorem.
+Case 2: {N,E } is not a connected graph. Then it can be
+decomposed into a set of at least two connected subgraphs
+{(N1,E 1),..., (N𝓁,E𝓁)} such that no robots are exchanged
+between teams in different subgraphs.
+Let N′= {S′
+j ∈ A′: Sj ∈ N} and U(N)= ∑
+Sj∈N U(Sj).
+Since U(A) < U(A′) and only teams in N are modiﬁed, it
+follows that:
+U(N1)+ ··· +U(N𝓁) < U(N′
+1)+ ··· +U(N′
+𝓁) (17)
+Therefore, for some Na ∈{ N1,...,N 𝓁}, U(Na) < U(N′
+a).I t
+follows that the utility of assignment A can be increased by
+constructing a smaller cluster G2 that includes only the teams
+Sj ∈ Na. Since (Na,Ea) is a connected graph with fewer than
+x edges, it follows from Case 1 that G2 is feasible.
+In both cases, we have demonstrated the existence of a feasible
+cluster that, when optimized, will transition the assignmentA to
+one with higher utility. Given Deﬁnition 5, with each iteration,
+there is a nonzero probability of forming this cluster and making
+this transition. Therefore, A is not in the global trap set. ■
+V. E XPERIMENTAL RESULTS
+The iterative clustering algorithm is evaluated within a simu-
+lated 100×100 unit workspace, where ν robots and μ tasks
+are independently initialized at uniformly random positions.
+Robots are evenly partitioned intoκ =3 types. Tasks are evenly
+divided into 10 task types, each associated with a beneﬁt function
+Bj(C) (Section II-A4) that maps the team composition C to
+the utility for task tj . The utility for each task depends on
+both the number and type of assigned robots and can exhibit
+linear returns, marginally decreasing returns, or marginally in-
+creasing returns (synergistic collaboration) as more robots are
+assigned. Each task’s team size is capped at L =3 robots,
+and the team-formation cost Jj(Sj) is the cumulative distance
+traveled by assigned robots to the task location (Eq. 1). Un-
+less otherwise noted, the iterative clustering procedure uses
+cluster-size limitsLr =6 (robots) andLt =3 (tasks). Complete
+documentation, source code, and scripts to replicate all exper-
+iments and ﬁgures are available at https://github.com/AICPS/
+IterativeClusteringMRTA.
+A. Effect of Cluster Size
+The random clustering approach was used to evaluate the
+effects of different cluster sizes. As shown in Fig. 2, while
+smaller clusters require more iterations, they converge faster in
+time due to their lower computational cost per iteration. Cluster
+Authorized licensed use limited to: Zhejiang Normal University. Downloaded on September 24,2026 at 07:19:24 UTC from IEEE Xplore.  Restrictions apply. 
+MARTIN et al.: COLLABORA TIVE TASK ALLOCA TION FOR HETEROGENEOUS MULTI-ROBOT SYSTEMS THROUGH ITERA TIVE CLUSTERING 39
+Fig. 2. Utility produced by Algorithm 1 when employing the random clus-
+tering strategy, tested with various cluster size limits Lr and Lt. Results are
+averaged over 100 tests with ν = 100 robots, μ =5 0 tasks, and κ =3 robot
+types.
+TABLE I
+CLUSTERING METHODS COMPARED WITH OPTIMAL
+size limits Lr and Lt present a clear trade-off: larger clusters
+reduce convergence to suboptimal utilities and require fewer
+iterations to converge, but increase per-cluster computational
+complexity.
+B. Comparison to Optimal for Small Problems
+For small-scale problems, the clustering methods can be
+directly compared against optimal solutions. Table I presents
+the performance comparison on 500 problem instances with
+ν =1 0 robots and μ =5 tasks. Both random and heuristic
+clustering methods achieve optimal or near-optimal utility, with
+no statistically signiﬁcant difference observed between their
+results.
+C. Task Allocation Methods Comparison
+For a larger problem with ν =5 0 robots and μ =2 5 tasks,
+heuristic and random iterative clustering methods were com-
+pared against a group-based auction, hedonic game, and simu-
+lated annealing. Overall, heuristic clustering outperformed the
+other methods, closely followed by random clustering. Fig. 3
+Fig. 3. Average algorithm performance over 100 tests for Heuristic Cluster-
+ing (HC), Random Clustering (RC), Simulated Annealing (SA), Group-Based
+Auction (GBA), and Hedonic Game (HG) approaches.
+TABLE II
+A
+LGORITHM PERFORMANCE:A VERAGE UTILITY,S T ANDARDDEVIA TION, AND
+MAXIMUM UTILITY AS PERCENTAGES OF THE BEST SOLUTION FOUND
+shows the averaged results, and Table II reports mean utilities
+and standard deviations at 0.1, 0.5, and 2 seconds.
+The group-based auction algorithm presented in [11] was
+adapted to assign teams of robots to tasks. In this version, task
+representatives evaluate all feasible teams and place bids based
+on each team’s average reward per robot. While it achieves
+similar utility to iterative clustering, it is far less computationally
+efﬁcient since all feasible teams must be evaluated before the
+auction begins, whereas clustering considers only candidate
+teams within each cluster.
+Hedonic games are a common heuristic for task alloca-
+tion [12], [27]. We compare against a hedonic game where each
+robot iteratively joins the team that maximizes their marginal
+contribution, converging to a Nash equilibrium. Although com-
+putationally efﬁcient, this method struggles on collaborative
+tasks requiring simultaneous multi-robot assignments, where
+individual reassignments provide no beneﬁt.
+The simulated annealing algorithm perturbs solutions by
+randomly replacing a single team while preserving other task
+assignments. Improvements are always accepted and worse
+solutions are accepted with decreasing probability over time.
+Simulated annealing converged more slowly than iterative clus-
+tering due to its randomized search approach, whereas iterative
+clustering employs a more directed search through optimal
+cluster assignments.
+Authorized licensed use limited to: Zhejiang Normal University. Downloaded on September 24,2026 at 07:19:24 UTC from IEEE Xplore.  Restrictions apply. 
+40 IEEE ROBOTICS AND AUTOMATION LETTERS, VOL. 11, NO. 1, JANUARY 2026
+Fig. 4. Average algorithm performance on four different problem sizes.
+D. Scalability
+Algorithm 1’s scalability was tested on four problem sizes,
+with results in Figure 4 averaged over 100 trials. Random
+clustering scaled efﬁciently, while heuristic clustering degraded
+due to the cost of computing merge probabilities across many
+clusters. For the largest case (1000 robots, 500 tasks), the
+heuristic required about 3 seconds for the ﬁrst iteration. Overall,
+the framework scales well, though larger problems demand
+alternative heuristics.
+VI. C
+ONCLUSION
+This letter presented an iterative clustering algorithm for
+solving collaborative task allocation in multi-robot systems.
+The approach iteratively forms small clusters of robots and
+tasks, optimizing assignments within each cluster while ensuring
+robots remain clustered with their currently assigned tasks. This
+guarantees the utility is monotonically increasing with each
+iteration. Larger clusters avoid becoming trapped at suboptimal
+assignments, while smaller clusters offer faster convergence
+time. Experimental results validated the scalability, accuracy,
+and scalability of our approach compared to state of the art
+heuristics.
+Future work will explore learning-based approaches to cluster
+generation, decentralized implementations of iterative cluster-
+ing, and how clustering techniques can adapt to dynamic and
+uncertain environments.
+A
+CKNOWLEDGMENT
+Opinions, ﬁndings and conclusions, or recommendations are
+those of the authors and do not necessarily reﬂect the views of
+the sponsoring agencies.
+REFERENCES
+[1] P . Ghassemi and S. Chowdhury, “Multi-robot task allocation in disaster
+response: Addressing dynamic tasks with deadlines and robots with range
+and payload constraints,” Robot. Auton. Syst. , vol. 147, 2022, Art. no.
+103905.
+[2] Y . Hu, Y . Lu, R. Xu, W. Xie, S. Chen, and Y . Wang, “Collaboration
+helps camera overtake LiDAR in 3D detection,” in Proc. IEEE/CVF Conf.
+Comput. Vis. Pattern Recognit., 2023, pp. 9243–9252.
+[3] W. Dai, A. Bidwai, and G. Sartoretti, “Dynamic coalition formation and
+routing for multirobot task allocation via reinforcement learning,” inProc.
+IEEE Int. Conf. Robot. Automat. , 2024, pp. 16567–16 573.
+[4] Y . Liu, F. Liu, L. Tang, C. Bai, and L. Liu, “Multirobot adaptive task
+allocation of intelligent warehouse based on evolutionary strategy,” J.
+Sensors, vol. 2022, no. 1, 2022, Art. no. 2056617.
+[5] X. Shan, Y . Jin, M. Jurt, and P . Li, “A distributed multi-robot task allocation
+method for time-constrained dynamic collective transport,” Robot. Auton.
+Syst., vol. 178, 2024, Art. no. 104722.
+[6] K. Athira and U. Subramaniam, “A systematic literature review on multi-
+robot task allocation,” ACM Comput. Surv. , vol. 57, no. 3, pp. 1–28,
+2024.
+[7] H. Chakraa, F. Guérin, E. Leclercq, and D. Lefebvre, “Optimization
+techniques for multi-robot task allocation problems: Review on the state-
+of-the-art,” Robot. Auton. Syst., vol. 168, 2023, Art. no. 104492.
+[8] A. A. Nguyen, F. Jabbari, and M. Egerstedt, “Mutualistic interactions in
+heterogeneous multi-agent systems,” in Proc. 62nd IEEE Conf. Decis.
+Control, 2023, pp. 411–418.
+[9] S. Chopra, G. Notarstefano, M. Rice, and M. Egerstedt, “A distributed
+version of the Hungarian method for multirobot assignment,”IEEE Trans.
+Robot., vol. 33, no. 4, pp. 932–947, Aug. 2017.
+[10] G. Notomista et al., “A resilient and energy-aware task allocation frame-
+work for heterogeneous multirobot systems,” IEEE Trans. Robot., vol. 38,
+no. 1, pp. 159–179, Feb. 2022.
+[11] X. Bai, A. Fielbaum, M. Kronmüller, L. Knoedler, and J. Alonso-Mora,
+“Group-based distributed auction algorithms for multi-robot task assign-
+ment,” IEEE Trans. Autom. Sci. Eng. , vol. 20, no. 2, pp. 1292–1303,
+Apr. 2023.
+[12] L. Zhang, D. Liang, M. Li, W. Y ang, and S. Y ang, “Coalition formation
+game approach for task allocation in heterogeneous multi-robot systems
+under resource constraints,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots
+Syst., 2024, pp. 3439–3446.
+[13] Z. Zhang et al., “Distributed dynamic task allocation for unmanned aerial
+vehicle swarm systems: A networked evolutionary game-theoretic ap-
+proach,” Chin. J. Aeronaut., vol. 37, no. 6, pp. 182–204, 2024.
+[14] Z. Junwei and Z. Jianjun, “Study on multi-UA V task clustering and task
+planning in cooperative reconnaissance,” in Proc. 6th Int. Conf. Intell.
+Hum.- Mach. Syst. Cybern. , 2014, pp. 392–395.
+[15] I. Y ounas, F. Kamrani, M. Bashir, and J. Schubert, “Efﬁcient genetic
+algorithms for optimal assignment of tasks to teams of agents,” Neuro-
+computing, vol. 314, pp. 409–428, 2018.
+[16] H. Guo, Z. Miao, J. Ji, and Q. Pan, “An effective collaboration evolutionary
+algorithm for multi-robot task allocation and scheduling in a smart farm,”
+Knowl.-Based Syst., vol. 289, 2024, Art. no. 111474.
+[17] J. Y ou, J. Jia, X. Pang, J. Wen, Y . Shi, and J. Zeng, “A novel multi-robot task
+assignment scheme based on a multi-angle k-means clustering algorithm
+and a two-stage load-balancing strategy,”Electronics, vol. 12, no. 18, 2023,
+Art. no. 3842.
+[18] J. G. Martin, F. J. Muros, J. M. Maestre, and E. F. Camacho, “Multi-
+robot task allocation clustering based on game theory,”Robot. Auton. Syst.,
+vol. 161, 2023, Art. no. 104314.
+[19] M. Goarin and G. Loianno, “Graph neural network for decentralized
+multi-robot goal assignment,” IEEE Robot. Autom. Lett. , vol. 9, no. 5,
+pp. 4051–4058, May 2024.
+[20] R. Karam, R. Lin, B. A. Butler, and M. Egerstedt, “Resource allo-
+cation with multi-team collaboration based on Hamilton’s rule,” 2025,
+arXiv:2505.09016.
+[21] O. Shehory and S. Kraus, “Methods for task allocation via agent coalition
+formation,” Artif. Intell., vol. 101, no. 1-2, pp. 165–200, 1998.
+[22] T. Rahwan, T. P . Michalak, M. Wooldridge, and N. R. Jennings, “Coalition
+structure generation: A survey,”Artif. Intell., vol. 229, pp. 139–174, 2015.
+[23] B. Gerkey and M. J. Mataric, “A formal framework for the study of task
+allocation in multi-robot systems,” Int. J. Robot. Res. , vol. 23, no. 9,
+pp. 939–954, 2004.
+[24] R. S. Sutton et al., Reinforcement Learning: An Introduction,v o l .1 .C a m -
+bridge, MA, USA: MIT Press, 1998.
+[25] F. Präntare, and F. Heintz, “An anytime algorithm for optimal simultaneous
+coalition structure generation and assignment,”Auton. Agents Multi-Agent
+Syst, vol. 34, no. 1, pp. 1–31, 2020
+[26] T. Rahwan, S. D. Ramchurn, N. R. Jennings, and A. Giovannucci, “An
+anytime algorithm for optimal coalition structure generation,” J. Artif.
+Intell. Res., vol. 34, pp. 521–567, 2009.
+[27] I. Jang, H.-S. Shin, and A. Tsourdos, “Anonymous hedonic game for task
+allocation in a large-scale multiple agent system,” IEEE Trans. Robot. ,
+vol. 34, no. 6, pp. 1534–1548, Dec. 2018.
+Authorized licensed use limited to: Zhejiang Normal University. Downloaded on September 24,2026 at 07:19:24 UTC from IEEE Xplore.  Restrictions apply. 

@@ -1,0 +1,2318 @@
+6494 IEEE TRANSACTIONS ON ROBOTICS, VOL. 41, 2025
+Heterogeneous Multirobot Task Allocation for
+Long-Endurance Missions in Dynamic Scenarios
+Álvaro Calvo and Jesús Capitán
+Abstract—In this article, we present a framework for multirobot
+task allocation (MRTA) in heterogeneous teams performing long-
+endurance missions in dynamic scenarios. Given the limited battery
+of robots, especially for aerial vehicles, we allow for robot recharges
+and the possibility of fragmenting and/or relaying certain tasks.
+We also address tasks that must be performed by a coalition of
+robots in a coordinated manner . Given these features, we introduce
+a new class of heterogeneous MRTA problems, which we analyze
+theoretically and optimally formulate as a mixed-integer linear
+program (MILP). We then contribute a heuristic algorithm to
+compute approximate solutions and integrate it into a mission plan-
+ning and execution architecture capable of reacting to unexpected
+events by repairing or recomputing plans online. Our experimental
+results show the relevance of our newly formulated problem in
+a realistic use case for inspection with aerial robots. We assess
+the performance of our heuristic solver in comparison with other
+variants and with exact optimal solutions in small-scale scenarios.
+In addition, we evaluate the ability of our replanning framework
+to repair plans online.
+Index Terms —Heuristic planning, long-endurance missions,
+multi-UA V applications, multirobot task allocation (MRTA).
+I. I NTRODUCTION
+T
+HE use of heterogeneous robot teams is rapidly expanding
+in applications that beneﬁt from the combination of differ-
+ent robot capabilities, such as inspection [1], [2], agriculture [3],
+[4], and ﬁre ﬁghting [5]. For example, unmanned aerial vehicles
+(UA Vs) could be combined with ground robots [3], [6],a st h e
+former can access more distant places while the latter can carry
+heavier equipment. Cooperation among heterogeneous UA Vs is
+another option [1], [5], [7], as they may provide different ma-
+neuverability (e.g., rotary versus ﬁxed-wing vehicles) or sensors
+and manipulation/delivery capabilities depending on the vehicle.
+In these applications, multirobot task allocation (MRTA) can
+become especially hard, as they usually pose a multiobjective
+optimization with multiple constraints, e.g., some tasks may only
+be executed by certain robots with the required capabilities,
+or some could need to be accomplished by multiple robots
+in a synchronous manner, among others. We are interested in
+Received 10 May 2025; revised 19 September 2025; accepted 6 October 2025.
+Date of publication 28 October 2025; date of current version 19 November 2025.
+This work was supported in part by MICIU/AEI/10.13039/501100011033 and
+in part by FEDER, UE, under Grant PID2024-161069OB-C33. This article was
+recommended for publication by Associate Editor Y e Zhao and Editor Jason
+O’Kane upon evaluation of the reviewers’ comments. (Corresponding author:
+Jesús Capitán.)
+The authors are with Multirobot and Control Systems Group, Universidad de
+Sevilla, 41092 Seville, Spain (e-mail: acalvom@us.es; jcapitan@us.es).
+Digital Object Identiﬁer 10.1109/TRO.2025.3626651
+long-endurance missions in outdoor environments. This setting
+brings two additional challenges: 1) battery capacities could
+be limiting for the robots, especially for multi-UA V teams,
+which inspire our work, so recharging operations should be
+scheduled during operation and 2) these outdoor scenarios are
+typically dynamic and require online replanning to perform
+long-endurance missions robustly, potentially dealing with robot
+delays and failures.
+In this article, our objective is to devise a planning framework
+to solve a new class of heterogeneous MRTA problems. We
+introduce recharge operations to extend robots’ autonomy, and
+we endow the problem with greater ﬂexibility by allowing cer-
+tain tasks to be fragmented and/or executed by coalitions—with
+a nonﬁxed size—of robots, as well as allowing the possibility
+of having inter-robot relays. Moreover, as we aim for dynamic
+scenarios where unplanned events may occur, our framework
+is able to detect these events and repair or fully recompute
+plans in real time to adapt to the new circumstances. To the
+best of authors’ knowledge, there is no alternative method in
+the literature that combines all these problem features (see
+related works in Section II). Therefore, we take a step forward
+by categorizing, formulating, and solving this novel class of
+heterogeneous MRTA problems for long-endurance missions.
+The contributions of this work are the following.
+1) Motivated by heterogeneous teams of robots performing
+long-endurance missions in dynamic outdoor settings, we
+pose a novel MRTA problem (see SectionIII) where robot
+recharges are allowed and different types of tasks are com-
+bined, depending on their level of decomposability and on
+the size ﬂexibility of the robot coalition required to execute
+them. We discuss the categorization of our problem within
+well-known MRTA taxonomies in the literature and prove
+its NP-hard complexity.
+2) We formulate our MRTA problem as an MILP . Our formu-
+lation is general enough to account for all problem features
+(see Section IV), integrating heterogeneous robot capa-
+bilities, recharge operations, task decomposition, inter-
+robot relays, and multirobot (MR) tasks performed by
+synchronized coalitions of ﬁxed or variable size. From
+a theoretical perspective, this MILP formulation helps
+analyze the complexity and characteristics of the optimal
+solutions of our new class of MRTA problems.
+3) Given the NP-hardness of the problem, exact solvers suffer
+from scalability issues to tackle the MILP posed here.
+Therefore, we contribute a novel heuristic algorithm that
+leverages speciﬁc properties of the problem in order to
+ﬁnd approximate solutions that comply efﬁciently with
+all constraints (see Section V).
+4) To robustly cope with dynamic scenarios, we integrate
+our heuristic solver into a mission planning and execution
+© 2025 The Authors. This work is licensed under a Creative Commons Attribution 4.0 License. For more information, see
+https://creativecommons.org/licenses/by/4.0/
+CALVO AND CAPITÁN: HETEROGENEOUS MULTIROBOT TASK ALLOCA TION FOR LONG-ENDURANCE MISSIONS IN DYNAMIC SCENARIOS 6495
+framework (see Section VI). Mission execution is mon-
+itored to a) repair plans in case of robot delays; and b)
+recompute the full plan online if a repair is not possible
+or an unexpected event occurs, such as a robot failure and
+the arrival of new tasks.
+5) We provide extensive experimental results to demonstrate
+our algorithms in a realistic use case for multi-UA V inspec-
+tion (see Section VII). We compare our heuristic plans
+with the optimal solutions of the MILP formulation in
+small-scale scenarios. We then assess the performance of
+the heuristic solver for larger scenarios and evaluate our
+whole replanning and execution framework. All our code
+is provided open-source for the community and integrated
+into a robot operating system (ROS)-based architecture. 1
+This article is an evolved version of our previous work [8],
+where we introduced our MILP formulation. We extend it with
+the heuristic algorithm to ﬁnd approximate solutions efﬁciently
+and with the online replanning framework for dynamic scenar-
+ios. In addition, we provide a full set of new experimental results
+and release all the code as open source.
+II. R ELA TEDWORK
+A number of comprehensive MRTA taxonomies can be found
+in the literature [9], [10], [11]. The existing methods can be
+classed as “centralized,” where a single entity has access to all
+robots’ information to perform task allocation, or “distributed,”
+in which robots compute their plans locally and exchange infor-
+mation with others to converge to a common solution. They can
+also be grouped into exact methods, which provide optimal (or
+near-optimal) solutions, and methods that can provide approxi-
+mate solutions more efﬁciently (typically using heuristics) and
+are more suitable for online task allocation.
+A. Distributed Approaches
+Market-based approaches have been widely used for MRTA,
+such as auctions [12], [13], which involve auctioning tasks to
+robots through a bidding process based on a utility function
+that combines the robot’s capabilities and the problem con-
+straints. Even though they can be centralized, these methods
+are typically implemented in a distributed fashion, where each
+robot determines its own bid for tasks through an internal cost
+function. Besides auctions, other distributed greedy methods,
+such as distributed versions of the Hungarian algorithm[14] and
+task-swapping algorithms [15], iterate through pairs of robots,
+exchanging tasks to improve team performance.
+Auction-based methods rarely consider schedules and task
+ordering constraints. The work by Krizmancic et al. [6] is an
+exception, as they address temporal and precedence constraints
+for task allocation in aerial-ground robot teams for automated
+construction. Others have also proposed decentralized auctions
+for MR task scheduling with time windows, considering either
+task precedences [16] or robot capacities [17].
+Ferreira et al. [3] presented a distributed algorithm for task
+scheduling, considering precedence constraints but not MR
+tasks. They propose an MILP formulation (and a genetic solver)
+in which robots have heterogeneous capabilities and battery con-
+straints, but do not model recharges. Another approach is to use
+probabilistic methods, as Smith et al. do [7], with a distributed
+1Robot operating system. [Online]. Available: https://www.ros.org.
+algorithm based on a Monte Carlo tree search. They consider
+battery-limited robots but do not address temporal constraints
+or MR tasks. Generally, these distributed methods struggle to
+ﬁnd optimal solutions in complex problems with tightly coupled
+restrictions, such as those targeted in this work.
+B. Multiagent Planning and Scheduling
+The multiagent planning community has devoted signiﬁcant
+effort to solving task planning and scheduling problems [18].
+In these scenarios, each robot’s plan consists of an ordered set
+of actions (or tasks) that can have varying durations and can
+be executed sequentially or in parallel, with strong time-related
+dependencies. Some works address uncertainty in task durations
+or outcomes [19], [20], but few focus on MR tasks where a
+coalition performs the same task concurrently. For instance, by
+assuming minimum and maximum coalition sizes, MR tasks
+can be decomposed into single-robot tasks solvable by clas-
+sical single-agent planning, with solutions subsequently com-
+bined [21]. A separate collaborative action would be included
+for each possible combination of robots that can execute each
+MR task. The limit on the number of coalition members has
+also been used to partition the problem into loosely and tightly
+coupled components and solve them separately, incrementally
+increasing the number of robots that share a task [22]. Unlike
+these approaches, our method does not require ﬁxing intervals
+for the number of robots in a task, which allows for greater
+ﬂexibility. In addition, in contrast to these prior approaches, we
+prioritize planning for recharges over task ordering constraints.
+C. MILP F ormulations
+Operations research offers a variety of related problem for-
+mulations. Arc routing problems (ARPs) involve covering a
+set of graph edges (arcs) with one or more vehicles [23].T h e
+capacitated arc routing problem (CARP) adds limited vehicle
+capacities per tour, suitable for modeling battery-limited robots.
+In robotics, vehicle routing problems (VRPs) and their vari-
+ants [24] are more common. VRPs involve computing tours for
+one or more vehicles to visit spatial locations (graph nodes),
+starting and returning to one or more depots. VRPs generalize
+the traveling salesman problem (TSP), where the vehicle must
+return to the initial depot. These NP-hard problems are often
+addressed with heuristic methods due to the limitations of MILP
+formulations.
+Agarwal et al. [2] proposed a CARP for power line inspection
+with multiple UA Vs, modeling directional and state-dependent
+(inspecting versus traveling) edge costs, such as wind effects.
+V ehicle battery life is limited per tour, but recharges are not
+considered. While many ARP/VRP formulations incorporate
+battery constraints or heterogeneous capabilities, recharging op-
+erations and inter-robot synchronization for multirobot tasks are
+rare. For instance, Dorling et al. [25] presented a UA V delivery
+VRP with vehicle reuse (recharging), including deadlines but
+not multirobot tasks. Li et al. [26] proposed a multiperiod MILP
+formulation (without time constraints) to model recharges in a
+multi-UA V trafﬁc monitoring CARP variant.
+Planning recharge times and locations for persistent UAV
+teams has garnered signiﬁcant interest due to its relevance to
+aerial monitoring and surveillance. Several works [27], [28],
+[29], [30], [31] have presented TSP variations that provide
+schedules specifying when and where UA Vs recharge between
+6496 IEEE TRANSACTIONS ON ROBOTICS, VOL. 41, 2025
+tours. Mathew et al. [27] considered multiple moving ground
+recharging stations, discretizing UA V trajectories into projected
+ground points for a graph-based abstraction. Ding et al.[28] also
+considered mobile depots, formulating a generalized multiple
+depot TSP for persistent UA V surveillance. Y u et al.[29] planned
+recharge-inclusive tours for a single UA V , optimizing visit order,
+recharge times, and locations. Diller et al.[30] proposed a mixed-
+integer nonlinear program for joint path planning of a UA V and
+a moving ground vehicle, allowing the UA V to adjust its speed
+between rendezvous for recharging. Maini et al. [31] minimized
+coverage time by optimizing routes and rendezvous locations for
+a UA V -ground vehicle team. Arribas et al.[32] addressed persis-
+tent aerial service, where each location requires continuous UA V
+coverage, minimizing ﬂeet size while ensuring persistent service
+with recharges. While these works focus on persistent tasks, our
+work addresses a broader problem encompassing fragmentable
+and relayable multirobot heterogeneous tasks.
+Another important aspect of the problem addressed in this
+work is the existence of temporal constraints and multirobot
+tasks, i.e., tasks that have to be executed by several robots
+working in a synchronized fashion. A ﬁrst step to tackle this
+is forming coalitions made up of robots with heterogeneous
+capabilities, which collectively fulﬁl the task requirements. For
+instance, Ramchurn et al. [33] proposed an MILP formulation
+where coalitions consist of robots with the same capabilities but
+different degrees of effectiveness performing multirobot tasks
+with time deadlines. Gosrich et al. [34] developed a mixed
+integer nonlinear programming approach to formulate an MRTA
+problem with task precedence constraints and robot coalitions
+for multirobot tasks. A second step is to deal with the temporal
+constraints. For this, we focus on task deadlines and robot syn-
+chronization for multirobot tasks and relayable tasks. Bredstrom
+et al. [35] proposed a VRP with time windows where some visits
+must be pairwise synchronized due to application requirements.
+Instead of minimizing waiting times as we do, they formulate
+hard constraints that impose an equal arrival time on certain
+robots performing different tasks. Flushing et al. [36] presented
+an MILP for heterogeneous MRTA, where nonatomic tasks
+are considered, i.e., tasks that can be executed incrementally
+over disjoint periods of time. This is related to our concept of
+fragmentable tasks, which are tasks split into several segments,
+though we also add the possibility of having relayable tasks,
+which implies additional synchronization restrictions between
+the robot leaving the task and the one picking it up. These works
+do not typically consider reusable robots with limited operation
+time that can be reused by means of periodic recharges. Overall,
+among all existing MILP formulations in the state of the art,
+we believe that there is a gap consisting of methods combin-
+ing all the features addressed in this work. Either multirobot,
+fragmentable, and relayable tasks are not considered, or vehicle
+recharges are not modeled.
+D. Heuristics
+Due to the high complexity of the multirobot optimization
+problems discussed in this work, to cope with either heteroge-
+neous robot capabilities or multirobot and fragmentable tasks
+with temporal constraints, ﬁnding optimal solutions is usually
+computationally demanding, even prohibitive in certain cases.
+Therefore, heuristic algorithms are commonly proposed to com-
+pute approximate solutions in a more efﬁcient and scalable
+manner.
+Metaheuristic algorithms are a ﬁrst approach; tabu search,
+genetic algorithms, and simulated annealing being the most
+common options for MRTA problems. For instance, genetic
+algorithms have been applied successfully to solve problems
+with heterogeneous robots and tasks with temporal and prece-
+dence constraints [3], [37], [38], [39]. Simulated annealing
+has been used to solve delivery problems where UA Vs can
+make multiple trips by recharging [25], and recently, to solve
+scheduling problems for multirobot manufacturing [40].T h e
+metaheuristic variable neighborhood search (VNS) has also been
+used for orienteering problems in multi-UA V data collection
+applications [41], [42].
+On the one hand, metaheuristics have the advantage that they
+are generic algorithms that can be adapted to encode many
+diverse problems. On the other hand, as they rely on random
+search, they can require a large amount of CT to identify promis-
+ing solutions. Another option is to use heuristics speciﬁcally
+designed for the application at hand, trying to leverage any a
+priori known information about the problem structure. In this
+category, it is worth noting some heuristics for well-known
+problems in the literature that are related to ours. For instance, the
+Lin–Kernighan–Helsgaun (LKH) heuristic[43], which follows a
+strategy based on local search, has been widely used for different
+variants of the TSP , including problems that consider UA V
+recharges [27], [31]. Agarwal et al.[2] proposed a novel heuristic
+for a multi-UA V CARP problem. The underlying idea is to create
+an initial set of tours (one per arc to visit) which are then merged
+together in a greedy fashion to improve the solution. Al-Hussaini
+et al. [44] discussed existing heuristics for scheduling problems,
+and proposed a new one for a problem with multirobot tasks and
+temporal constraints. Gombolay et al. [45] presented another
+heuristic algorithm supporting temporal windows and prece-
+dence constraints for the tasks, but also heterogeneous robot
+capabilities. They use a multiagent task sequencer, inspired by
+real-time processor scheduling techniques, in conjunction with
+an MILP solver that resolves task-robot allocation. Although
+they outperform other relevant state-of-the-art heuristic solvers,
+yielding nearly-optimal solutions, battery-limited robots, and
+multirobot tasks are not modeled. Messing et al.[46] contributed
+a uniﬁed framework for task planning and scheduling in het-
+erogeneous multirobot teams. Their solution is a multilayer ap-
+proach that interleaves task planning, allocation, scheduling, and
+motion planning until a valid plan is found, applying heuristic
+search-based algorithms at the different layers. The framework
+is quite generic and includes task temporal constraints and
+multirobot tasks performed by robot coalitions (they add wait
+constraints to synchronize those coalitions). However, they do
+not cover battery constraints and recharging operations. Ram-
+churn et al. [33] did not cover battery constraints either, but they
+devised an interesting heuristic procedure to solve a problem
+where coalitions of heterogeneous robots have to be allocated
+to multirobot tasks with deadlines.
+Finally, reinforcement learning is a promising alternative to
+heuristic methods for addressing the computational burden of
+MRTA [47], [48]. However, key challenges with these meth-
+ods include their lower interpretability and lack of optimality
+guarantees.
+E. Replanning Approaches
+Apart from the traditional methods for ofﬂine task allocation,
+there are speciﬁc frameworks in the literature for dynamic
+CALVO AND CAPITÁN: HETEROGENEOUS MULTIROBOT TASK ALLOCA TION FOR LONG-ENDURANCE MISSIONS IN DYNAMIC SCENARIOS 6497
+MRTA, which monitor task execution during operation and
+trigger some replanning procedure if the running plan is not
+valid anymore after an unexpected event has occurred (e.g., a
+change in some task requirement or robot capabilities). The idea
+is to reallocate incomplete tasks not from scratch but taking into
+account the previous plan and the effects of the disruptive event
+on task performance.
+A l - H u s s a i n ie ta l .[44] presented a heuristic algorithm that
+provides reallocation suggestions to handle contingencies dur-
+ing mission execution, such as a robot failing, a new task arriving,
+a task changing its parameters, a task being identiﬁed as risky,
+and other events of this nature. They consider multirobot tasks
+with deadlines and precedence constraints as well as the possi-
+bility of creating additional rescue and relay tasks, the former to
+rescue a disabled robot, the latter to send a robot close enough to
+a subgroup of teammates out of communication range in order
+to share a new plan with them. Neville et al. [49] also pro-
+posed an approach for dynamic task allocation in heterogeneous
+multirobot settings with task temporal constraints. Multirobot
+tasks are performed by robot coalitions that are created using
+a trait-based method. Overall, their method interleaves task
+allocation, scheduling, and motion planning in order to compute
+solutions incrementally by performing graph-based heuristic
+searches. After an unexpected event, a new solution is efﬁciently
+computed by repairing only the necessary nodes in the task
+graph. Leahy et al. [4] developed a framework for task planning
+in teams of robots with heterogeneous capabilities. They deﬁne a
+speciﬁcation language based on temporal logic, which a user can
+employ for high-level mission speciﬁcation, allowing temporal
+constraints and multirobot tasks. These speciﬁcations are then
+encoded in an MILP formulation whose objective is optimizing
+robustness against robot failures. Thus, the plan computed is
+the one that tolerates the largest number of robot dropouts.
+Online replanning is enabled by means of another MILP that
+modiﬁes the original after a robot dropout. Recently, Lippi
+et al. [50] presented an MILP formulation for task allocation
+in human multirobot teaming scenarios. After the mission has
+started, execution of the plan is continuously monitored, and a
+replanning procedure is triggered if the current plan is no longer
+feasible or if its expected quality (according to the application
+cost function) has decreased below a certain threshold. Unlike
+ours, these methods do not consider battery-limited robots with
+the possibility of recharging, although the concept of creating
+virtual robot rescue tasks [44] may be similar to our recharge
+tasks.
+III. P
+ROBLEM DESCRIPTION
+We address a task planning problem with a team of hetero-
+geneous cooperating robots. The robots are heterogeneous in
+the sense that they can provide different sensing/locomotion
+capabilities, and not all of them are suitable for every task. For
+instance, a robot with the ability to manipulate and transport
+items will be suitable for a delivery task, while a robot with
+a speciﬁc camera onboard could be required for a particular
+inspection task. Each robot has a limited operational time given
+by its battery capacity, but unlimited recharges are allowed (with
+an associated time cost) at ﬁxed stations with known positions
+to reset the robot’s battery level. Each task has a known spatial
+location and a predeﬁned time duration; we do not have speciﬁc
+time windows in which tasks need to start their execution, nor
+precedence constraints, but only a maximum completion time
+Fig. 1. Complexity of the problem according to task categorization. Tasks
+are classiﬁed according to their decomposability and coalition size ﬂexibility; a
+higher degree of freedom implies a planning problem that is harder to solve.
+for each task (deadline), as a way to establish different priorities
+between tasks.
+The goal is to compute the optimal plan (minimizing the
+makespan, i.e., the completion time of the whole mission) for
+the team, given all constraints. This means devising a schedule
+containing the set of ordered tasks that each robot has to execute
+and their start time instants. Moreover, we consider dynamic
+scenarios, in the sense that new tasks may arrive at any time
+and robots may fail when executing an assigned task or while
+traveling. This implies the need for online replanning in order
+to react to new tasks or circumstances.
+One of the major novelties of this work is given by the com-
+plexity of the allocation problem that we tackle, as we consider
+different types of tasks that yield a new task categorization.
+Before describing these task categories, let us propose a running
+example that will be used to motivate our work and to better
+illustrate the different types of tasks.
+Running example: Our main focus in this work is the use
+of heterogeneous teams of UA Vs to execute long-endurance
+missions in outdoor settings. In these scenarios, the limited ﬂight
+time of UA Vs is key, and this is why we explicitly allow recharg-
+ing operations when planning, to permit extended periods of
+autonomy. Thus, imagine an application where a team of UA Vs
+provides support to human workers during inspection operations
+in a solar energy plant. Depending on their capabilities, the
+UA Vs could be sent to inspect remote areas of the plant, to
+monitor worker operations for safety issues, to deliver tools or
+other items to some workers, and so on. One or several base
+stations would be installed at known positions around the plant
+so that the UA Vs can recharge when needed. Although there may
+be a starting set of scheduled tasks, as the inspection mission
+evolves, human operators could decide to order new tasks to
+be assigned to the supporting UA Vs, which makes the mission
+dynamic. Moreover , due to unexpected situations or hardware
+issues, UA Vs could run out of battery and become unavailable.
+Now let us describe the task categorization that we consider in
+our problem. As shown in Fig. 1, tasks are classiﬁed according
+to two properties that determine the overall complexity of the
+problem: task decomposability and task coalition size ﬂexibility.
+1) Decomposability: This property indicates the capacity of
+a task to be decomposed into subtasks. We consider three
+types: nondecomposable, fragmentable, and relayable.
+Nondecomposable tasks have to be executed entirely by
+the same set of robots from start to end without pause.
+6498 IEEE TRANSACTIONS ON ROBOTICS, VOL. 41, 2025
+Fragmentable tasks can be divided into a set of fragments
+(each fragment duration is obtained by also dividing the
+original task duration) that can be executed independently
+by different robots. There are no dependencies between
+the timelines of the various fragments: they could be
+executed in any order, with gaps in between, and even
+overlapping in time. In contrast, relayable tasks can be
+divided into a sequence of fragments that must be executed
+on a continuous timeline without gaps in between. This
+division is made when the assigned robot (or multirobot
+coalition) does not have enough battery to perform the
+entire task and there is a need for relays. Therefore, in
+relayable tasks, consecutive fragments are executed by
+different robots, as robots leaving to recharge are replaced
+by new ones. In our running example, a nondecomposable
+task could be a UA V that has to deliver a tool to an operator;
+this task has to be carried out entirely by the same robot
+without interruptions. A fragmentable task could be the
+aerial inspection of a particular area of the solar plant
+to search for malfunctioning elements. In this case, the
+inspection area could be divided into several parts, and
+these could be inspected independently. For example, the
+same UA V could inspect all subareas (task fragments)
+sequentially, even including recharges in between; or the
+subareas could be inspected by different UA Vs in parallel.
+A relayable task could be a UA V that has to use its onboard
+camera to monitor a worker operating in the ﬁeld for safety
+issues. When the operation is risky, it is critical to have a
+continuous video stream of the worker. Therefore, if the
+task duration is too long, successive UA Vs will have to
+relay each other as they run out of battery, in such a way
+that one is always monitoring the operation.
+2) Coalition size ﬂexibility: We consider multirobot tasks that
+need to be jointly executed by a coalition of robots. This
+property refers to the ﬂexibility of the task with respect to
+the required size of the coalition. We consider three types
+of speciﬁcation for the coalition size. First, for tasks where
+the coalition size is ﬁxed (it could be 1 for single-robot
+tasks) as a hard constraint, these tasks must be executed by
+coalitions with exactly the speciﬁed size. Second are tasks
+where the coalition size is variable as a soft constraint.
+This means that an ideal coalition size for the task is
+speciﬁed, but coalitions of different size are also allowed
+although with a penalty. The third kind is tasks where
+the coalition size is unspeciﬁed. These are tasks without
+constraints on the coalition size. Any coalition size is
+allowed without penalty and the task duration will depend
+on the ﬁnal number of robots allocated. We assume that
+unspeciﬁed tasks are also fragmentable, which is usually
+the case, but not the opposite. Coming back to our running
+example, a task to monitor a worker’s operation in the
+ﬁeld could be requested to be executed by three UA Vs
+simultaneously, but it may still be acceptable to execute
+it with fewer UA Vs if there are not enough resources.
+This would be an example of a variable coalition size.
+In contrast, some inspection techniques for solar panels
+require the explicit cooperation of a ﬁxed number of
+several UA Vs. For example, photoluminescence inspec-
+tion involves illuminating a speciﬁc portion of the solar
+panel surface and recording the luminescence emission
+generated in the remaining area. This could be done by a
+coalition of exactly two UA Vs, one illuminating and the
+other acquiring images with a specialized camera onboard.
+An example of a task with an unspeciﬁed coalition size is
+a survey of a given area for standard thermal inspection.
+In this case, the more UA Vs assigned, the shorter the task
+duration.
+We cover what are known as ST-MR-TA problems according
+to a well-known taxonomy of MRTA [9]. This means that our
+robots are single-task (ST); they can only perform one task
+at a time. The tasks are multirobot (MR); they could require
+multiple robots to be executed. Lastly, we have a time-extended
+assignment; i.e., each robot is allocated several tasks that must
+be executed according to a given schedule. Nunes et al. [10]
+extended this taxonomy to differentiate between problems with
+task windows (TWs) and synchronization and precedence (SP)
+constraints. Our problem falls within the TW category, since we
+have no constraints on the start times for the tasks but we do have
+deadlines. Although we do not include precedence constraints
+between tasks, note that time synchronization is still imposed
+when multiple robots need to perform a task together or execute
+relays. Finally, another well-known taxonomy[11] distinguishes
+between different types of problems depending on the intertask
+relationship. Our decomposable tasks fall into the complex
+dependencies (CD) category deﬁned in this taxonomy. Given
+that we have MR tasks, there are interschedule dependencies,
+as plans for each robot cannot be computed independently.
+However, CD problems imply an additional complexity, as the
+optimal decomposition of tasks must be computed jointly with
+the task allocation. This is our case, since some tasks may be
+split for recharges and there is an additional degree of freedom
+to decide when to recharge.
+Finally, note that we do not allow partial execution of the tasks.
+All tasks must be executed completely in order for a mission plan
+to be valid. Since it would need to be decided to what extent each
+task is covered, partial execution would signiﬁcantly increase
+the problem complexity without a clear advantage in practical
+scenarios (we can still propose complete solutions and replan
+after partial execution caused by a robot failure). Furthermore,
+persistent tasks are not explicitly considered either. These are
+tasks without a ﬁnite duration to be executed indeﬁnitely until
+mission termination. For instance, monitoring a given perimeter
+with UA Vs for security. Nonetheless, note that if we include
+a persistent task along with others that have deadlines, the
+persistent task would have the lowest priority. This means it
+could easily be added to the robots’ plan when they become idle
+after completing their ﬁnite tasks.
+A. Problem Complexity
+Theorem 1: The heterogeneous MRTA problem proposed in
+this section is NP-hard.
+Proof: Given its additional ﬂexibility in terms of task de-
+composability and coalition size, the problem posed here is a
+generalization of other well-known MRTA problems that are
+NP-hard. This can be proved by contradiction: let us assume
+the problem is not NP-hard. But if we can ﬁnd a particular
+instance of our problem that is NP-hard, the overall problem
+must also be NP-hard, as there would not be a known algorithm
+to solve all its instances in polynomial time. Let us consider a
+speciﬁc instance of the problem where all robots have unlimited
+battery and capabilities to execute all tasks. Let all tasks be
+nondecomposable, with an arbitrarily large deadline and with a
+ﬁxed coalition size of 1, i.e., all tasks are single-robot. In that
+CALVO AND CAPITÁN: HETEROGENEOUS MULTIROBOT TASK ALLOCA TION FOR LONG-ENDURANCE MISSIONS IN DYNAMIC SCENARIOS 6499
+TABLE I
+TABLE OF SYMBOLS SEPARA TED BYCA TEGORY
+case there is no need for recharges, fragmentation or multirobot
+synchronization, and the problem consists of assigning the tasks
+to the different robots, which can start or end at different base
+stations. This would be equivalent to the well-known multidepot
+vehicle routing problem, which is NP-hard [51].
+IV . MILP F
+ORMULA TION
+In the following, we develop our mathematical formulation
+to solve the problem in Section III, cast as an MILP . Table I
+contains a list of symbols used and their descriptions.
+A. Preliminary Deﬁnitions
+LetR be a set ofn heterogeneous robots; each robotr ∈R has
+an initial position pr,0 ∈ R3, a traveling speed vr , a maximum
+battery timeBmax
+r (battery autonomy), and an initial battery time
+consumed Br,0.L e tT be the set of m tasks to be executed by
+the team; each task t ∈T has a spatial location pt, an estimated
+execution time T e
+t , a deadline to complete the task T max
+t , and a
+number of robots needed Nt (coalition size). 2 Apart from the
+actual tasks, we include an additional task tR so that the robots
+can recharge their batteries at one of the available base stations,
+deﬁning ˜T = T∪ tR. Our formulation is agnostic to the method
+of selecting the best station to recharge at each point in time, and
+we assume a ﬁxed execution timeT e
+tR to fully recharge batteries.
+The heterogeneous capabilities of the robots are encoded
+through a set of binary variables Hr,t ∈{ 0,1}, where Hr,t =1
+if robot r has the hardware required to execute task t, and 0
+otherwise. For each robot–task pair, we deﬁne a displacement
+timeT d
+r,t1 ,t2 , which is the estimated time to navigate robotr from
+the location of task t1 to the location of task t2. We compute
+this navigation time using Euclidean distances between tasks
+(which may be available from a topological map) and the speed
+of each robot vr . In order to model the initial positions of the
+robots, t1 ∈ ˜T∪ T 0 and t2 ∈ ˜T , where T0 represents a set of n
+auxiliary ﬁctitious tasks, each located at the initial position of
+each robot pr,0.
+To model the decision variables, we need to decide which
+tasks are allocated to each robot and in which order. For this, we
+introduce the concept of time slots: each robot has a task queue
+made up of a series of slots of variable duration (let S be the
+set of slots for each queue), where tasks can be allocated. The
+binary decision variables x
+r,t,s ∈{ 0,1} take value 1 if task t is
+assigned to slot s of robot r, and 0 otherwise. The duration of
+each slot will depend on the time required by the speciﬁc task
+placed in that slot, so slot durations will differ among robots,
+depending on their task assignment. In general, the sizes of the
+robot schedules (number of assigned tasks) can differ; however,
+for implementation purposes, all robot queues have the same
+size|S|, and only the necessary slots areactivated for each robot
+through the variables x
+r,t,s. Furthermore, since decomposable
+tasks can be split into several fragments, we also deﬁne the
+number of fragments into which each task is divided nf
+t ∈ N,
+nf
+t ∈ [1,N f], where Nf is the maximum number of fragments
+into which any task can be divided.3 Given the maximum battery
+time for robots, we can compute a bound for Nf by considering
+the worst case of the longest task and check the number of tours
+that would be needed (each tour implies a new fragment and a
+recharge).
+4 Note that each fragment is allocated to a different
+robot slot and its execution time is computed as T e
+t /nf
+t .
+B. Basic Constraints
+Some basic constraints must hold regarding the assignment
+of tasks to slots ∑
+t∈ ˜T∪ T0
+xr,t,s ≤ 1 (1a)
+xr,tR ,s−1 +xr,tR ,s ≤ 1 (1b)
+∑
+t∈ ˜T
+xr,t,s ≤
+∑
+t∈ ˜T
+xr,t,s−1
+∀r ∈R ,s ∈S . (1c)
+2Note that this requirement could be hard or soft depending on the coalition
+size ﬂexibility of the task.
+3This variable is forced to be 1 for recharges and nondecomposable tasks.
+4A similar method is used to compute a valid value for |S|.
+6500 IEEE TRANSACTIONS ON ROBOTICS, VOL. 41, 2025
+Equation (1a) ensures that there is no more than one task per
+slot; (1b) avoids solutions with consecutive recharges for the
+same robot; and (1c) prevents the existence of free slots between
+tasks in a queue; tasks should occupy the lowest possible slots in
+the queue and there should be empty slots after the last assigned
+task. Moreover, there must be hardware compatibility for the
+robots assigned to a task
+x
+r,t,s ≤ Hr,t ∀r ∈R ,t ∈T ,s ∈S . (2)
+In addition, we deﬁne some auxiliary variables for counting:
+nt ∈ N counts the total number of times taskt appears among all
+robot queues,nq
+t ∈ N counts the number of queues in which task
+t appears, and nr
+t ∈ N is the number of robots executing task t
+simultaneously (this is the coalition size and takes value 1 for
+single-robot tasks). nq
+r,t ∈{ 0,1} is a binary variable that takes
+the value 1 if task t appears in the queue of robot r. Formally
+nt =
+∑
+r∈R
+∑
+s∈S
+xr,t,s (3a)
+nq
+t =
+∑
+r∈R
+nq
+r,t (3b)
+nr
+t ≤ nq
+t (3c)
+nr
+t ≥ 1 (3d)
+nt = nr
+t ·nf
+t
+∀t ∈T . (3e)
+Note that (3d) means that all tasks are assigned to at least one
+robot, which makes sense if we assume that the MR team has
+the required hardware and size to accomplish all tasks in the
+scenario, and that the battery autonomy of the robots is enough
+to reach each task, execute it, and return to a base station.
+C. Time-Related V ariables
+We deﬁne T
+d
+r,s as the time required to move robot r to the
+location of the task allocated to slot s, starting at the location of
+its previous task, assigned to slots−1;T e
+r,s as the time required
+to execute the task allocated to slot s; and T f
+r,s as the time when
+the task allocated to slot s ﬁnishes. We also deﬁne T w
+r,s as the
+time that robotr has to wait in slots before starting its allocated
+task, to coordinate task execution with other robots. Recall that
+we consider MR tasks, where time synchronization must be
+enforced so that all the robots involved start the task simultane-
+ously. A similar synchronization is needed when relaying takes
+place in a relayable task. This is done by establishing thiswaiting
+time for each robot before starting, so that those arriving earlier
+wait for the others. The value of the waiting time will depend
+on the arrival time of all the robots involved. More formally
+T
+d
+r,s =
+∑
+t2∈ ˜T
+⎛
+⎝ ∑
+t1∈ ˜T∪ T0
+T d
+r,t1 ,t2 ·xr,t1 ,s−1
+⎞
+⎠·xr,t2 ,s (4a)
+T e
+r,s =
+∑
+t∈ ˜T
+(T e
+t /nf
+t ·xr,t,s) (4b)
+T f
+r,s = T f
+r,s−1 +T d
+r,s +T w
+r,s +T e
+r,s (4c)
+T f
+r,0 =0
+∀r ∈R ,s ∈S . (4d)
+Fig. 2. Example with 3 robots executing 3 consecutive MR relayable tasks
+(with different color code). For each task, displacement time is depicted in blue,
+waiting time in yellow and execution time in green. Each task is divided into
+3 fragments ( nf
+t =3 ) executed by coalitions of 2 robots ( nr
+t =2 ). Robot 3
+executes all tasks and recharges in between, while robots 2 and 1 relay each
+other to accompany robot 3. Left, solution where robots do not coordinate task
+execution; right, solution including time coordination constraints.
+Br,s is the battery time accumulated by robot r at the end
+of slot s, which is computed recursively, with an initial value
+Br,0, (5a) taking into account that the waiting and execution
+times during recharge tasks do not consume battery.5 Since robot
+battery autonomy is limited, (5b) constrains the battery time
+consumed up to any slot to be no greater than the maximum
+battery time available, always leaving a minimum battery time
+B
+min
+r available for safety reasons. Robots should be able to go
+back to a recharge station with that amount of battery time
+Br,s = Br,s−1 · ¯xr,tR ,s−1 +T d
+r,s +(T w
+r,s +T e
+r,s)· ¯xr,tR ,s
+(5a)
+Br,s ≤ Bmax
+r −Bmin
+r
+∀r ∈R ,s ∈S (5b)
+where ¯xr,t,s =1 −xr,t,s.
+D. Time Coordination
+Robots must coordinate their timing while executing a task
+in two different situations: when several robots need to per-
+form an MR task together or when a relay is carried out.
+Fig. 2 shows an example to illustrate the difference between
+solutions when the schedules are coordinated and when they
+are not. This time coordination requires additional constraints,
+which we model with two types of binary decision variables:
+y
+t,r1 ,s1,r2 ,s2,z t,r1 ,s1,r2 ,s2 ∈{ 0,1}. yt,r1 ,s1,r2 ,s2 =1 indicates
+that t is an MR task assigned to slot s1 of robot r1 and slot
+s2 of robotr2 and that the two robots must be synchronized; and
+zt,r1 ,s1 ,r2 ,s2 =1 indicates that a fragment of task t assigned to
+slots1 of robotr1 is relayed by another fragment of the same task
+assigned to slot s2 of robot r2. Then, robot time coordination is
+enforced by
+T f
+r1 ,s1 ·yt,r1 ,s1,r2 ,s2 = T f
+r2 ,s2 ·yt,r1 ,s1 ,r2 ,s2 (6a)
+T f
+r′
+1 ,s1
+·zt,r′
+1 ,s1 ,r′
+2,s2 =( T f
+r′
+2 ,s2
+−T e
+r′
+2 ,s2)·zt,r′
+1 ,s1 ,r′
+2 ,s2
+∀r1 ⁄= r2,r′
+1,r′
+2 ∈R ,s 1,s 2 ∈S , (r′
+1,s 1) ⁄=( r′
+2,s 2),t ∈T .
+(6b)
+5If slot s represents a recharge, Br,s is not zero but the accumulated battery
+time upon reaching the recharge station. This value is used to verify sufﬁcient
+battery capacity to reach the station and is subsequently reset to 0 at the beginning
+of the next slot.
+CALVO AND CAPITÁN: HETEROGENEOUS MULTIROBOT TASK ALLOCA TION FOR LONG-ENDURANCE MISSIONS IN DYNAMIC SCENARIOS 6501
+Fig. 3. Time coordination example with 5 robots performing an MR relayable
+task, which is divided into 3 fragments ( nf
+t =3 ) executed by coalitions of 4
+robots (nr
+t =4 ). Recharge tasks are not shown. Dashed black arrows indicate
+that the corresponding relay variable ( z) is activated, and solid colored arrows
+indicate the activated synchronization variables ( y), with a different color for
+each robot. A robot executing two consecutive fragments of the same task is
+modeled as a self relay.
+Given a pair of robots performing an MR task, since the task
+execution time is the same for both, by setting their ﬁnish slot
+times to be equal through (6a), we ensure that they start task
+execution simultaneously. In the case of a relay, (6b) equals the
+time from when the ﬁrst robot ﬁnishes its task fragment to the
+time when the second robot starts executing its fragment (note
+that there may be a previous waiting time for synchronization).
+Although that would not be a proper relay, for implementation
+purposes, our formulation encodes as a virtual self-relay when a
+robot performs two consecutive fragments of the same task (see
+an example in Fig. 3). Note that (6a) holds for pairs of distinct
+robots synchronizing, as it does not make sense for a robot to
+synchronize with itself in an MR task. However, in (6b), a robot
+could relay itself, but in that case the time slots must be different.
+Furthermore, for each time coordination, we need to ensure that
+the two slots being coordinated have the same task associated
+with them
+y
+t,r1 ,s1 ,r2 ,s2 ≤ xr1 ,t,s1 (7a)
+yt,r1 ,s1 ,r2 ,s2 ≤ xr2 ,t,s2 (7b)
+zt,r1 ,s1 ,r2 ,s2 ≤ xr1 ,t,s1 (7c)
+zt,r1 ,s1 ,r2 ,s2 ≤ xr2 ,t,s2
+∀r1,r 2 ∈R ,s 1,s 2 ∈S ,t ∈T . (7d)
+In addition, there are constraints on the ﬂow of time coordi-
+nation variables. First, each task fragment cannot be relayed by
+more than one subsequent fragment and similarly, it cannot be
+relaying more than one previous fragment
+∑
+r2∈R
+∑
+s2∈S
+zt,r1 ,s1 ,r2 ,s2 ≤ 1 ∀r1 ∈R ,s 1 ∈S ,t ∈T (8a)
+∑
+r1∈R
+∑
+s1∈S
+zt,r1 ,s1 ,r2 ,s2 ≤ 1 ∀r2 ∈R ,s 2 ∈S ,t ∈T . (8b)
+Note that the above limitation does not apply to variables of
+typey, since a task instance in an MR task must be synchronized
+with all the instances corresponding to the other nr
+t −1 robots
+performing the task in parallel. Thus, (9b) ensures that all
+instances of a given MR task t (which may also be decompos-
+able) are grouped into sets of exactly nr
+t fragments, and time
+synchronization only occurs between fragments belonging to
+the same group
+yt,r1 ,s1,r2 ,s2 = yt,r2 ,s2 ,r1 ,s1 (9a)
+∀r1,r 2 ∈R ,s 1,s 2 ∈S ,t ∈T
+(nr
+t −1)·xr1 ,t,s1 =
+∑
+r2∈R
+∑
+s2∈S
+yt,r1 ,s1 ,r2 ,s2
+∀r1 ∈R ,s 1 ∈S ,t ∈T . (9b)
+Finally, the total number of relays for a given task is also
+bounded
+nt −nr
+t =
+∑
+r1∈R
+∑
+s1∈S
+∑
+r2∈R
+∑
+s2∈S
+zt,r1 ,s1,r2 ,s2 ∀t ∈T . (10)
+Fig. 3 depicts an example with its corresponding time co-
+ordination variables to illustrate the ﬂow constraints in (9b)
+and (10). It can be seen that all the task instances ( nt =1 2)
+are grouped into 3 sets of 4 fragments and, within each group,
+each robot synchronizes with the other 3 performing the task.
+Moreover, all synchronization variables y are bidirectional and
+the total number of activated relay variables z in the example is
+n
+t −nr
+t =8 .
+E. Objective Function
+We propose a multiobjective cost function(11) with four terms
+to be minimized:6
+1) makespan, the time by which the last robot ﬁnishes its last
+task;
+2) delays for task completion with respect to their deadlines;
+3) waiting times for synchronization;
+4) deviation of the coalition size in MR tasks with respect to
+the ideal size
+f
+1 = Z
+η1
+(11a)
+f2 =
+∑
+r∈R,s∈S ΔT max
+r,s
+η2
+(11b)
+f3 =
+∑
+r∈R,s∈S T w
+r,s
+η3
+(11c)
+f4 =
+∑
+t∈T Vt
+η4
+(11d)
+where η1, η2, η3, and η4 are normalization constants so that all
+cost terms are on the same scale. Equation (11a) introduces an
+auxiliary variableZ to encode the makespan, which can be done
+by adding the constraint
+Z ≥ T f
+r,|S| ∀r ∈R (12)
+which forces Z to be greater than the completion time for each
+robot’s queue(4c).η1 is computed by considering a worst-case
+scenario in which a single robot executes all tasks, recharging
+when needed. In (11b),ΔT max
+r,s are slack variables that represent
+the delay of robotr in completing the task assigned to slots.W e
+6Note that our formulation could easily accommodate other typical objectives,
+such as minimizing the total traveled time by all robots.
+6502 IEEE TRANSACTIONS ON ROBOTICS, VOL. 41, 2025
+set
+ΔT max
+r,s ≥
+∑
+t∈T
+xr,t,s ·(T f
+r,s −T max
+t )
+ΔT max
+r,s ≥ 0 ∀r ∈R ,s ∈S . (13)
+Note that since it does not make sense to consider deadlines for
+recharges or unassigned slots, (13) reduces toΔT max
+r,s ≥ 0 when
+the task assigned to slot s does not belong to T .η2 is computed
+as the maximum deadline T max
+t , ∀t ∈T . Equation (11c) is
+the normalized overall waiting time, where η3 is calculated as
+the maximum battery time autonomy max{Bmax
+r }, ∀r ∈R .
+Finally, recall that our MR tasks may accept variable coalition
+sizes, so (11d) penalizes tasks allocated a number of robots that
+is lower than their ideal coalition size Nt. This deviation in the
+coalition size is deﬁned as
+Vt = Nt −nr
+t
+Vt ≥ 0
+∀t ∈T ,N t > 0. (14)
+For tasks with an unspeciﬁed coalition size, this penalty does
+not apply; by convention, we set Nt =0 for these tasks, which
+is why (14) only applies when this parameter is greater than
+zero. For tasks with a ﬁxed coalition size, an extra constraint is
+added to force Vt to be zero, making nr
+t and Nt coincide. η4 is
+computed by adding the maximum deviation for all tasks, where
+this maximum deviation isNt −1; i.e., allocating a single robot
+to the task.
+F . Optimization Problem
+To sum up, our complete MILP problem can be formulated
+as follows:
+minimize{xr,t,s,T wr,s,nf
+t }f1 +f2 +f3 +f4
+subject to
+task-slot assignment(1)
+hardware compatibility(2)
+counting variables (3)
+time slot variables(4)
+battery autonomy(5)
+time coordination(6)−− (10)
+makespan (12)
+task delays(13)
+coalition size deviations (14). (15)
+G. Linearization
+Finally, it is important to remark that some of the equations
+contain nonlinear elements in the form of decision variables that
+are multiplied together. In particular, these nonlinearities appear
+in (4a), (4b), (5a), (6), (9b), and (13). In order to keep the formu-
+lation as an MILP , we circumvent this issue with linearization
+techniques by using additional auxiliary variables [52], [53].
+Basically, nonlinear terms are replaced by new variables and
+additional linear constraints that force the value of the new
+variable to be equal to the term that it substitutes.
+Thus, each product of two binary decision variables b
+1 ·b2
+is replaced by a new variable b′∈{ 0,1}, and the following
+constraints are included to force b′to be equal to the original
+product:
+b′≤ b1,b ′≤ b2,b ′≥ b1 +b2 −1. (16)
+In the same way, each product of a binary and a real7 decision
+variableb·r, where b ∈{ 0,1} andr ∈ R, is replaced by a new
+variabler′∈ R, and the following constraints are included:
+b·rmin ≤ r′,r −rmax ·(1−b) ≤ r′
+b·rmax ≥ r′,r −rmin ·(1−b) ≥ r′ (17)
+wherermin andrmax are the lower and upper limits, respectively,
+of the real variable r. For the sake of brevity, the complete set
+of equations after linearization is not shown here, but can be
+accessed in the online version of our code (see Section VII).
+V. H EURISTIC PLANNER
+The problem posed is NP-hard, as proved in Section III-A.
+Therefore, solving an optimal formulation, such as that pre-
+sented in Section IV becomes computationally intractable as the
+number of robots and tasks involved increases. In this section, we
+propose a heuristic solver to ﬁnd approximate solutions in such
+a way that 1) the plans comply with all problem constraints as
+formulated in SectionIV; and 2) they can be computed efﬁciently
+enough to operate in real time.
+There are problem-speciﬁc heuristics for MRTA scenarios
+similar to ours, in which they build an initial valid solution
+and then iterate over it, applying operations to improve it, e.g.,
+merging independent tours into a single tour to save costs [2],o r
+creating new solutions by removing random robots or tasks and
+rearranging them [54]. Given the complexity of our constraints,
+such a strategy would be hard to follow in our problem, as even
+minor operations may yield solutions that are not valid anymore:
+our time coordination constraints cannot always be ﬁxed by
+adding recharges and/or adjusting waiting times. Another ap-
+proach is to use metaheuristic algorithms, such as genetic [37],
+simulated annealing [40], and LKH, which is a widely used
+heuristic to solve variants of TSP [27], [31]. The issue is that
+those approaches work more poorly in complex problems with
+large search space, struggling to ﬁnd good solutions in rea-
+sonable time. Therefore, we propose a new heuristic algorithm
+leveraging properties of the problem, in which tasks are ordered
+following certain criteria and then assigned to robot coalitions.
+Algorithm 1 summarizes our heuristic solver, which receives
+the set of robots R and tasks T and returns a list Q with
+the queue of tasks assigned to each robot. First, the algorithm
+decides the coalition size for each task ( n
+r
+t ) and the number of
+fragments into which it will be divided (nf
+t ). This is done calling
+procedure EstimateFragments (Algorithm 3), which will
+be explained later. Then, after initializing the robot queues, a
+list T with all task fragments to be allocated is created (lines
+3–8). For each fragmentable task t in T , nf
+t equal fragments
+are repeated and added to T (procedure Repelem), as each
+fragment will be allocated to a robot coalition independently.
+7The same linearization is used in the case of integer variables.
+CALVO AND CAPITÁN: HETEROGENEOUS MULTIROBOT TASK ALLOCA TION FOR LONG-ENDURANCE MISSIONS IN DYNAMIC SCENARIOS 6503
+Algorithm 1: HEURISTICPLANNER (R,T ).
+1: {nr
+t,n f
+t ,f t}t∈T ← EstimateFragments(R,T )
+2: forr in R do Q[r] ←∅ ⊿Initialize task queues
+3:T← ∅
+4: fort in T do
+5: ift is nondecomposable or relayable then
+6: T .add(t)
+7: else
+8: T .add(Repelem(t,n f
+t ))
+9: whileT ⁄= ∅ do
+10: Z ← ComputeMakespan()
+11: fort in T do ⊿Best coalition for each task
+12: {Rt,M R,ΔZ,ΔT w}← SelRobots(R,t,Z )
+13: t ← Sort(T ).pop() ⊿Allocate priority task
+14: forr in Rt do
+15: Q[r].addTaskToQueue(t,M R[r,t],T f
+t )
+16: returnQ
+Nondecomposable and relayable tasks are included as a single
+element, as they will be allocated to a coalition as a whole. In
+each iteration of the main loop (lines 9–15), an element of T is
+allocated until the list is empty. Given all task assignments so far,
+the current makespan Z of the plan is computed, and for each
+remaining task t in T , the best coalition is determined calling
+procedure SelRobots (lines 11–12). This procedure will be
+detailed later (Algorithm 2) and it returns the set of robots Rt
+in the best coalition selected for the task, a matrix MR with
+binary ﬂags indicating whether the robots need or do not need
+to include a prerecharge to execute the task, and the increase
+in the makespan ΔZ and in the waiting time ΔT
+w introduced
+when assigning the selected coalition to the task. Once the best
+coalitions are computed for all remaining tasks, these tasks are
+sorted and the one with top priority is extracted (line 13). Tasks
+are ordered lexicographically according to several criteria:
+1) tasks that are close to their deadline T
+max
+t , giving priority
+to those that if not assigned now, would exceed their
+deadline;
+2) tasks whose selected coalition introduces less ΔZ;
+3) tasks whose selected coalition introduces less ΔT w;
+4) tasks with higher execution time ( T e
+t /nf
+t );
+5) tasks with a higher nr
+t/nc
+t
+proportion, i.e., their coalition
+size with respect to the number of compatible robots for
+t h et a s k(nc
+t );
+6) tasks with less displacement time ( T d
+t ).
+The task with top priority is allocated to its selected coalition
+using procedure addTaskToQueue (lines 14–15), which adds
+task t to the queue of robot r, including a prerecharge task
+if MR[r,t]= =1 and using T f
+t (calculated in SelRobots)
+as coordination time to compute the waiting time. These task
+allocation heuristics are based on the optimization problem
+formulated in (15): the task assignment order (line 13) follows
+similar optimization criteria, and robot coalition selection aims
+to minimize mission makespan. Note that the objective function
+in (15) cannot be directly used for task ordering, as it requires
+adaptation for ST scoring.
+Algorithm 2 receives the set of robotsR and the makespanZ
+produced by the current robots’ task queues, and selects the best
+robot coalition for task t. The algorithm selects the compatible
+robots that ﬁnish their task queue earliest, ensuring that the
+Algorithm 2: SELROBOTS(R,t,Z ).
+1: Rc ← GetAvailableRobots()
+2: forr in Rc do
+3: MR[r,t] ← 1 if a prerecharge is needed, 0 otherwise
+4: T f
+r ← robot’s ﬁnish time afterMR[r,t] andt
+5: Rt ← Sort(Rc).get(nr
+t ) ⊿Pick earliest nr
+t robots
+6: T f
+t ← maxr∈Rt T f
+r ⊿Task coordination time
+7: changed ← True
+8: whilechanged do
+9: changed ← False
+10: forr in Rt do
+11: T w
+r ← waiting time for robot r according to T f
+t
+12: MR[r,t] ← prerecharge ﬂag including T w
+r
+13: T f
+r ← robot’s ﬁnish time consideringMR[r,t]
+14: ˜Rt ← Sort(Rc).get(nr
+t ) ⊿Update robot selection
+15: if ˜Rt ⁄= Rt then
+16: Rt ← ˜Rt,T f
+t ← maxr∈Rt T f
+r
+17: changed ← True
+18: ifT f
+t >Z thenΔZ ← T f
+t −Z
+19: else ΔZ ← 0
+20:ΔT w ← ∑
+r∈Rt T w
+r
+21: returnRt,M R,ΔZ,ΔT w
+constraints in problem 15 are satisﬁed after each task allocation.
+First, Rc is the set of robots with compatible hardware 8 and
+enough maximum batteryBmax
+r to execute the task and go back to
+a recharging station (line 1). Second, for each compatible robot,
+it is determined whether a prerecharge task has to be included or
+not and, according to this, the ﬁnish time of the robot queue T f
+r
+after including task t is calculated (lines 2–4). Third, the com-
+patible robots are sorted according to their T f
+r and the coalition
+Rt is built selecting the earliest nr
+t robots (line 5). In order to
+execute the task in a coordinated manner, the coordination time
+T f
+t is computed; i.e., the time at which the latest selected robot
+will ﬁnish the task (line 6). The following procedure is then
+repeated iteratively (lines 8–17) until the selected coalition does
+not change, ensuring time coordination and battery constraints:
+add the required waiting time to coordinate the selected robots,
+recompute if any prerecharge is needed, reorder the compatible
+robots with the new ﬁnish queue times, and select the earliestn
+r
+t
+robots. Convergence is guaranteed because the set of compatible
+robots is ﬁnite. Once a prerecharge ﬂag is set for MR[r,t],i ti s
+not reset. In each iteration, either a prerecharge is added for a new
+robot, or the coalition remains unchanged. In the worst case, the
+loop terminates after all compatible robots have a prerecharge.
+Finally, once the ﬁnal coalition for taskt is selected, the increase
+in the makespan and the waiting time are computed, assuming
+that task assignment (lines 18–20).
+Algorithm 2 has a variation for the special case of relayable
+tasks that are fragmented. In that case, all the fragments belong-
+ing to that task are allocated as a whole, taking into account
+all the available compatible robots, instead of just picking the
+ﬁrst n
+r
+t (lines 5 and 14). All compatible robots are eligible for
+assignment to task fragments following the speciﬁc pattern in
+Fig. 4. This pattern satisﬁes battery and time coordination con-
+straints for relayable tasks, ensuring sufﬁcient robots are always
+8For the sake of simplicity, we assume that there are enough robots to execute
+the available tasks, otherwise the algorithm would return that there is no valid
+solution.
+6504 IEEE TRANSACTIONS ON ROBOTICS, VOL. 41, 2025
+Fig. 4. From top to bottom, the steps to build the robot allocation pattern for
+a reliable task. Example with ft =2 , nf
+t =7 , nc
+r =5 ,a n d nr
+t =3 .
+Algorithm 3: ESTIMA TEFRAGMENTS(R,T ).
+1: fort ∈T do
+2: ift is ﬁxed then ⊿Decide robots per task
+3: nr
+t = Nt
+4: else if t is variable or unspeciﬁed then
+5: nr
+t =1
+6: Rc ← GetCompatibleRobots(t)
+7: Bt ←
+minr∈Rc,t1∈ ˜T (Bmax
+r −Bmin
+r −2·max T d
+r,t1 ,t)
+8: ifT e
+t ≤ Bt or t is nondecomposable then
+9: nf
+t ← 1, ft ← 0
+10: else if t is fragmentable then
+11: nf
+t ←⌈T e
+t /Bt⌉,ft ← 0
+12: else ⊿Relayable tasks
+13: nc
+t = |Rc|, ne
+t = nc
+t −nr
+t
+14: cf ←⌈nr
+t/ne
+t
+⌉
+15: nf
+t ←⌈cf ·T e
+t /Bt⌉
+16: ft ←⌊Bt/(T e
+t /nf
+t )⌋
+17: return{nr
+t,n f
+t ,f t}t∈T
+available to perform relays while others recharge. The pattern
+is built with two key parameters computed in Algorithm 3;t h e
+number of fragments into which the task is divided nf
+t , and the
+pattern frequency ft, which indicates the number of fragments
+of task t to be assigned to the same robot before introducing a
+recharge operation.
+Algorithm 3 ﬁrst determines the coalition size for each task
+(lines 1–5); for simplicity, tasks with unspeciﬁed and variable
+coalition size are allocated to a single robot. Then, to estimate
+the number of fragments, it calculates the remaining battery
+capacity Bt for the compatible robot with the lowest capacity
+(lines 6–7), after accounting for the minimum safety margin and
+the maximum round-trip travel time to taskt. Nondecomposable
+tasks, or tasks whose execution time is shorter than Bt,a r e
+not fragmented (lines 8–9). Fragmentable tasks are split into
+fragments with duration shorter than Bt (lines 10–11), without
+the need to follow any speciﬁc pattern for recharges (ft =0 ). For
+relayable tasks, Bt and the number of excess compatible robots
+ne
+t are taken into account to compute nf
+t and ft (lines 12–16).9
+Depending on the number of excess robots available for relays,
+each robot may execute several consecutive fragments according
+to the allocation pattern in Fig.4.F i r s t ,ft consecutive fragments
+of the task are concatenated, followed by the corresponding
+recharge task, until a row with nf
+t slots is built. The same
+procedure is followed to create nc
+t rows, but shifting the pattern
+of each row one slot to the left [see Fig. 4(a)]. At this point,
+there may be columns with more than nr
+t task fragments. For
+those columns, the extra fragments are replaced by recharge
+tasks. To reduce robot displacements and save slots, the replaced
+fragments are chosen from those that are preceded or followed
+(in their rows) by a recharge task [see Fig. 4(b)]. After that,
+recharge tasks that are at the beginning or the end of a row
+can be removed and consecutive recharges merged in a single
+slot without modifying the relative positions of the remaining
+fragments [see Fig. 4(c)]. Although the pattern is originally built
+using all compatible robots n
+c
+t , after the above steps, there may
+be empty rows (i.e., unused compatible robots) that would be
+removed. Finally, the remaining rows are reordered according
+to their starting point [see Fig. 4(d)].
+In summary, the robot selection in Algorithm 2 differs for
+relayable tasks as follows. In line 5, instead of picking the
+ﬁrst n
+r
+t robots, the matrix pattern described above is built and
+a compatible robot is selected for each row. This is done by
+sorting robots according to their ﬁnish time ( T f
+r ) and matrix
+rows according to their initial time, so that robots with later ﬁnish
+time match rows that start later. After this, within the loop, the
+waiting times for each selected robot and the prerecharge ﬂags
+(in case the robot needs a recharge before starting its row) are
+recomputed until there are no more changes in the ﬁnal T
+f
+t ,b u t
+without varying the set of selected robots. More speciﬁcally, line
+14 becomes ˜T f
+t ← maxr∈Rt T f
+r , the condition of line 15 would
+be ˜T f
+t ⁄= T f
+t , and line 16 would just be T f
+t ← ˜T f
+t . Finally, note
+that in line 15 of Algorithm 1, for the case of a relayable task,
+procedure addTaskToQueue will add to each of the selected
+robots’ queues the corresponding row of the matrix pattern as
+a whole, including a prerecharge operation at the beginning if
+indicated by M
+R.
+VI. M ISSION REPLANNING AND EXECUTION
+In this work, we deal with dynamic scenarios where during the
+execution of the mission, the planning conditions may deviate
+from their initial states. For instance, a robot may become
+delayed or simply fail while performing its tasks, or new task
+requests could arrive during the mission. In these cases, the
+running plan may not be valid anymore, making a replanning
+9We assume sufﬁcient robots to execute all tasks. If no excess robots were
+available ( ne
+t =0 ), all compatible robots would have to execute the task in
+parallel, precluding relays.
+CALVO AND CAPITÁN: HETEROGENEOUS MULTIROBOT TASK ALLOCA TION FOR LONG-ENDURANCE MISSIONS IN DYNAMIC SCENARIOS 6505
+Fig. 5. System architecture for mission (re)planning and execution. The com-
+ponents related to task planning (top layer) run on a central station, whereas
+those in charge of task execution (bottom layer) are allocated on board each
+robot. Dashed lines depict feedback information and solid lines indicate action
+requests.
+procedure necessary to adapt to the new circumstances. We
+integrate our MRTA algorithms into a mission planning and
+execution framework that is robust to dynamic settings, allow-
+ing online replanning due to unexpected events. The system
+architecture, depicted in Fig. 5, was presented in our previous
+work [1]. The components are separated into two interleaved
+layers; one for mission (re)planning and another for mission
+execution.
+Mission planning (top layer in Fig. 5) is run in a central-
+ized manner; given the current state of the scenario (i.e., the
+pending tasks and the location and battery status of the avail-
+able robots), the planner computes an optimal plan for the
+team (Section V), deciding on the best task allocation. After
+this, each robot receives its plan, which consists of a schedule
+with its assigned tasks, and mission execution (bottom layer in
+Fig. 5) is run in a distributed fashion. Each robot runs its own
+behavior manager onboard, which is an executive component
+that, for each assigned task, extracts the task parameters and
+activates the low-level controller to handle execution from a
+robot control point of view. More speciﬁcally, each behavior
+manager implements a state machine encoded as a behavior tree
+(BT) [55], which monitors task outcomes (whether execution has
+ﬁnished successfully or not) and the robot state (whether it has
+failed or become delayed). If a robot failure is detected, the BT
+activates contingency actions (e.g., an emergency landing in the
+case of a UA V running out of battery) and reports the robot’s
+unavailability to the Monitor.
+10 In the absence of failures, the
+behavior manager activates the low-level controller, which takes
+care of navigational actions and collision avoidance so that the
+robot can execute its task. Note that in MR tasks, the low-level
+controllers involved may need to share additional information
+for robot coordination. Depending on the task being executed,
+different behaviors will be implemented in the low-level con-
+troller. For instance, an inspection task may require the robot to
+activate a camera and navigate through a series or waypoints,
+while a delivery task may involve pick-up and place actions.
+10In our implementation, failures are a robot running out of battery or losing
+connectivity due to a communication dropout, but other hardware issues could
+easily be accommodated.
+More details about the implementation of low-level controllers
+and BTs for a multi-UA V inspection application can be consulted
+in our previous work [1].
+The MR plan execution is centrally supervised by themonitor
+component at all times. This component receives feedback from
+the behavior managers indicating task/robot failures or delays.
+The monitor also receives an input signal with new incoming
+tasks in the scenario.
+11 In case of a robot failure, if the running
+plan remains valid (i.e., satisﬁes all problem constraints in
+Section IV), no action is taken. This can occur if the robot
+has no assigned tasks or belongs to a robot coalition without
+a ﬁxed size (soft constraint). In the case of a robot delay, the
+remaining plan may no longer comply with the problem con-
+straints regarding battery life or time coordination, and a repair
+operation is attempted to adapt robot schedules and maintain
+all constraints. Thus, a new whole plan is only required in the
+following circumstances:
+1) the arrival of new tasks;
+2) a robot failure leading to an invalid plan;
+3) an unsuccessful plan repair operation.
+The monitor carries out this replanning for all pending tasks
+and available robots using the planner module (see Section V).
+Tasks already in progress are not interrupted and reallocated
+unless their coalition size becomes insufﬁcient for completion.
+A. Plan Repair
+During plan execution, every time a robot ﬁnishes a task, we
+check whether it is delayed; that is, whether the robot will reach
+the starting position of its next allocated task at a different time
+instant than originally planned. This could happen because the
+robot took longer (or less time) than expected while performing
+the task, or because it ended up in a different position than
+expected, with the consequent variation in its arrival time to its
+next task. However, sometimes the whole plan could be repaired
+by delaying the remaining tasks and still be a valid plan. The
+core idea is the following: the robot could accommodate its
+delay through tasks with associated waiting time by reducing
+their waiting times accordingly. Thus, for each future task, we
+accommodate part of the robot delay by updating its waiting time
+and delaying the corresponding start/ﬁnish task time instants
+accordingly. Then, we propagate the remaining delay forward
+throughout the rest of the plan (see Algorithm 4). Any time this
+delay propagation reaches a time coordination point; i.e., an MR
+task with several robots starting synchronously or a task where
+a relay is carried out, all the robots involved also need to update
+their schedules to comply with time coordination constraints
+(see Section IV -D). Algorithms 5 and 6 are in charge of updating
+robots’ plans to resolve the two previous time coordination cases.
+After a time coordination point is resolved, the delay by one of
+the robots involved may affect others’ plans, and then those
+robots will also need to propagate forward their new delayed
+plans. The whole repair procedure is carried out by Algorithm7,
+which sweeps the timeline of the MR plan propagating delayed
+robot schedules, resolving coordination points as they appear.
+The primary objective is to restore plan validity without task re-
+assignment, and this is done by minimizing schedule extensions
+(i.e., optimizing makespan).
+11Note that a task that is not successfully ﬁnished can be considered as a new
+task to be reallocated again in future plans.
+6506 IEEE TRANSACTIONS ON ROBOTICS, VOL. 41, 2025
+Algorithm 4: UPDA TETIMEVARS (r,s f,¯s,Δt,Rd).
+1: if ¯s[r] ≥ sf then return
+2: s ← ¯s[r], δ ← Δt[r]
+3: whiles<s f andδ> 0 do
+4: s ← s+1
+5: ifT w
+r,s > 0 then
+6: ifT w
+r,s >δ then
+7: T w
+r,s ← T w
+r,s −δ
+8: δ ← 0
+9: else
+10: δ ← δ −T w
+r,s
+11: T w
+r,s ← 0
+12: T f
+r,s ← T f
+r,s +δ
+13: ¯s[r] ← sf ,Δt[r] ← δ
+14: ifΔt[r]= =0 then Rd.remove(r)
+Algorithm 5: UPDA TESYNCHTASK (A+,¯s,Δt,Rd).
+1: for(r,s) in A+ do
+2: δ ← Δt[r]
+3: ifr ∈R d then
+4: ifT w
+r,s >δ then ⊿Accommodate delay fully
+5: T w
+r,s ← T w
+r,s −δ
+6: δ ← 0
+7: else ⊿Push forward task end
+8: δ ← δ −T w
+r,s
+9: T w
+r,s ← 0
+10: T f
+r,s ← T f
+r,s +δ
+11: ¯s[r] ← s,Δt[r] ← δ
+12:(rmax,s max) ← arg max(r,s)∈A+ Δt[r]
+13:δmax ← Δt[rmax]
+14: ifδmax == 0then ⊿All robots synchronized
+15: for(r,s) inA+ do Rd.remove(r)
+16: else
+17: for(r,s) inA+ do ⊿Synch all robots with latest
+18: δ ← Δt[r]
+19: T w
+r,s ← T w
+r,s +δmax −δ
+20: T f
+r,s ← T f
+r,s +δmax −δ
+21: Δt[r] ← δmax
+22: Rd.add(r)
+Algorithm 4 receives as input a robotr and updates its sched-
+ule, propagating its delay up to a given slotsf . The algorithm also
+receives three global variables that may have to be updated at any
+time: ¯s is a vector that indicates the latest slot updated so far for
+each robot’s schedule,Δt is a vector with the current delay for
+each robot’s schedule, andR
+d is a list that contains all the robots
+with delayed plans at each moment. If the robot plan still has
+slots to be updated (line 1), the algorithm iterates over those slots
+until the target slotsf is reached or there is no remaining delay to
+consume (lines 3–12). If a slot has waiting time assigned, this is
+reduced to accommodate the remaining delay either completely
+(lines 6–8) or partially (lines 9–11). The ﬁnal time for the task
+allocated to the slot is correspondingly delayed (line 12). Before
+ﬁnishing, the latest slot processed for the robot schedule and its
+current delay are updated (line 13). If the robot has managed to
+accommodate all its delay within its waiting periods, its plan is
+no longer delayed and it is removed from the list R
+d (line 14).
+Algorithm 6: UPDA TERELA YTASK (−A,A+,¯s,Δt,Rd).
+1: for(r,s) inA+ do
+2: δ ← Δt[r]
+3: ifr ∈R d then
+4: ifT w
+r,s >δ then ⊿Accommodate delay fully
+5: T w
+r,s ← T w
+r,s −δ
+6: δ ← 0
+7: else ⊿Push forward task end
+8: δ ← δ −T w
+r,s
+9: T w
+r,s ← 0
+10: T f
+r,s ← T f
+r,s +δ
+11: ¯s[r] ← s, Δt[r] ← δ
+12:(rmax,s max) ← arg max(r,s)∈−A,A+ Δt[r]
+13:δmax ← Δt[rmax]
+14: ifδmax == 0then
+15: for(r,s) in A+ do ⊿All robots synchronized
+16: Rd.remove(r)
+17: else
+18: for(r,s) in −A,A+ do ⊿Synch all robots with latest
+19: δ ← Δt[r]
+20: T w
+r,s ← T w
+r,s +δmax −δ
+21: T f
+r,s ← T f
+r,s +δmax −δ
+22: Δt[r] ← δmax
+23: Rd.add(r)
+Algorithm 5 updates the schedules of a set of robots involved
+in the ﬁrst type of coordination point; i.e., a coalition that
+has to start an MR task synchronously. The algorithm receives
+A
++ as input, which is a list of pairs (r,s) indicating 1) the
+identiﬁers of the robots involved in the synchronization, and
+2) the corresponding slots within their schedules in which the
+coordinated task occurs. All schedules are assumed to be updated
+(delay propagation) up to their previous slot s−1, so only the
+time variables corresponding to the slots where the coordination
+takes place need to be updated. First, all delayed robots in the
+coalition are checked (lines 1–11) to accommodate their delays
+within their waiting period either completely (lines 4–6) or
+partially (lines 7–10). Then, the robot with maximum remaining
+delay in the coalition is computed (lines 12–13). If all delays
+have been fully accommodated, the whole coalition is already
+synchronized (lines 14–15). Otherwise, there are still robots
+with remaining delay that will push the end of the MR task
+forward, and since all must synchronize their ﬁnish times, the
+robot with maximum delay is taken as reference. All the other
+robots increase their waiting time (and their task ﬁnish time) to
+match the latest robot (lines 16–22).
+Algorithm 6 updates the schedules of a set of robots involved
+in the second type of coordination point, a coalition (or single
+robot) that is relayed by another coalition (or single robot). This
+time the algorithm receives as input two lists,
+−A and A+:t h e
+former contains pairs (r,s) with the robots being relayed and
+the slots that are relayed in their corresponding schedules; the
+latter contains pairs (r,s) with the relaying robots and their
+relaying slots. All schedules are assumed to be updated (delay
+propagation) up to the slot previous to the relay; note that this iss
+for robots in
+−A ands−1 for robots inA+. The algorithm starts
+accommodating all possible delay for the robots in A+ within
+their waiting period (lines 1–11), as was done in Algorithm 5.
+Then, the robot with maximum remaining delay from the relayed
+CALVO AND CAPITÁN: HETEROGENEOUS MULTIROBOT TASK ALLOCA TION FOR LONG-ENDURANCE MISSIONS IN DYNAMIC SCENARIOS 6507
+Fig. 6. Example of Algorithm 6 repairing the schedules of a relay point. Top
+view: originally, robots r1 and r2 (−A) execute an MR task which is relayed by
+robots r3 and r4 (A+) at the time line in green. Dashed red squares represent
+the delay for each robot schedule. Middle view: ﬁrst, the relays of robots r3 and
+r4 are partially accommodated by reducing waiting times; relays of robots in−A
+(r1 and r2) were already propagated before Algorithm 6. The maximum delay
+(r1) determines the new relay time instant (dashed red vertical line). Bottom
+view: robots synchronize with the new relay instant by extending their waiting
+periods (red patterns).
+and relaying sets is computed (lines 12–13). In the case of a relay,
+both the relayed and relaying robots must be time coordinated,
+and the latest robot will determine the new relay time instant. If
+all delays become fully accommodated, the coordination point
+is already solved (lines 14–16). Otherwise, the relay instant is
+put off according to the maximum delay, and all robots involved
+increase their waiting time (and their task ﬁnish time) to match
+the latest robot (lines 18–23). An example of this procedure is
+depicted in Fig. 6.
+Algorithm 7 attempts to repair an MR plan given that one of
+the robotsr
+′has ﬁnished its assigned task att0 and has a delayδ′
+before its next scheduled task. The algorithm receives as input
+the vector ¯s, which indicates the current running slot for each
+robot’s schedule. If the delay is negative, the robot is ahead of
+its schedule and a waiting period for its next slot is added for
+synchronization (lines 1–4). Otherwise, after initializing vari-
+ables (lines 5–8), a time ordered list C with all the coordination
+Algorithm 7: REPAIRPLANS (t0,r′,δ′,¯s).
+1: ifδ′<=0 then
+2: s′← ¯s[r′], T w
+r′,s′+1 ← T w
+r′,s′+1 +|δ′|
+3: return True
+4: else
+5: Rd ←∅ , Rd.add(r′)
+6: forr in R do
+7: Δt[r] ← 0
+8: Δt[r′] ← δ′
+9: C← GetOrderedCoordinationTasks(t0)
+10: for(−A,A+) in C do
+11: for(r,s) in A+ do
+12: UpdateTimeVars(r,s −1,¯s,Δt,Rd)
+13: if−A ⁄= ∅ then
+14: for(r,s) in−A do
+15: UpdateTimeVars(r,s, ¯s,Δt,Rd)
+16: UpdateRelayTask(−A,A+,¯s,Δt,Rd)
+17: else
+18: UpdateSynchTask(A+,¯s,Δt,Rd)
+19: ifRd == ∅ then break
+20: forr in Rd do
+21: UpdateTimeVars(r,|S|,¯s,Δt,Rd)
+22: valid ← True
+23: forr in R do
+24: valid ← valid ∩ checkPlanBattery(r)
+25: returnvalid
+points in the MR schedule starting at t0 is computed (line 9).
+Each item inC is a pair(−A,A+) with all the information on the
+robots involved in the corresponding coordination point. The
+algorithm synchronizes robots’ schedules for all coordination
+points until there are no more delayed robots (lines 10–19).
+Depending on the type of coordination point, Algorithm 5 or
+Algorithm 6 is used. Before each coordination point is synchro-
+nized, Algorithm 4 propagates delays in the schedules of the
+involved robots up to the slot preceding the coordination point.
+Given the deﬁnitions ofA
++ and−A, this will be up tosf = s−1
+or sf = s, respectively. Finally, after all coordination points
+are swept, all robots’ schedules are delay propagated up to
+their last slot ( sf = |S|) and the resulting plans are checked
+for battery compliance (lines 20–24). If the repaired plan does
+not comply with battery constraints, the algorithms reports a
+failure.
+VII. E XPERIMENTAL RESULTS
+This section presents experimental results that evaluate our
+methods. Given the use case in SectionVII-A and the experimen-
+tal setup in Section VII-B, we present numerical experiments
+(Sections VII-C and VII-D) with a twofold objective: 1) evaluate
+optimal solutions and demonstrate the potential of our MILP
+formulation to solve more complex scenarios, due to our higher
+degree of freedom in terms of task decomposability and coalition
+size ﬂexibility; and 2) assess our heuristic planner performance
+and test its scalability for larger scenarios. Furthermore, we
+present a realistic simulation to demonstrate the feasibility of
+our approach in real applications and show the advantages of our
+replanning framework in dynamic scenarios (see SectionVII-E).
+6508 IEEE TRANSACTIONS ON ROBOTICS, VOL. 41, 2025
+Fig. 7. Photovoltaic solar plant in Evora (Portugal). A single recharging station
+is located in the middle (circle mark).
+A. Use Case Description
+We deﬁne a use case taking as inspiration our running example
+in Section III: a team of UA Vs that provides support to human
+workers during inspection and maintenance operations in a solar
+energy plant. We used an actual photovoltaic facility (see Fig.7)
+of size approximately 200 × 300 m located in Evora, Portugal.
+The UA Vs can help with three types of tasks:
+1) inspection, in which they capture visual or thermal images
+of a given remote area with solar panels;
+2) monitoring, in which they provide the supervising team
+with a view of a human worker operating on the plant, in
+order to assess his/her safety;
+3) delivery, in which they transport and hand out items, such
+as tools or parts to a human worker.
+According to our categorization in Section III, inspection
+tasks are fragmentable (the target area could be divided), mon-
+itoring tasks are relayable (a continuous videostream of the
+worker is required in risky operations), and delivery tasks are
+nondecomposable. The team is heterogeneous: depending on its
+payload, each UA V can conduct certain tasks. Speciﬁc cameras
+enable inspection and monitoring tasks, while a load transporta-
+tion system enables delivery tasks. The maximum ﬂight time
+for each vehicle is Bmax
+r =2 0 minutes and its traveling speed
+vr =5 m/s. The recharging station can be used by multiple
+vehicles simultaneously and is located at the central point of
+the plant. Each recharge operation takes T e
+tR =5 minutes.
+B. Experimental Setup
+We implemented our code in MA TLAB R2022b 12 using
+Gurobi to compute exact optimal solutions. All experiments
+were run with an Intel 8-core i7-7700 CPU at 3.60 GHz with
+15.6 GB RAM. The methods were evaluated over a set of random
+scenarios based on the use case in Section VII-A.U A V ss t a r ta t
+random positions within the solar plant, with an initial consumed
+battery time Br,0 uniformly sampled from 0, 0.25, or 0.5 of the
+total ﬂight time Bmax
+r . Tasks are also placed at random positions
+with a deadline T max
+t = 100 min and an execution time T e
+t
+uniformly sampled from 0.35, 1.25, or 2.5 of the total ﬂight
+time (this duration is set to 0.35·Bmax
+r for tasks that cannot
+be fragmented, so they do not last longer than the total ﬂight
+time). Each task has a decomposability uniformly sampled from
+{nondecomposable, fragmentable, relayable} and a coalition
+size ﬂexibility sampled from {ﬁxed, variable, unspeciﬁed}. The
+speciﬁed coalition size Nt is sampled from 1 to the maximum
+12Code at: [Online]. Available: https://github.com/multirobot-use/mrta_
+heuristic_planner.
+number of compatible UA Vs. The hardware capabilities for each
+UA V are uniformly sampled from three different types. Given the
+set of sampled UA V types in the team, each task is then randomly
+set as compatible or incompatible (with a 0.5 probability) for
+each of these hardware types, ensuring compatibility with at
+least one type.
+In order to evaluate the multirobot plans for each method in
+a given set of scenarios, we deﬁned the following metrics.
+1) Success rate (SR): Percentage of scenarios for which a
+solution is found.
+2) Recharge rate (RR): Percentage of the solved scenarios
+that have at least one recharge.
+3) Number of Recharges (NRs): Total NR in a solution.
+4) Objective function value (f ): V alue of the function (11)
+for a solution. This is a cost to be minimized.
+5) Makespan (Z): Makespan, time by which the latest robot
+ﬁnishes its plan.
+6) Waiting time rate (WTR): Percentage of time each robot
+is waiting out of its whole plan duration, averaged over
+all robots in the plan.
+7) Coalition size deviation (CSD): Relative CSD for multi-
+robot tasksVt/Nt, averaged for all tasks in the plan with
+a variable coalition size.
+8) Consumed battery time (CBT): Average battery time
+consumed per robot in a plan, taking into account that
+the execution and waiting time during recharge tasks do
+not consume battery time.
+9) Workload distribution (WD): Percentage of time each
+robot’s plan lasts relative to the whole mission duration
+(makespan), averaged over all robots in the plan. If the
+work were equally distributed, all robots would ﬁnish
+simultaneously at the makespan, and this metric would
+be 100%. Therefore, the higher its value the better.
+10) Computation time (CT): Time needed to compute a so-
+lution.
+C. Small-Scale Scenarios
+In this section, we show numerical experiments to demon-
+strate the potential of our MILP formulation. We prove that by
+including features, such as task decomposition and coalition size
+ﬂexibility, our approach ﬁnds feasible solutions for scenarios
+that would be unsolvable otherwise. We evaluate the quality of
+optimal solutions when certain features are removed from the
+formulation, in order to analyze their inﬂuence on the results.
+Finally, we compare the performance of our heuristic solver (see
+Section V) against exact optimal solutions.
+We generated 100 random scenarios following the methodol-
+ogy explained in Section VII-B. Since the number of variables
+in our MILP formulation increases signiﬁcantly with the size of
+the MR team and the number of tasks in the mission, numerical
+solvers, such as Gurobi do not scale with large scenarios. There-
+fore, we limited this ﬁrst experiment to small-scale scenarios
+where Gurobi was able to ﬁnd solutions without running out of
+memory. In particular, the scenarios created had missions with
+2 tasks (plus the required recharge tasks) and 3 available UA Vs.
+Due to the size of the scenarios, we did not limit the hardware
+capabilities of the robots, so all UA Vs were able to execute any
+of the tasks. Although small, these scenarios exhibit enough
+complexity to yield plans with a rich variety of features, such as
+recharges, task fragmentation/relays, and MR synchronization.
+CALVO AND CAPITÁN: HETEROGENEOUS MULTIROBOT TASK ALLOCA TION FOR LONG-ENDURANCE MISSIONS IN DYNAMIC SCENARIOS 6509
+Fig. 8. Resulting metrics for the small-scale scenarios. Mean and standard deviation are shown for the scenarios that are solvable with the ﬁve approa ches being
+compared.
+Therefore, we believe they can be useful for drawing some
+conclusions about the characteristics of optimal solutions. 13
+We compared different approaches to solve the scenarios as
+follows.
+1) Complete: Optimal plans for our complete MILP formu-
+lation (15).
+2) No-fragmentation: Optimal plans for our MILP formula-
+tion considering all tasks nondecomposable.
+3) Fixed-coalition-size: Optimal plans for our MILP for-
+mulation considering all tasks with ﬁxed coalition size
+(undeﬁned tasks are always assigned to a single robot in
+this variant).
+4) Incomplete: Optimal plans for our MILP formulation com-
+bining ﬁxed-coalition-size and no-fragmentation variants.
+5) Heuristic: Plans obtained with our heuristic solver.
+Fig. 8 shows the results. Makespan, WTR, and CSD are
+explicitly minimized in our MILP formulation through the
+objective function f . The complete variant outperforms the
+Incomplete one across all these metrics except for CSD, which
+is inherently zero in variants with ﬁxed coalition sizes. The
+complete variant also performs better than the incomplete variant
+for metrics not explicitly optimized, namely CBT and WD. This
+demonstrates that leveraging task fragmentation and coalition
+size ﬂexibility improves plan quality for solvable scenarios. Sim-
+ilar results are observed for the complete and no-fragmentation
+variants, and for the ﬁxed-coalition-size and incomplete variants,
+respectively. This might suggest that fragmentation offers no
+advantage. However, the SR was 100% for the complete variant,
+compared to 37% for no-fragmentation, 92% for ﬁxed-coalition-
+size, 36% for incomplete, and 100% for heuristic. This indicates
+that fragmentation signiﬁcantly increases the number of solv-
+able scenarios. The high SR for ﬁxed-coalition-size stems from
+our generation of scenarios predominantly solvable with ﬁxed
+coalition sizes. Note that the metrics in Fig.8 are calculated only
+for scenarios solvable by all approaches, meaning fragmentation
+13Video with illustrative examples at: [Online]. Available: https://youtu.be/
+a6zXwTZKFR4
+was not strictly required. Nonetheless, fragmentation may still
+be beneﬁcial even when not mandatory, as it allows task execu-
+tion at different times, potentially improving battery utilization
+and reducing recharges. Such situations did not arise in these
+small-scale scenarios. Regarding recharges, the complete and
+no-fragmentation variants had an RR of 5.56% with an average
+NR of 0.08 per scenario; ﬁxed-coalition-size and incomplete
+had RR of 16.67% and average NR of 0.28; and heuristic had
+RR of 5.56% and average NR of 0.06. This suggests that the
+complete version also achieves more efﬁcient solutions than
+the incomplete version by requiring fewer recharges, and the
+heuristic solver performs similarly to the complete version in
+terms of recharges.
+Overall, heuristic solutions show worse performance in terms
+of objective function value f , as expected. Nonetheless, the
+heuristic solver found the optimal solution (i.e., a value for
+f equal to the one in the complete solution) in a 25% of the
+scenarios. In addition, it is important to note that the heuristic
+approach performed as the complete in makespan, which is the
+most critical optimization criterion, and even outperformed the
+others in CBT and WTR.
+D. Scalability Test
+The average CTs for the small-scale scenarios were
+1450.656 s, 1.525 s, and 0.017 s, for the complete, incomplete,
+and heuristic approaches, respectively. This demonstrates the
+lack of scalability for optimally solving our complete MILP
+formulation, due to the large number of variables and constraints.
+Table II shows the number of variable and constraints, catego-
+rized by type, for a range of scenarios with increasing numbers
+of robots and tasks. The size of the MILP instances grows ex-
+ponentially, with a consistently signiﬁcant proportion of integer
+variables, which are known to impact scalability. Among the
+problem’s inherent variables and constraints, those related to
+time coordination are particularly numerous. This aligns with
+the understanding that the primary complexity stems from task
+fragmentation and MR coordination. However, the overhead
+6510 IEEE TRANSACTIONS ON ROBOTICS, VOL. 41, 2025
+TABLE II
+MILP FORMULA TIONSIZE AS THE NUMBER OF ROBOTS/TASKS (n/m)
+INCREASES
+associated with linearization also contributes substantially to the
+problem’s size. In summary, the results conﬁrm that the MILP
+formulation’s intractability is due to the large size of the resulting
+instances. Contrary to ours, sequence-based formulations use
+binary variables to indicate whether a task i follows a task j
+for a given shared resource, typically reducing the number of
+variables. However, the inherent complexity of our problem
+would still hinder scalability. For this reason, we opted not
+to pursue these alternative formulations, which are also less
+intuitive in our case. Our signiﬁcant overhead from linearization
+suggests that exploring nonlinear programming solvers could be
+a promising line of work. Nonetheless, this is beyond the scope
+of our current work. Given the problem’s complexity, scalability
+challenges would likely persist even with more efﬁcient exact
+solvers, reinforcing the need for heuristic solutions.
+Next, we test the scalability of our heuristic planner further.
+For this, we generated a set of random scenarios as described in
+Section VII-B, gradually increasing the size of the problem in
+terms of number of tasks and UA Vs, running 100 scenarios per
+problem size. We then solved each scenario with several variants
+of the heuristic planner as follows.
+1) Heuristic: Our heuristic planner as described in SectionV.
+2) Random: A version of our heuristic planner where the
+order in which tasks are allocated and the selection of
+robots are decided randomly.
+3) Pseudorandom: A pseudorandom version where only the
+task allocation order is computed randomly, while robot
+selection is carried out using Algorithm 2.
+4) Greedy: A simpler greedy heuristic algorithm used as a
+baseline.
+It is inspired by the way that food buffets work. A predeﬁned
+ﬁxed order is used to build two queues: one with tasks (according
+to their execution time in descending order) and one with robots
+(in numerical order). Then, the robots iteratively take as many
+tasks as they can handle before going to recharge and returning
+to the end of the queue, until all tasks are covered. Note that the
+four variants take care of coordination of the robot coalitions
+and of complying with all problem constraints, ensuring that all
+ﬁnal solutions are valid plans.
+Fig. 9. Evolution of CT (solid lines) and the objective function value f
+(dashed lines) for heuristic variants tested as the size of the scenarios (number
+of robots/tasks) increases. Average values for 100 scenarios are shown. Both
+metrics are shown on a logarithmic scale.
+Fig. 9 shows the results of the scalability tests, both in terms
+of CT and quality of the solutions. The quality of solutions is
+measured with the value of the objective function f ;t h el o w e r ,
+the better. From this perspective, our heuristic algorithm outper-
+forms the others, with the improvement over the other variants
+increasing exponentially as the size of the scenario grows.
+The Random version gives the worst results, followed by the
+Greedy version, which demonstrates the importance of applying
+am o r eintelligent heuristic for such a highly constrained prob-
+lem. Moreover, although the pseudorandom version performs
+better than random and greedy, it still produces signiﬁcantly
+worse solutions than our heuristic approach, which shows the
+importance of task allocation order. In terms of CT, our heuristic
+approach scales worse than the other variants, which show
+similar performance. Recall that the heuristic variant recomputes
+the best robot coalition for each task at each iteration, and this
+robot selection also implies iterating over several coalitions until
+the best one is chosen. Therefore, the increase in CT with the
+size of the scenario was expected. The other variants tested
+avoid some of this computation, as they simply pick tasks or
+robots randomly (random and pseudorandom) or according to
+a predeﬁned order (Greedy). Overall, although the CT increase
+is exponential for our heuristic solver, the results show that we
+can handle very large scenarios, with a computational load that
+is reasonable for real-time planning (on the order of minutes in
+the worst case).
+E. Plan Repair and Replanning
+In this section, we evaluate our whole mission replanning and
+execution framework in dynamic scenarios through a realistic
+simulation setup. The objective is twofold: we assess the perfor-
+mance of our algorithms for plan repair and replanning under
+robot delays and failures, and we show the feasibility of our
+approach for real applications.
+In a ﬁrst experiment, we assessed the effectiveness of our plan
+repair and replanning methods using random trials involving
+unexpected robot delays. We generated 200 random scenarios
+(as described in Section VII-B), each containing 50 tasks and
+10 UA Vs. For each scenario, we computed an initial plan using
+Algorithm 1 and then randomly selected a UA V from the plan
+and a task from its schedule to apply a delay. We generated
+400 trials in total: the ﬁrst 200 trials involved sampling short
+delays uniformly distributed between 30 s, 1 min, and 2 min
+CALVO AND CAPITÁN: HETEROGENEOUS MULTIROBOT TASK ALLOCA TION FOR LONG-ENDURANCE MISSIONS IN DYNAMIC SCENARIOS 6511
+TABLE III
+PLAN REPAIR AND REPLANNING PERFORMANCE
+for the previously computed plans; the other 200 trials involved
+sampling long delays uniformly distributed between 10, 15, and
+20 min. Long delays were only applied to recharge tasks, as
+such delays would otherwise render the UA V inoperative due to
+battery depletion.
+Table III compares three approaches for handling delayed
+plans: repairing them with Algorithm 7, replanning from the
+current state with Algorithm 1, or our approach, replanning in
+case repairing fails. 14 The repair approach exhibits a high SR,
+which decreases with longer delays, as expected. Replanning
+may fail when the delayed robots are depleted of battery and
+insufﬁcient robots remain to complete the mission. For the repair
+approach, short delays minimally affect performance metrics
+due to the algorithm’s ability to distribute the delay across ex-
+isting waiting times. The impact is more pronounced for longer
+delays, primarily affecting the WTR (and consequently, f ), as
+these delays exceed the initial waiting times and necessitate
+additional waiting periods. CBT remains unaffected because
+waiting times are strategically placed during recharges whenever
+possible. WD is also minimally impacted due to inter-robot
+synchronization; when one queue is delayed, others adjust pro-
+portionally, maintaining balanced WD. For replanning, results
+are similar for both short and long delays, as this approach does
+not explicitly accommodate existing delays. WTR (and conse-
+quently,f ) is signiﬁcantly worse after replanning. The heuristic
+planner disregards the initial plan and generates a new one
+from the delayed state, often leading to substantially different
+solutions. These results demonstrate that combining repair with
+replanning, rather than simply recomputing a new plan, leads to
+a higher SR and more effective handling of robot delays in terms
+of performance. Moreover, in real-world operations, repairing
+a plan offers practical beneﬁts by avoiding task reassignment:
+once a multi-UA V ﬂight plan is established, operators typically
+prefer adjusting waiting times, as reassignment requires new
+ﬂight plans and complicates safety checks.
+Finally, we ran an experiment to demonstrate the replanning
+feature through an illustrative example. For that, we imple-
+mented our system architecture for mission replanning and
+execution (see Section VI) integrated with ROS, and we created
+a Gazebo simulation of the Evora solar plant for our use case (see
+Section VII-A).15 The UA Vs were modeled using a software-in-
+the-loop tool to simulate the PX4 autopilot ﬁrmware. This setup
+allowed us to reproduce real application scenarios quite closely,
+in which the system could not distinguish between simulated
+or actual UA Vs. Our MA TLAB code for mission planning was
+integrated into the ROS architecture using the ROS Toolbox for
+MA TLAB.16 Using ROS Actionlib, we created an action server
+14Video with illustrative examples at: [Online]. Available: https://youtu.be/
+a6zXwTZKFR4
+15Code at: [Online]. Available: https://github.com/multirobot-use/mrta_
+execution_architecture.
+16[Online]. Available: https://www.mathworks.com/products/ros.html
+Fig. 10. Simulation of the solar plant use case. Orange, green, and red areas
+represent monitoring and inspection zones.
+in MA TLAB that receives planning requests from a high-level
+planner module in ROS and communicates the resulting plans
+to the UA Vs. In the experiment, a team with 3 available UA Vs
+was assigned a mission with 3 tasks: 2 inspection tasks, and 1
+monitoring task. While executing the initial plan, computed by
+the heuristic planner, where each robot was assigned one task,
+we simulated a failure in the UA V performing the monitoring
+task, which was then reassigned to one of the other UA Vs. Fig.10
+shows a screenshot of the simulation. 17
+VIII. C ONCLUSION
+In this article, we have presented a planning framework for
+heterogeneous MRTA in long-endurance missions for dynamic
+scenarios. We have formulated an optimization problem as an
+MILP that integrates robot recharges, heterogeneous robot ca-
+pabilities, task fragmentation/relays, and time coordination for
+MR tasks. Our results demonstrate that the aggregation of such
+a diverse set of features can help us solve complex missions
+that are relevant to a wide spectrum of MR applications that
+would otherwise be unsolvable. To achieve better scalability for
+large scenarios and real-time planning performance, we have
+also proposed a heuristic solver for our MRTA problem and
+integrated it into a mission planning and execution architecture
+capable of repairing or recomputing plans online as unexpected
+circumstances arise. Our experimental results in a realistic use
+case for multi-UA V inspection demonstrate that as follows:
+1) the ﬂexibility introduced by our decomposable and vary-
+ing coalition size tasks enables us to improve the deﬁned
+performance metrics for the resulting plans;
+2) our heuristic solver can scale for large scenarios in terms
+of CT and outperform other similar variants in terms of
+efﬁcacy;
+3) our replanning method can repair plans for unexpected
+robot delays.
+It is important to highlight that the complexity of our MRTA
+problem makes it difﬁcult to ﬁnd an alternative planner for
+comparison in the state of the art. While we have discussed some
+related works in SectionII, we did not ﬁnd scalable solvers in the
+literature that can tackle problems integrating all our constraints
+simultaneously. Metaheuristic methods that can solve generic
+optimization problems, such as genetic algorithms and simulated
+annealing, could be an option, but the standard implementations
+of these methods do not exploit inherent problem properties to
+achieve better performance and do not scale when the number of
+17Full video available at: [Online]. Available:https://youtu.be/2hzP7LZRd0g
+6512 IEEE TRANSACTIONS ON ROBOTICS, VOL. 41, 2025
+variables in the formulation increases signiﬁcantly. For example,
+we have tried to solve the scenarios in Section VII-D with the
+genetic algorithm implemented in the MA TLAB optimization
+toolbox without success. An interesting direction for future
+work could be the design of a tailored metaheuristic algorithm
+that leverages particular features of the problem to improve
+efﬁciency in the search for possible solutions, and then use it
+for comparison. The exploration of more efﬁcient MILP formu-
+lations is another promising avenue for future work. Finally, we
+plan to conduct ﬁeld experiments with a real team of UA Vs
+performing inspection missions to demonstrate our planning
+framework, evaluating communication latency and overhead.
+R
+EFERENCES
+[1] A. Calvo, G. Silano, and J. Capitan, “Mission planning and execu-
+tion in heterogeneous teams of aerial robots supporting power line in-
+spection operations,” in Proc. Int. Conf. Unmanned Aircr . Syst. , 2022,
+pp. 1644–1649.
+[2] S. Agarwal and S. Akella, “Line coverage with multiple robots: Algorithms
+and experiments,” IEEE Trans. Robot., vol. 40, pp. 1664–1683, 2024.
+[3] B. A. Ferreira, T. Petrovi´ c, M. Orsag, J. R. Martı´nez-de Dios, and S. Bog-
+dan, “Distributed allocation and scheduling of tasks with cross-schedule
+dependencies for heterogeneous multi-robot teams,”IEEE Access, vol. 12,
+pp. 74327–74342, 2024.
+[4] K. Leahy et al., “Scalable and robust algorithms for task-based coordina-
+tion from high-level speciﬁcations (ScRA TCHeS),” IEEE Trans. Robot. ,
+vol. 38, no. 4, pp. 2516–2535, Aug. 2022.
+[5] E. Seraj, L. Chen, and M. C. Gombolay, “A hierarchical coordination
+framework for joint perception-action tasks in composite robot teams,”
+IEEE Trans. Robot., vol. 38, no. 1, pp. 139–158, Feb. 2022.
+[6] M. Krizmancic, B. Arbanas, T. Petrovic, F. Petric, and S. Bogdan, “Cooper-
+ative aerial-ground multi-robot system for automated construction tasks,”
+IEEE Robot. Autom. Lett. , vol. 5, no. 2, pp. 798–805, Apr. 2020.
+[7] A. J. Smith, G. Best, J. Y u, and G. A. Hollinger, “Real-time distributed non-
+myopic task selection for heterogeneous robotic teams,” Auton. Robots ,
+vol. 43, no. 3, pp. 789–811, 2019.
+[8] A. Calvo and J. Capitan, “Optimal task allocation for heterogeneous multi-
+robot teams with battery constraints,” in Proc. IEEE Int. Conf. Robot.
+Autom., 2024, pp. 7243–7249.
+[9] B. P . Gerkey and M. J. Matari´ c, “A formal analysis and taxonomy of
+task allocation in multi-robot systems,” Int. J. Robot. Res. , vol. 23, no. 9,
+pp. 939–954, 2004.
+[10] E. Nunes, M. Manner, H. Mitiche, and M. Gini, “A taxonomy for task
+allocation problems with temporal and ordering constraints,”Robot. Auton.
+Syst., vol. 90, pp. 55–70, 2017.
+[11] G. A. Korsah, A. Stentz, and M. B. Dias, “A comprehensive taxonomy
+for multi-robot task allocation,” Int. J. Robot. Res. , vol. 32, no. 12,
+pp. 1495–1512, 2013.
+[12] H.-L. Choi, L. Brunet, and J. P . How, “Consensus-based decentralized
+auctions for robust task allocation,” IEEE Trans. Robot. , vol. 25, no. 4,
+pp. 912–926, Aug. 2009.
+[13] M. Otte, M. J. Kuhlman, and D. Sofge, “Auctions for multi-robot task al-
+location in communication limited environments,”Auton. Robots, vol. 44,
+pp. 547–584, 2020.
+[14] S. Chopra, G. Notarstefano, M. Rice, and M. Egerstedt, “A distributed
+version of the hungarian method for multirobot assignment,” IEEE Trans.
+Robot., vol. 33, no. 4, pp. 932–947, Aug. 2017.
+[15] L. Liu, N. Michael, and D. A. Shell, “Communication constrained task
+allocation with optimized local task swaps,” Auton. Robots , vol. 39,
+pp. 429–444, 2015.
+[16] M. McIntire, E. Nunes, and M. Gini, “Iterated multi-robot auctions for
+precedence-constrained task scheduling,” inProc. Int. Conf. Auton. Agents
+Multiagent Syst., 2016, pp. 1078–1086.
+[17] X. Bai et al., “Group-based distributed auction algorithms for multi-
+robot task assignment,” IEEE Trans. Autom. Sci. Eng. , vol. 20, no. 2,
+pp. 1292–1303, Apr. 2023.
+[18] A. Torreño, E. Onaindia, A. Komenda, and M. Štolba, “Cooperative multi-
+agent planning: A survey,” ACM Comput. Surv., vol. 50, no. 6, pp. 1–32,
+2017.
+[19] N. Dhanaraj et al., “Multi-robot task allocation under uncertainty via
+hindsight optimization,” in Proc. IEEE Int. Conf. Robot. Autom. , 2024,
+pp. 16574–16580.
+[20] S. Choudhury, J. K. Gupta, M. J. Kochenderfer, D. Sadigh, and J. Bohg,
+“Dynamic multi-robot task allocation under uncertainty and temporal
+constraints,” Auton. Robots, vol. 46, no. 1, pp. 231–247, 2022.
+[21] S. Shekhar and R. I. Brafman, “Representing and planning with interacting
+actions and privacy,” Artif. Intell., vol. 278, 2020, Art. no. 103200.
+[22] S. S. Chouhan and R. Niyogi, “MAPJA: Multi-agent planning with joint
+actions,” Appl. Intell., vol. 47, no. 4, pp. 1044–1058, 2017.
+[23] A. Corberan et al., “Arc routing problems: A review of the past, present,
+and future,” Networks, vol. 77, no. 1, pp. 88–115, 2021.
+[24] T. Vidal, G. Laporte, and P . Matl, “A concise guide to existing and emerging
+vehicle routing problem variants,” Eur . J. Oper . Res., vol. 286, no. 2,
+pp. 401–416, 2020.
+[25] K. Dorling, J. Heinrichs, G. G. Messier, and S. Magierowski, “V ehicle
+routing problems for drone delivery,” IEEE Trans. Syst., Man, Cybern.
+Syst., vol. 47, no. 1, pp. 70–85, Jan. 2017.
+[26] M. Li et al., “Unmanned aerial vehicle scheduling problem for trafﬁc
+monitoring,” Comput. Ind. Eng., vol. 122, pp. 15–23, 2018.
+[27] N. Mathew, S. L. Smith, and S. L. Waslander, “Multirobot rendezvous
+planning for recharging in persistent tasks,” IEEE Trans. Robot., vol. 31,
+no. 1, pp. 128–142, Feb. 2015.
+[28] Y . Ding, W. Luo, and K. Sycara, “Heuristic-based multiple mobile depots
+route planning for recharging persistent surveillance robots,” in Proc.
+IEEE/RSJ Int. Conf. Intell. Robots Syst. , 2019, pp. 3308–3313.
+[29] K. Y u, A. K. Budhiraja, and P . Tokekar, “Algorithms for routing of
+unmanned aerial vehicles with mobile recharging stations,” in Proc. IEEE
+Int. Conf. Robot. Autom. , 2018, pp. 5720–5725.
+[30] J. Diller and Q. Han, “Energy-aware UA V path planning with adap-
+tive speed,” in Proc. Int. Conf. Auton. Agents Multiagent Syst. , 2023,
+pp. 923–931.
+[31] P . Maini et al., “Cooperative aerial-ground vehicle route planning with
+fuel constraints for coverage applications,” IEEE Trans. Aerosp. Electron.
+Syst., vol. 55, no. 6, pp. 3016–3028, Dec. 2019.
+[32] E. Arribas, V . Cholvi, and V . Mancuso, “Optimizing UA V resupply
+scheduling for heterogeneous and persistent aerial service,” IEEE Trans.
+Robot., vol. 39, no. 4, pp. 2639–2653, Aug. 2023.
+[33] S. D. Ramchurn, M. Polukarov, A. Farinelli, N. Jennings, and C. Trong,
+“Coalition formation with spatial and temporal constraints,” in Proc. Int.
+Conf. Auton. Agents Multiagent Syst. , 2010, pp. 1181–1188.
+[34] W. Gosrich et al., “Multi-robot coordination and cooperation with task
+precedence relationships,” in Proc. IEEE Int. Conf. Robot. Autom. , 2023,
+pp. 5800–5806.
+[35] D. Bredström and M. Rönnqvist, “Combined vehicle routing and schedul-
+ing with temporal precedence and synchronization constraints,” Eur . J.
+Oper . Res., vol. 191, no. 1, pp. 19–31, 2008.
+[36] E. Feo Flushing, L. M. Gambardella, and G. A. Di Caro, “A mathe-
+matical programming approach to collaborative missions with heteroge-
+neous teams,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. , 2014,
+pp. 396–403.
+[37] B. Miloradovic, B. Curuklu, M. Ekstrom, and A. V . Papadopoulos,
+“GMP: A genetic mission planner for heterogeneous multirobot system
+applications,” IEEE Trans. Cybern. , vol. 52, no. 10, pp. 10627–10638,
+Oct. 2022.
+[38] X. Bai, W. Y an, S. S. Ge, and M. Cao, “An integrated multi-population
+genetic algorithm for multi-vehicle task assignment in a drift ﬁeld,” Inf.
+Sci., vol. 453, pp. 227–238, 2018.
+[39] F. Y an, J. Chu, J. Hu, and X. Zhu, “Cooperative task allocation with
+simultaneous arrival and resource constraint for multi-UA V using a genetic
+algorithm,” Expert Syst. Appl. , vol. 245, 2024, Art. no. 123023.
+[40] S. Liu et al., “Balanced task allocation and collision-free scheduling of
+multi-robot systems in large spacecraft structure manufacturing,” Robot.
+Auton. Syst., vol. 159, 2023, Art. no. 104289.
+[41] R. Penicka, J. Faigl, M. Saska, and P . V ana, “Data collection planning
+with non-zero sensing distance for a budget and curvature constrained
+unmanned aerial vehicle,” Auton. Robots, vol. 43, no. 8, pp. 1937–1956,
+2019.
+[42] R. Pˇeniˇcka, J. Faigl, and M. Saska, “V ariable neighborhood search for the
+set orienteering problem and its application to other orienteering problem
+variants,”Eur . J. Oper . Res., vol. 276, no. 3, pp. 816–825, 2019.
+[43] K. Helsgaun, “An extension of the Lin-Kernighan-Helsgaun TSP solver for
+constrained traveling salesman and vehicle routing problems,” Roskilde
+Univ., Roskilde, Denmark, Tech. Rep., 2017.
+CALVO AND CAPITÁN: HETEROGENEOUS MULTIROBOT TASK ALLOCA TION FOR LONG-ENDURANCE MISSIONS IN DYNAMIC SCENARIOS 6513
+[44] S. Al-Hussaini, J. M. Gregory, and S. K. Gupta, “Generating task realloca-
+tion suggestions to handle contingencies in human-supervised multi-robot
+missions,” IEEE Trans. Autom. Sci. Eng. , vol. 21, no. 1, pp. 367–381,
+Jan. 2024.
+[45] M. C. Gombolay, R. J. Wilcox, and J. A. Shah, “Fast scheduling of robot
+teams performing tasks with temporospatial constraints,” IEEE Trans.
+Robot., vol. 34, no. 1, pp. 220–239, Feb. 2018.
+[46] A. Messing, G. Neville, S. Chernova, S. Hutchinson, and H. Ravichandar,
+“GRSTAPS: Graphically recursive simultaneous task allocation, planning,
+and scheduling,” Int. J. Robot. Res. , vol. 41, no. 2, pp. 232–256, 2022.
+[47] Z. Ma, J. Xiong, H. Gong, and X. Wang, “Adaptive depth graph neural
+network-based dynamic task allocation for UA V -UGVs under complex
+environments,” IEEE Trans. Intell. V eh., vol. 10, no. 5, pp. 3573–3586,
+May 2025.
+[48] M. Limbu, Z. Hu, X. Wang, D. Shishika, and X. Xiao, “Scaling team
+coordination on graphs with reinforcement learning,” in Proc. IEEE Int.
+Conf. Robot. Autom., 2024, pp. 16538–16544.
+[49] G. Neville, S. Chernova, and H. Ravichandar, “D-ITAGS: A dynamic
+interleaved approach to resilient task allocation, scheduling, and mo-
+tion planning,” IEEE Robot. Autom. Lett. , vol. 8, no. 2, pp. 1037–1044,
+Feb. 2023.
+[50] M. Lippi, P . D. Lillo, and A. Marino, “A task allocation framework for
+human multi-robot collaborative settings,” inProc. IEEE Int. Conf. Robot.
+Automat., 2023, pp. 7614–7620.
+[51] K. Braekers, K. Ramaekers, and I. V an Nieuwenhuyse, “The vehicle
+routing problem: State of the art classiﬁcation and review,” Comput. Ind.
+Eng., vol. 99, pp. 300–313, 2016.
+[52] A. Anirudh Sabnis, R. K. Sitaraman, and D. Towsley, “OCCAM: An op-
+timization based approach to network inference,” SIGMETRICS Perform.
+Eval. Rev., vol. 46, no. 2, pp. 36–38, 2019.
+[53] W. Tan and B. Khoshnevis, “A linearized polynomial mixed integer pro-
+gramming model for the integration of process planning and scheduling,”
+J. Intell. Manuf., vol. 15, no. 5, pp. 593–605, 2004.
+[54] N. Wilde and J. Alonso-Mora, “Designing heterogeneous robot ﬂeets for
+task allocation and sequencing,” in Proc. Int. Symp. Multi-Robot Multi-
+Agent Syst., 2023, pp. 156–162.
+[55] M. Colledanchise and P . Ögren, “How behavior trees modularize hybrid
+control systems and generalize sequential behavior compositions, the
+subsumption architecture, and decision trees,”IEEE Trans. Robot., vol. 33,
+no. 2, pp. 372–389, Apr. 2017.
+Álvaro Calvo received the B.S. degree in electronic,
+robotic, and mechatronic engineering and the M.S.
+degree in electronic, robotic, and automation engi-
+neering in 2020 and 2021, respectively, from the
+University of Seville, Seville, Spain, where he is cur-
+rently working toward the Ph.D. degree in multirobot
+planning with heterogeneous ﬂeets.
+During his Ph.D., he has been a Visiting Student
+with the ISR Group, Instituto Superior Técnico, Lis-
+bon, Portugal, and with the GOALS Group, Oxford
+Robotics Institute, Oxford, U.K. He has participated
+in ﬁve projects, including two international ones. His research interests include
+cooperative multirobot systems, including human–robot cooperation, decision-
+making, and planning under uncertainty and resource constraints.
+Dr. Calvo is an FPU Research Fellow under the Spanish Ministry of Science,
+Innovation, and Universities.
+Jesús Capitán received the Ph.D. degree in telecom-
+munication engineering from the University of
+Seville, Seville, Spain, in 2011.
+He is currently a Full Professor with the University
+of Seville, where he co-funded the Multirobot and
+Control Systems Group. He was also a Postdoctoral
+Researcher with the Instituto Superior Tecnico, Lis-
+boa, Portugal, and the University of Duisburg-Essen,
+Essen, Germany. During his Ph.D., he was a visiting
+Researcher with the Robotics Institute, Carnegie Mel-
+lon University, Pittsburgh, PA, USA, and the Instituto
+Superior Tecnico, Lisboa, Portugal. He has participated in more than 25 projects
+(14 international). He was the Principal Investigator with the University of
+Seville in the EU project MULTIDRONE. He is author of more than 80 pub-
+lications focusing on multirobot cooperation, decision making and multi-UA V
+conﬂict resolution.
+Dr. Capitán is currently an Associate Editor of the International Conference
+on Robotics and Automation (ICRA), the IEEE R
+OBOTICS AND AUTOMA TION
+LETTERS,a n dt h eInternational Journal of Advanced Robotics Systems .H ew a s
+the recipient of the Third Challenge Award as part of the USE team in the
+MBZIRC competition (2017 and 2020).
