@@ -24,7 +24,12 @@
 ## 进度与待办
 
 - 待办：
-  - 素材包遗留缺口：缺救护车/消防车/工程车与真实半塌建筑——Poly Haven 没有，Sketchfab 的 CC0 车辆要登录后手工下载；废墟目前是程序化方盒，不是真建筑结构。
+  - **给 Codex 的接入说明**：素材与场景已可用，`assets/_tools/*.py` 已强制入库（`assets/` 其它内容仍被忽略），改脚本直接改这些；当前最佳场景是 `assets/demo_v5.xml`（可直接 `mujoco.MjModel.from_xml_path` 加载，含 2 个相机 `wide`/`close` 与房屋相机 `house`）。集成到 `outdoor_scene.py` 属 Codex 主责。
+  - `build_scene.py` 的 `--ground-tex` 默认值仍是 `forest_floor`（那张贴图已被我压到 1K、约 1.5 MB，留着没删）；想要林地绿请显式传 `--ground-tex leafy_grass`，或由 Codex 改默认值。
+  - **复查发现（给 Codex）**：`build_scene.py` 把 `--ground-tex` 默认值改成 `forest_floor` 后，全场景偏沙黄（那张贴图是干枯落叶土），配合暖色主光（diffuse 1.0 0.87 0.70）像沙漠，不像川西林地。已验证：换 `leafy_grass` + 绿色 rgba 立刻变回草地。另：废墟/楼板原本是纯白 rgba，无贴图时过曝成白纸片，可用 `_tools/tune.py` 换成混凝土贴图。
+  - 已产出对照：`assets/demo_v2.xml`（混凝土 + 降曝）、`demo_v4.xml`（再换绿地面）、**`demo_v5.xml`（加密植被 + 程序化半塌砖房 + 房屋专用相机 `house`）**；渲染图 `_now_wide.png` / `_v2_wide.png` / `_v4_wide.png` / `_v5_wide.png` / `_v5_house.png`；脚本 `_tools/tune.py`（材质/曝光）、`_tools/scatter.py`（加密 + 建房）。
+  - 房子做法（`scatter.py::house`）：8.4×6.2 m、墙高 3 m，砖墙贴图 + 混凝土楼板；南北墙留窗洞/门洞，东墙塌一段、西墙剩半截，两块楼板斜搭在墙上，室内外各堆碎块。**仍是"方盒拼接"，结构对、细节假**；要更像需要真扫描建筑模型。
+  - 草的问题：`props/ground/grass_medium_01` 是扁平扫描草皮（5.6×0.33×0.34 m），铺多了侧看像"灰刺"，已从场景撤掉。MuJoCo 无 GPU 实例化、无 alpha 剪裁，几何草只能靠 Blender 散布后合并成单一 mesh，或干脆用地面贴图。
   - `assets/demo_rescue_scene.xml` 还没接进 `outdoor_scene.py` / `outdoor_rescue_demo.py`（那属于仓库代码改动，建议 Codex 主责，DSH 只提供素材与参数）。
   - 复查 Codex 的提交：`e6a27ba`（修 .gitignore）、`1eccf2f`（导入 MuJoCo 脚本/论文/AGENTS.md）。DSH 尚未逐行复查这两个 commit，下一步可做。
   - 仓库卫生：Codex 已修好根目录 `.gitignore`（补齐 `.env.*`、`*.log`、`MUJOCO_LOG.TXT`、`__pycache__/`、`.vscode/` 等），DSH 复查通过；磁盘上的 `debug.log`、`MUJOCO_LOG.TXT`、`__pycache__/` 仍在，但已被忽略，可选清理。
@@ -34,6 +39,8 @@
   - 2026-10-22 DSH 主责交付：野外救灾场景素材包 `assets/`（47 MB，自带 `assets/.gitignore` 排除，只有 README 值得入库）。内容：①真实地形 `terrain/dem_wenchuan_200m.png`、`_400m.png`——AWS Terrarium 公开 DEM，坐标 31.055°N/103.483°E（汶川），落差 66.5/92.1 m；②Poly Haven CC0 扫描道具 10 件（boulder_01、rock_07、rock_moss_set_01、tree_stump_01、bark_debris_01、grass_medium_01、moss_01、covered_car、concrete_road_barrier、old_tyre）+ 3 张可平铺地面贴图；③`demo_rescue_scene.xml`：hfield 地形 + 22 棵程序化针叶树 + 岩石/车/隔离墩 + 90 块废墟 + 3 块楼板，`render_scene.py` 渲过两版预览。工具链在 `assets/_tools/`（fetch_dem / fetch_ph_model / fetch_texture / build_scene / render_scene / preview）。
   - 2026-10-22 同日踩坑结论（重要，别再重复）：MuJoCo **不读 glTF**（Poly Haven 只有 glTF/FBX，故自写展平器）；`hfield size` 四个数必须全为正，`base=0` 直接报错，用 0.01；hfield PNG **第 0 行 = +Y**，行↔−y 搞反会让人物浮空；MuJoCo 把 16 位 PNG 压回 8 位，66 m 落差必然有台阶，靠抖动掩盖；Terrarium 最高 z15（约 4.1 m/px），要 1 m 得换 Copernicus/USGS GeoTIFF + GDAL；`fir_tree_01` 有 698 万面，降面后成灰团，**照片扫描树在 MuJoCo 里不可用**。
   - 2026-10-22 文档三层落地并提交：根 `README.md`（入口表）、`ASSETS.md`（素材索引与硬约束）、`assets/README.md`（详解）、`.github/copilot-instructions.md`（VS Code Copilot 自动加载的分工约定）；`assets/.gitignore` 只放行 README 与自身，47 MB 素材不入库。提交后工作区干净。
+  - 2026-10-22 **实测：MuJoCo 3.3.2 没有 PBR 渲染**。`<material metallic= roughness=>` 与 `<layer role="normal|occlusion|roughness|metallic">` 都能编译、`mat_metallic/mat_roughness` 也进了模型，但渲染像素差**严格为 0**（贴法线图与不贴完全一样）；`specular/shininess` 只有 0.02 的均值差。可用光照手段只有：albedo 贴图、`specular/shininess`、`reflectance`（天空盒反射）、`castshadow`、`<visual><quality shadowsize>`、`fog/haze`、天空盒渐变。给用户做真实感的正确方向是**把 AO 烘焙进 albedo + 抬高贴图分辨率 + 阴影贴图 + 多光源**，不要再花时间找 PBR 套件。另注意：连续创建 `mujoco.Renderer` 不 `close()` 会因 GL 上下文泄漏让后续渲染全黑（曾被这个坑误导过一次）。
+  - 2026-10-22 参考：论文场景取材（已存 `assets/_refs/`，被 gitignore）。PGTT(IROS 2026, arXiv:2510.18348) 的 MuJoCo 训练场景就是**灰色方块台阶 + 纯色背景**，没有植被与贴图；`Eterith/blender-mujoco-terrain` 提供 Blender 地形网格→MuJoCo hfield 的转换。
   - 2026-10-22 环境（网络）结论：PowerShell/curl/git 默认走 SChannel 全部报 `SEC_E_NO_CREDENTIALS`；可用通道 = anaconda `python.exe`（自带 PIL/requests/numpy）、`git -c http.sslBackend=openssl`；`raw.githubusercontent.com` 直连超时，走 `ghfast.top` 或 `cdn.jsdelivr.net`；`huggingface.co` DNS 失败，用 `hf-mirror.com`。
   - 2026-10-20 DSH 接手：已读本文件并确认分工（Codex 主责仓库内代码读写与执行；DSH 主责复查 Codex 改动、Office/自动化、Codex 不擅长的活）。现状核查：`git ls-files` 只跟踪 `README.md` 与 `skills/paper-reader/*`，`3cc5c47` 之后所有脚本、papers、`AGENTS.md` 均为未跟踪（`??`），当前没有「Codex 的 diff」可复查。环境已核实：`mujoco` 环境可用（Python 3.9.25 / mujoco 3.3.2 / numpy 2.0.2）。下一步：等 Codex 提交或给出 diff 范围后做逐行复查；DSH 的会话工作区仍指向 `default-workspace`，写仓库文件需每次审批。
   - 2026-10-20 DSH 确认定位（第二轮）：DSH 定位 = ①复查 Codex 改动/找 bug ②Office、浏览器/电脑自动化、DSH 插件 ③Codex 不擅长的活；同一任务单主责，另一方程只复查、不并行改同批文件。环境更新：DSH 当前工作目录已是仓库根 `C:\Users\18967\Desktop\git`，文件策略 `workspace-write`，改仓库内文件不再需要逐次审批（此前那条「指向 default-workspace」已过时）。已把仓库卫生问题与「无 diff 可复查」写入上方待办。下一步：等 Codex 的提交/diff 或用户指派 DSH 主责的任务。

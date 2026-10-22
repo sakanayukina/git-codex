@@ -1,4 +1,8 @@
-# 素材包 47 MB，不入库；只保留 README 与忽略规则
+# 素材包 ~50 MB，不入库；只保留文档与可复现脚本
 *
 !.gitignore
 !README.md
+
+# 工具链入库（.py 需要跟踪，方便 Codex 直接改）
+!_tools/
+!_tools/*.py
