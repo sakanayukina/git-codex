@@ -225,7 +225,7 @@ def main():
             body.append(build_house(p, gz, rng))
         # 任务分配用的标记点
         body.append(f'<site name="site_{p["id"]}" pos="{p["x"]:.2f} {p["y"]:.2f} {gz + p["size"][2] / 2:.2f}" '
-                    f'size="0.35" rgba="0.95 0.85 0.2 1"/>')
+                    f'size="0.35" rgba="0.95 0.85 0.2 1" group="3"/>')
         print(f"  {p['id']:<3s} ({p['x']:>6.1f},{p['y']:>6.1f})  z={gz:6.2f}  damage={p['damage']}")
 
     # ---- 道路：生成一整条贴合地形的 ribbon 网格（比一堆方板像路）
@@ -241,8 +241,38 @@ def main():
     ap_pt = cfg["assembly_point"]
     gz_ap = t.height(ap_pt["x"], ap_pt["y"])
     body.append(f'<site name="site_{ap_pt["name"]}" pos="{ap_pt["x"]:.2f} {ap_pt["y"]:.2f} {gz_ap + 0.1:.2f}" '
-                f'size="1.2" rgba="0.2 0.7 0.95 1"/>')
+                f'size="1.2" rgba="0.2 0.7 0.95 1" group="3"/>')
     print(f"assembly {ap_pt['name']} ({ap_pt['x']}, {ap_pt['y']})")
+
+    # ---- 碰撞外壳：真实模型的房子只有视觉几何（contype=0），机器人会穿墙。
+    #      这里补一圈不可见的墙（group=3 默认不渲染），留一个门洞。
+    for p in plots:
+        if not (p.get("model") or "").strip():
+            continue
+        if p.get("collision", "walls") == "none":
+            continue
+        W, D, H = p["size"][0], p["size"][1], p["size"][2]
+        corners = [(p["x"] + dx, p["y"] + dy) for dx in (-W / 2, W / 2) for dy in (-D / 2, D / 2)]
+        gz = min(t.height(cx_, cy_) for cx_, cy_ in corners)
+        th, door = 0.18, 1.3
+        seg = (W / 2 - door / 2) / 2
+        shell = [f'<body name="{p["id"]}_collision" pos="{p["x"]:.2f} {p["y"]:.2f} {gz:.3f}" '
+                 f'euler="0 0 {p["yaw"]}">']
+        # 前墙（留门洞）
+        for s in (-1, 1):
+            shell.append(f'<geom type="box" size="{seg:.2f} {th:.2f} {H / 2:.2f}" '
+                         f'pos="{s * (door / 2 + seg):.2f} {-D / 2:.2f} {H / 2:.2f}" group="3"/>')
+        shell.append(f'<geom type="box" size="{door / 2:.2f} {th:.2f} 0.55" '
+                     f'pos="0 {-D / 2:.2f} {H - 0.55:.2f}" group="3"/>')   # 门楣
+        # 后墙 + 两侧墙
+        shell.append(f'<geom type="box" size="{W / 2:.2f} {th:.2f} {H / 2:.2f}" '
+                     f'pos="0 {D / 2:.2f} {H / 2:.2f}" group="3"/>')
+        for s in (-1, 1):
+            shell.append(f'<geom type="box" size="{th:.2f} {D / 2:.2f} {H / 2:.2f}" '
+                         f'pos="{s * W / 2:.2f} 0 {H / 2:.2f}" group="3"/>')
+        shell.append("</body>")
+        body.append("".join(shell))
+        print(f"  collision shell for {p['id']}")
 
     # ---- 西北坡加密林（村庄外围成片），南侧少
     added = 0
@@ -320,6 +350,17 @@ def main():
     gz_c = t.height(0, -30)
     body.append(cam("village", (-18, -62, gz_c + 28), (6, 6, gz_c + 2)))
     body.append('<camera name="top" pos="2 2 320" xyaxes="1 0 0 0 1 0"/>')
+
+    # 每栋房一个正面相机（从村道方向看门窗），并修掉旧的 close（它会插进墙里）
+    xml = re.sub(r'<camera name="close"[^>]*/>', "", xml)
+    for p in plots:
+        gz_p = t.height(p["x"], p["y"])
+        eye = (p["x"] - 10.0, p["y"] - 13.0, gz_p + 5.5)
+        body.append(cam(f"cam_{p['id']}", eye, (p["x"], p["y"], gz_p + 2.2)))
+    h1 = next((p for p in plots if p["id"] == "H1"), plots[0])
+    gz_h1 = t.height(h1["x"], h1["y"])
+    body.append(cam("close", (h1["x"] - 11.0, h1["y"] - 14.0, gz_h1 + 5.0),
+                    (h1["x"], h1["y"], gz_h1 + 2.0)))
 
     xml = xml.replace("</asset>", "".join(extra_assets) + "</asset>", 1)
     xml = xml.replace("</worldbody>", "".join(body) + "</worldbody>", 1)
