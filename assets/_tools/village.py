@@ -189,7 +189,9 @@ def main():
                 name = f"bld{len(used_models)}"
                 stem = os.path.splitext(os.path.basename(rel_model))[0]
                 png = os.path.join(os.path.dirname(rel_model), f"{stem}_diffuse.png")
-                extra_assets.append(f'<mesh name="{name}" file="{rel_model}"/>')
+                msc = p.get("model_scale") or 1.0
+                sc_attr = f' scale="{msc} {msc} {msc}"' if msc != 1.0 else ""
+                extra_assets.append(f'<mesh name="{name}" file="{rel_model}"{sc_attr}/>')
                 mat = f"{name}_mat"
                 if os.path.exists(os.path.join(ASSETS, png)):
                     extra_assets.append(f'<texture name="{name}_tex" type="2d" file="{png}"/>')

@@ -206,7 +206,11 @@ def convert(model_dir, stem, max_tris=0):
         np.savetxt(fh, uv, fmt="vt %.6f %.6f")
         np.savetxt(fh, nrm, fmt="vn %.6f %.6f %.6f")
         fh.write(f"usemtl {stem}\n")
-        np.savetxt(fh, f + 1, fmt="f %d/%d/%d")
+        # 注意：不能用 np.savetxt(fmt="f %d/%d/%d")——它会把一行的三个顶点索引
+        # 当成 v/vt/vn 塞进同一个顶点（"f 132/130/111"），MuJoCo 读到的是退化面。
+        f1 = f + 1
+        fh.write("".join(
+            f"f {a}/{a} {b}/{b} {c}/{c}\n" for a, b, c in f1.tolist()))
 
     with open(os.path.join(model_dir, f"{stem}.mtl"), "w", encoding="utf-8") as fh:
         fh.write(f"newmtl {stem}\nKa 1 1 1\nKd 1 1 1\nKs 0 0 0\nd 1\nillum 1\n")
