@@ -4,7 +4,7 @@
 
 ## 工作区地图
 
-- **仿真场景**：`assets/demo_v6.xml`（344 body / 1107 geom / 42 mesh / 28 tex / 12 相机 / 8 site，**2.59 M 三角面**；素材 **152 MB**，gitignore 不入库）
+- **仿真场景**：`assets/demo_v7.xml`（292 body / 847 geom / 42 mesh / 28 tex / 12 相机 / 8 site；树优化版，v6 保留作对照；素材 **152 MB**，gitignore 不入库）
 - **生成链**：`build_scene.py`(地形+道具) → `tune.py`(材质曝光) → `scatter.py`(植被/废墟) → `village.py`(村落，base = `demo_v5.xml`) → `slim_rocks.py`(石头瘦身)
 - **导入链**：`convert_multi.py`(glTF/GLB 按材质拆分、减面、只保留指定材质) → `import_gltf.py` / `import_building.py` → `fix_obj_faces.py`(OBJ 体检) → `prune_imported.py`(删转换中间文件)
 - **场景辅助**：`bake_ground.py`(把路烘进地面贴图)、`roadgen.py`(3D 路面，当前未用)、`render_scene.py`、`preview_parts.py`、`cleanup.py`
@@ -21,7 +21,7 @@
 
 ## 现在有什么
 
-**场景**（`assets/demo_v6.xml`）
+**场景**（`assets/demo_v7.xml`，树优化版；`demo_v6.xml` 为原版对照）
 - 地形：汶川真实 DEM，200 m²，落差 66.5 m，`hfield` + 烘焙地面贴图（路长在地形上）
 - 道路：主路 4.2 m + 7 条入户支路 3.0 m + 岔口补丁，全部烘进 2048² 地面贴图
 - 建筑/废墟 7 个可搜索点：
@@ -31,7 +31,7 @@
   | H6 | 混凝土塌楼 `ruin2`（含瓦砾场） | 3,407 | ❌ |
   | H7 | 塌墙扫描件 `ruin_wall` | 90,817 | ❌ |
   | H2–H5 | 程序化占位房 | 各 ~200 | ❌ |
-- 植被：30 棵真实枫树（CC-BY）、92 棵程序化针叶树、24 块岩石、10 片草皮
+- 植被：30 棵真实枫树（CC-BY）、90 棵程序化针叶树（v7 从 142 减到 90 并收细）、24 块岩石、10 片草皮
 - 道具：报废盖布车、水泥隔离墩、旧轮胎、树桩、枯枝
 - 相机：`wide` / `close`(H1) / `village` / `top`(俯视) / `cam_H1`…`cam_H5`
 - 标记：`<site name="site_H1">`…`site_H7`、`site_P0`（`group=3`，不渲染但坐标有效）
@@ -79,3 +79,4 @@
 
 - 2026-10-20 分工确立
 - 2026-10-22 素材包 → 真实 DEM → 加密植被 → 真枫树 → 真废墟 H1/H6/H7 → 石头瘦身 → 道路烘焙；修掉 OBJ 面索引 bug（44 万坏面）、GLB 内嵌贴图、hfield texrepeat
+- 2026-10-22 Codex 树优化 v7：程序化树 142→90、半径收细 0.72，入口切到 demo_v7.xml，新增 `_tools/optimize_trees.py`

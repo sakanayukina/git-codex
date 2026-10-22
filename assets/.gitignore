@@ -4,6 +4,7 @@
 !README.md
 # 布局配置（文本、需要版本化）
 !buildings.json
+!demo_v7.xml
 
 # 工具链入库（.py 需要跟踪，方便 Codex 直接改）
 !_tools/
