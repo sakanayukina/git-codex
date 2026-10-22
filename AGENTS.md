@@ -24,8 +24,10 @@
 ## 进度与待办
 
 - 待办：
+  - **H1 已换成真实废墟**（`collapsed_uk_terraced_house`，22,631 面、15 个材质分件、1 张 2K 图集）：`buildings.json` 的 `model` 支持**目录**，`village.py` 把整栋挂成一个 body 的多个 geom；yaw 196 让门窗朝村道。已知问题：①`close` 相机现在插进墙里（它原本对准旧废墟中心），需重设；②英式排屋风格与川西砖房不完全一致；③墙体单面，背面/内侧是灰面。
+  - 根目录 `collapsed_uk_terraced_house.zip`（6.2 MB）待删，**别提交**。
   - **DSH 刚接入真实枫树**：Sketchfab "Maple Tree" by Atrodler（**CC-BY，论文里必须署名**），12,427 面，按材质拆成 `maple_sugar_maple_bark.obj` + `maple_sugar_maple_leaf.obj`，`village.py` 随机种 30 棵混在针叶林里。已知不足：近看树叶发白点（单面片 + 法线朝上），要更好需翻面/复制双面几何。
-  - 根目录 `maple_tree.zip` 被占用删不掉（浏览器/杀软持有句柄），用户手动删即可，**别提交**。
+  - 根目录 `maple_tree.zip` 已清理（2026-10-22 Codex 核查确认文件不存在，无需再处理）。
   - **村落布局已就绪（v6）**：`assets/demo_v6.xml` = 5 栋房（H1 主塌 / H2、H5 半损 / H3、H4 完好）+ 土路 ribbon 网格 + 集结点 P0 + 西北坡加密林；每栋房有 `<site name="site_H*">` 标记，任务分配算法直接读坐标。相机：`village`（村口）、`top`（俯视，可当论文布局图）。
   - **房子是插槽**：改 `assets/buildings.json` 的 `model` 字段就能换真实模型（放 `assets/props/buildings/<名>/<名>.obj` + `_diffuse.png`），跑 `assets/_tools/village.py` 重生成。`model_house()` 目前是纯视觉（`contype=0`），要参与物理需补简化 box 代理。
   - 当前 `assets/buildings.json` 的 5 栋房 `model` 均为空，仍是程序化占位房；下一步可用 Poly Haven CC0 建筑立面或 Sketchfab CC0 废墟替换。
