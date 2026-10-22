@@ -239,6 +239,54 @@ def main():
         added += 1
     print(f"northwest forest added: {added}")
 
+    # ---- 真实枫树（导入的 Sketchfab CC-BY 模型，按材质拆成 bark + leaf 两个 mesh）
+    half = extent / 2 - 8
+    placed = []
+    maple_dir = os.path.join(ASSETS, "props", "imported", "maple")
+    if os.path.isdir(maple_dir):
+        parts = sorted(f for f in os.listdir(maple_dir)
+                       if f.endswith(".obj") and "metallic" not in f)
+        scales = (0.75, 1.0, 1.25)
+        variants = {}
+        for sc in scales:
+            for part in parts:
+                nm = f"mp{len(variants)}"
+                png = part[:-4] + "_diffuse.png"
+                extra_assets.append(
+                    f'<mesh name="{nm}" file="props/imported/maple/{part}" '
+                    f'scale="{sc} {sc} {sc}" inertia="shell"/>')
+                mat = f"{nm}_mat"
+                if os.path.exists(os.path.join(maple_dir, png)):
+                    extra_assets.append(
+                        f'<texture name="{nm}_tex" type="2d" file="props/imported/maple/{png}"/>')
+                    extra_assets.append(f'<material name="{mat}" texture="{nm}_tex" specular="0.02" shininess="0.1"/>')
+                else:
+                    extra_assets.append(f'<material name="{mat}" rgba="0.30 0.45 0.22 1"/>')
+                variants[(part, sc)] = (nm, mat)
+
+        madded = 0
+        for _ in range(600):
+            if madded >= 30:
+                break
+            x, y = rng.uniform(-half, half, 2)
+            if inside_keepout(x, y) or t.slope(x, y) > 1.7:
+                continue
+            if any((x - a) ** 2 + (y - b) ** 2 < 3.0 ** 2 for a, b in placed):
+                continue
+            placed.append((x, y))
+            sc = scales[rng.integers(len(scales))]
+            yaw = rng.uniform(0, 360)
+            g = [f'<body name="maple_{madded}" pos="{x:.2f} {y:.2f} {t.height(x, y):.3f}" '
+                 f'euler="0 0 {yaw:.1f}">']
+            for part in parts:
+                nm, mat = variants[(part, sc)]
+                g.append(f'<geom type="mesh" mesh="{nm}" material="{mat}" '
+                         f'contype="0" conaffinity="0" group="1"/>')
+            g.append("</body>")
+            body.append("".join(g))
+            madded += 1
+        print(f"maple trees added: {madded}（材质分组 {len(parts)}）")
+
     # ---- 相机：村口视角 + 俯视图
     def cam(name, eye, target):
         pos = np.array(eye, float)

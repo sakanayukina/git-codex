@@ -14,6 +14,7 @@
 | `assets/props/vehicles/` | covered_car / concrete_road_barrier / old_tyre | 报废盖布车 4.4 m 长 |
 | `assets/props/ground/` | grass_medium_01 / moss_01 | 草丛贴片 |
 | `assets/tex/` | leafy_grass / grass_ground / forest_floor | 1024²，可平铺地面贴图 |
+| `assets/props/imported/maple/` | Sketchfab 枫树（bark + leaf 两材质拆分） | **CC-BY**，需署名：*"Maple Tree" by Atrodler, CC BY 4.0, via Sketchfab* |
 | `assets/demo_rescue_scene.xml` | 拼好的完整场景 | 190 body / 278 geom / 2 相机，直接可跑 |
 | `assets/_preview_scene.png`、`_preview_close.png` | 渲染预览 | 1200×700 / 900×600 |
 | `assets/_tools/` | 下载/转换/生成脚本 | fetch_dem / fetch_ph_model / fetch_texture / build_scene / render_scene / preview |
