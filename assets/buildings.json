@@ -6,7 +6,7 @@
     "points": [[-4, -62], [0, -40], [4, -20], [6, 2], [10, 30], [18, 58]]
   },
   "plots": [
-    {"id": "H1", "x": 8, "y": -14, "yaw": 16, "size": [8.4, 6.2, 3.0], "damage": "collapse", "model": ""},
+    {"id": "H1", "x": 8, "y": -14, "yaw": 196, "size": [8.4, 6.2, 3.0], "damage": "collapse", "model": "props/imported/ruin_uk", "model_scale": 1.0},
     {"id": "H2", "x": -24, "y": -8, "yaw": -12, "size": [7.6, 6.0, 2.9], "damage": "half", "model": ""},
     {"id": "H3", "x": -26, "y": 24, "yaw": 38, "size": [8.0, 6.4, 3.1], "damage": "intact", "model": ""},
     {"id": "H4", "x": 16, "y": 30, "yaw": 104, "size": [7.2, 5.8, 2.8], "damage": "intact", "model": ""},

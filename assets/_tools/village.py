@@ -125,12 +125,12 @@ def build_house(plot, gz, rng):
     return "".join(out)
 
 
-def model_house(plot, gz, mesh_name, mat_name):
-    """真实模型插槽：整栋按 plot 的尺寸归一化（按最大边长缩放）。"""
+def model_house(plot, gz, parts):
+    """真实模型插槽：parts = [(mesh_name, material), ...]，一个 body 挂多个 geom。"""
+    g = "".join(f'<geom type="mesh" mesh="{nm}" material="{mat}" '
+                f'contype="0" conaffinity="0" group="1"/>' for nm, mat in parts)
     return (f'<body name="{plot["id"]}" pos="{plot["x"]:.2f} {plot["y"]:.2f} {gz:.3f}" '
-            f'euler="0 0 {plot["yaw"]}">'
-            f'<geom type="mesh" mesh="{mesh_name}" material="{mat_name}" '
-            f'contype="0" conaffinity="0" group="1"/></body>')
+            f'euler="0 0 {plot["yaw"]}">{g}</body>')
 
 
 def main():
@@ -184,22 +184,41 @@ def main():
                    for dy in (-p["size"][1] / 2, p["size"][1] / 2)]
         gz = min(t.height(cx_, cy_) for cx_, cy_ in corners)  # 取最低角，避免悬空
         rel_model = (p.get("model") or "").strip()
-        if rel_model and os.path.exists(os.path.join(ASSETS, rel_model)):
+        abs_model = os.path.join(ASSETS, rel_model) if rel_model else ""
+        if rel_model and os.path.exists(abs_model):
             if rel_model not in used_models:
-                name = f"bld{len(used_models)}"
-                stem = os.path.splitext(os.path.basename(rel_model))[0]
-                png = os.path.join(os.path.dirname(rel_model), f"{stem}_diffuse.png")
+                parts = []
                 msc = p.get("model_scale") or 1.0
                 sc_attr = f' scale="{msc} {msc} {msc}"' if msc != 1.0 else ""
-                extra_assets.append(f'<mesh name="{name}" file="{rel_model}"{sc_attr}/>')
-                mat = f"{name}_mat"
-                if os.path.exists(os.path.join(ASSETS, png)):
-                    extra_assets.append(f'<texture name="{name}_tex" type="2d" file="{png}"/>')
-                    extra_assets.append(f'<material name="{mat}" texture="{name}_tex"/>')
+                if os.path.isdir(abs_model):
+                    # 导出器按材质拆成了多个 obj：整栋 = 一个 body 挂多个 geom
+                    for k, f in enumerate(sorted(x for x in os.listdir(abs_model) if x.endswith(".obj"))):
+                        nm = f"bld{len(used_models)}_{k}"
+                        extra_assets.append(
+                            f'<mesh name="{nm}" file="{rel_model}/{f}" inertia="shell"{sc_attr}/>')
+                        mat = f"{nm}_mat"
+                        png = f"{rel_model}/{f[:-4]}_diffuse.png"
+                        if os.path.exists(os.path.join(ASSETS, png)):
+                            extra_assets.append(f'<texture name="{nm}_tex" type="2d" file="{png}"/>')
+                            extra_assets.append(
+                                f'<material name="{mat}" texture="{nm}_tex" specular="0.05" shininess="0.1"/>')
+                        else:
+                            extra_assets.append(f'<material name="{mat}" rgba="0.62 0.60 0.56 1"/>')
+                        parts.append((nm, mat))
                 else:
-                    extra_assets.append(f'<material name="{mat}" rgba="0.6 0.58 0.55 1"/>')
-                used_models[rel_model] = (name, mat)
-            body.append(model_house(p, gz, *used_models[rel_model]))
+                    nm = f"bld{len(used_models)}"
+                    stem = os.path.splitext(os.path.basename(rel_model))[0]
+                    png = os.path.join(os.path.dirname(rel_model), f"{stem}_diffuse.png")
+                    extra_assets.append(f'<mesh name="{nm}" file="{rel_model}"{sc_attr}/>')
+                    mat = f"{nm}_mat"
+                    if os.path.exists(os.path.join(ASSETS, png)):
+                        extra_assets.append(f'<texture name="{nm}_tex" type="2d" file="{png}"/>')
+                        extra_assets.append(f'<material name="{mat}" texture="{nm}_tex"/>')
+                    else:
+                        extra_assets.append(f'<material name="{mat}" rgba="0.6 0.58 0.55 1"/>')
+                    parts.append((nm, mat))
+                used_models[rel_model] = parts
+            body.append(model_house(p, gz, used_models[rel_model]))
         else:
             if rel_model:
                 print(f"  ! {p['id']}: model not found ({rel_model}), using placeholder")

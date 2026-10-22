@@ -44,6 +44,7 @@ def main():
     ap.add_argument("--skip", default="", help="要丢弃的材质名，逗号分隔（如 grass,groundcover）")
     ap.add_argument("--scale", type=float, default=1.0, help="导出时统一缩放")
     ap.add_argument("--target-height", type=float, default=0.0, help="按总高度等比缩放（米）")
+    ap.add_argument("--max-tex", type=int, default=2048, help="贴图最长边上限")
     args = ap.parse_args()
 
     src = args.src
@@ -119,6 +120,7 @@ def main():
         scale = args.target_height / model_h
     print(f"原始高度 {model_h:.2f}（glTF Y-up），缩放系数 {scale:.4f}")
 
+    tex_cache = {}
     report = []
     for mname, g in groups.items():
         v = np.vstack(g["v"]) * scale
@@ -146,15 +148,22 @@ def main():
             if not os.path.exists(tex_path):
                 tex_path = os.path.join(out_dir, os.path.basename(g["tex"]))
             if os.path.exists(tex_path):
-                png_name = f"{obj_name}_diffuse.png"
-                im = Image.open(tex_path)
-                # 树叶贴图带 alpha：直接 convert("RGB") 会让透明区变黑/白，糊成白点。
-                # MuJoCo 没有 alpha 裁剪，所以把透明区合成到草绿色底上。
-                if im.mode in ("RGBA", "LA", "PA"):
-                    bg = Image.new("RGB", im.size, (74, 102, 52))
-                    bg.paste(im, mask=im.split()[-1])
-                    im = bg
-                im.convert("RGB").save(os.path.join(out_dir, png_name))
+                # 同一个图集常被多个材质共用，按源文件去重，否则 15 份 5.8 MB 白烧 90 MB
+                key = os.path.basename(tex_path)
+                if key not in tex_cache:
+                    im = Image.open(tex_path)
+                    # 树叶贴图带 alpha：MuJoCo 没有 alpha 裁剪，合成到草绿底
+                    if im.mode in ("RGBA", "LA", "PA"):
+                        bg = Image.new("RGB", im.size, (74, 102, 52))
+                        bg.paste(im, mask=im.split()[-1])
+                        im = bg
+                    im = im.convert("RGB")
+                    if args.max_tex and max(im.size) > args.max_tex:
+                        im.thumbnail((args.max_tex, args.max_tex), Image.LANCZOS)
+                    name_out = f"{stem}_atlas_{len(tex_cache)}.png"
+                    im.save(os.path.join(out_dir, name_out), optimize=True)
+                    tex_cache[key] = name_out
+                png_name = tex_cache[key]
 
         size = vmj.max(0) - vmj.min(0)
         report.append((mname, len(f), size, vmj.min(0), png_name, obj_name))
