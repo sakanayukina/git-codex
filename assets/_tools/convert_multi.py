@@ -45,6 +45,7 @@ def main():
     ap.add_argument("--scale", type=float, default=1.0, help="导出时统一缩放")
     ap.add_argument("--target-height", type=float, default=0.0, help="按总高度等比缩放（米）")
     ap.add_argument("--max-tex", type=int, default=2048, help="贴图最长边上限")
+    ap.add_argument("--max-tris", type=int, default=0, help="每个材质的面数上限（0=不限制）")
     args = ap.parse_args()
 
     src = args.src
@@ -129,6 +130,10 @@ def main():
         f = np.vstack(g["f"])
         if len(f) == 0:
             continue
+        if args.max_tris and len(f) > args.max_tris:
+            # 扫描件常是几十万面；顶点聚类对"实心"物体（墙、石头）够用，
+            # 但对树叶这种细碎结构会糊，别用在树上。
+            v, uv, nrm, f = fpm.decimate(v, uv, nrm, f, args.max_tris)
         # glTF Y-up -> MJCF Z-up
         vmj = np.column_stack([v[:, 0], -v[:, 2], v[:, 1]])
         safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in mname)

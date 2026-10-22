@@ -11,6 +11,7 @@
     {"id": "H3", "x": -26, "y": 24, "yaw": 38, "size": [8.0, 6.4, 3.1], "damage": "intact", "model": ""},
     {"id": "H4", "x": 16, "y": 30, "yaw": 104, "size": [7.2, 5.8, 2.8], "damage": "intact", "model": ""},
     {"id": "H5", "x": 34, "y": 2, "yaw": -28, "size": [8.8, 6.6, 3.0], "damage": "half", "model": ""},
-    {"id": "H6", "x": -12, "y": -26, "yaw": 42, "size": [15.6, 15.9, 4.0], "damage": "collapse", "model": "props/imported/ruin2", "model_scale": 1.0, "collision": "none"}
+    {"id": "H6", "x": -12, "y": -26, "yaw": 42, "size": [15.6, 15.9, 4.0], "damage": "collapse", "model": "props/imported/ruin2", "model_scale": 1.0, "collision": "none"},
+    {"id": "H7", "x": -16, "y": -36, "yaw": 20, "size": [12.2, 7.7, 2.2], "damage": "collapse", "model": "props/imported/ruin_wall", "model_scale": 1.0, "collision": "none"}
   ]
 }
