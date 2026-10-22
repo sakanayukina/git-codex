@@ -1,3 +1,4 @@
+import os
 import struct
 import sys
 import zlib
@@ -7,7 +8,9 @@ import mujoco.viewer
 import numpy as np
 
 
-TERRAIN_PNG = r"C:/Users/18967/Desktop/git/terrain.png"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TERRAIN_PNG = os.path.join(BASE_DIR, "terrain.png").replace("\\", "/")
+SCENE_XML = os.path.join(BASE_DIR, "assets", "demo_v6.xml")
 H_MAX = 1.8
 N_GRID = 120
 
@@ -153,24 +156,36 @@ def build_xml(seed=0, hdata=None):
 
 
 def run(headless=False):
-    save_terrain_png(TERRAIN_PNG)
-    hdata = load_hfield_data()
-    xml = build_xml(hdata=hdata)
-    model = mujoco.MjModel.from_xml_string(xml)
-    data = mujoco.MjData(model)
-    mujoco.mj_forward(model, data)
+    if os.path.exists(SCENE_XML):
+        model = mujoco.MjModel.from_xml_path(SCENE_XML)
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        # 先让废墟、楼板落定，避免打开窗口时看到悬空物体
+        for _ in range(2500):
+            mujoco.mj_step(model, data)
+        mujoco.mj_forward(model, data)
+        lookat = [0.0, 0.0, 33.2]
+        distance = 110.0
+    else:
+        save_terrain_png(TERRAIN_PNG)
+        hdata = load_hfield_data()
+        xml = build_xml(hdata=hdata)
+        model = mujoco.MjModel.from_xml_string(xml)
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        lookat = [0.0, 0.0, 0.8]
+        distance = 18.0
 
     if headless:
-        print("ngeom =", model.ngeom)
-        print("hfield_data min/max =", round(float(model.hfield_data.min()), 3), round(float(model.hfield_data.max()), 3))
+        print("nbody =", model.nbody, "ngeom =", model.ngeom, "ncam =", model.ncam)
         return
 
     with mujoco.viewer.launch_passive(model, data) as viewer:
         viewer.cam.type = mujoco.mjtCamera.mjCAMERA_FREE
-        viewer.cam.lookat[:] = [0, 0, 0.8]
-        viewer.cam.distance = 18
+        viewer.cam.lookat[:] = lookat
+        viewer.cam.distance = distance
         viewer.cam.azimuth = 45
-        viewer.cam.elevation = 28
+        viewer.cam.elevation = 25
         while viewer.is_running():
             mujoco.mj_step(model, data)
             viewer.sync()

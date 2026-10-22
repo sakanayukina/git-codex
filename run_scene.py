@@ -4,7 +4,7 @@ import mujoco
 import mujoco.viewer
 
 
-XML = r"C:\Users\18967\Desktop\git\assets\demo_rescue_scene.xml"
+XML = r"C:\Users\18967\Desktop\git\assets\demo_v6.xml"
 
 
 def run(headless=False):

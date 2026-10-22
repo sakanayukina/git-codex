@@ -66,7 +66,7 @@ def main():
     ap.add_argument("--out", default="demo_rescue_scene.xml")
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--no-rubble", action="store_true")
-    ap.add_argument("--ground-tex", default="forest_floor")
+    ap.add_argument("--ground-tex", default="leafy_grass")
     args = ap.parse_args()
 
     t = Terrain(os.path.join(ASSETS, args.terrain), args.extent, args.relief)
