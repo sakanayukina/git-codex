@@ -48,9 +48,12 @@
 
 ## 下一步
 
-1. ~~岩石瘦身~~ 已完成：slim_rocks.py --keep 24 --drop-grass --apply --in-place
+1. **道路 v3 收尾**（DSH）：已改成烘焙贴图（不再抖动），但入户支路太淡、缺宽度变化与路缘、车辙不明显
 2. **H2/H5 换真房子**（用户找素材，DSH 接入）：`buildings.json` 的 `model` 支持目录
 3. **二次坍塌触发 + 机器人接入**（Codex 主责，DSH 复查）：DSH 出可塌结构与 `site_*` 命名规范
+
+> 生成顺序：`village.py` 每次重建都会把石头加回来，跑完必须再执行
+> `slim_rocks.py --keep 24 --drop-grass --apply --in-place`。
 
 ## 历史（一行一天）
 
