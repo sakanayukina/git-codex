@@ -1,10 +1,12 @@
+import os
 import sys
 
 import mujoco
 import mujoco.viewer
 
 
-XML = r"C:\Users\18967\Desktop\git\assets\demo_v6.xml"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+XML = os.path.join(BASE_DIR, "assets", "demo_v6.xml")
 
 
 def run(headless=False):
