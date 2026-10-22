@@ -17,7 +17,7 @@ import re
 
 import numpy as np
 
-from roadgen import write_road_obj
+from roadgen import write_roads_obj, write_road_obj
 from scatter import Terrain, conifer_body, find_terrain
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -228,14 +228,55 @@ def main():
                     f'size="0.35" rgba="0.95 0.85 0.2 1" group="3"/>')
         print(f"  {p['id']:<3s} ({p['x']:>6.1f},{p['y']:>6.1f})  z={gz:6.2f}  damage={p['damage']}")
 
-    # ---- 道路：生成一整条贴合地形的 ribbon 网格（比一堆方板像路）
-    write_road_obj(road["points"], road["width"], t.height,
-                   os.path.join(ASSETS, "generated", "road.obj"))
+    # ---- 道路：主路 + 每户门前支路，合成一个 ribbon 网格
+    main_pts = road["points"]
+    polylines, widths = [main_pts], [road["width"]]
+
+    def closest_on_polyline(x, y, pts):
+        best, bd = None, 1e18
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            dx, dy = x1 - x0, y1 - y0
+            L2 = dx * dx + dy * dy
+            t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - x0) * dx + (y - y0) * dy) / L2))
+            px, py = x0 + t * dx, y0 + t * dy
+            d = (x - px) ** 2 + (y - py) ** 2
+            if d < bd:
+                best, bd = (px, py), d
+        return best
+
+    for p in plots:
+        a = math.radians(p["yaw"])
+        # 门在局部 (0, -D/2)，转到世界坐标
+        dx, dy = math.sin(a) * p["size"][1] / 2, -math.cos(a) * p["size"][1] / 2
+        door = (p["x"] + dx, p["y"] + dy)
+        target = closest_on_polyline(door[0], door[1], main_pts)
+        if target is None or math.hypot(door[0] - target[0], door[1] - target[1]) < 1.0:
+            continue
+        mid = ((door[0] + target[0]) / 2, (door[1] + target[1]) / 2)
+        polylines.append([target, mid, door])
+        widths.append(2.4)
+
+    write_roads_obj(polylines, widths, t.height,
+                    os.path.join(ASSETS, "generated", "road.obj"), lift=0.12, rut=0.02)
     extra_assets.append('<mesh name="roadmesh" file="generated/road.obj"/>')
     extra_assets.append('<material name="dirtroad" texture="dirt_tex" texuniform="false" '
-                        'rgba="0.52 0.43 0.32 1" specular="0.02" shininess="0.1"/>')
+                        'rgba="0.72 0.62 0.46 1" specular="0.02" shininess="0.1"/>')
     body.append('<geom name="road" type="mesh" mesh="roadmesh" material="dirtroad" '
                 'contype="0" conaffinity="0" group="1"/>')
+    print(f"road: {len(polylines)} 条（主路 + {len(polylines) - 1} 条入户支路）")
+
+    # ---- 地面：把主路 + 入户支路一起烘进地形贴图（贴地网格会抖动+边缘锯齿）
+    baked = os.path.join(ASSETS, "tex", "ground_baked.png")
+    try:
+        from bake_ground import bake
+        bake(extent, list(zip(polylines, widths)),
+             os.path.join(ASSETS, "tex", "leafy_grass_diffuse.png"), baked, 2048)
+        xml = xml.replace('file="tex/leafy_grass_diffuse.png"', 'file="tex/ground_baked.png"')
+        xml = re.sub(r'(name="gmat"[^>]*?rgba=")[^"]*(")', r"\g<1>1 1 1 1\g<2>", xml)
+        xml = re.sub(r'(name="gmat"[^>]*?texrepeat=")[^"]*(")', r"\g<1>1 1\g<2>", xml)
+        print(f"ground: 烘好的地面贴图已启用（{os.path.getsize(baked)/1e6:.1f} MB, 2048²）")
+    except Exception as e:      # 烘焙失败也不阻塞场景生成
+        print(f"! ground bake skipped: {e}")
 
     # ---- 集结点
     ap_pt = cfg["assembly_point"]
