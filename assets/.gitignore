@@ -1,0 +1,4 @@
+# 素材包 47 MB，不入库；只保留 README 与忽略规则
+*
+!.gitignore
+!README.md
