@@ -1,0 +1,15 @@
+{
+  "_comment": "村落布局配置。model 留空则用程序化占位房；填相对路径（如 props/buildings/ruin_01/ruin_01.obj）就换成真实模型。x/y 为场景坐标（米），yaw 度，size 为 [宽, 进深, 墙高]。damage: collapse 主塌 / half 半损 / intact 完好。",
+  "assembly_point": {"x": -2, "y": -46, "name": "P0"},
+  "road": {
+    "width": 3.6,
+    "points": [[-4, -62], [0, -40], [4, -20], [6, 2], [10, 30], [18, 58]]
+  },
+  "plots": [
+    {"id": "H1", "x": 8, "y": -14, "yaw": 16, "size": [8.4, 6.2, 3.0], "damage": "collapse", "model": ""},
+    {"id": "H2", "x": -24, "y": -8, "yaw": -12, "size": [7.6, 6.0, 2.9], "damage": "half", "model": ""},
+    {"id": "H3", "x": -26, "y": 24, "yaw": 38, "size": [8.0, 6.4, 3.1], "damage": "intact", "model": ""},
+    {"id": "H4", "x": 16, "y": 30, "yaw": 104, "size": [7.2, 5.8, 2.8], "damage": "intact", "model": ""},
+    {"id": "H5", "x": 34, "y": 2, "yaw": -28, "size": [8.8, 6.6, 3.0], "damage": "half", "model": ""}
+  ]
+}

@@ -24,18 +24,21 @@
 ## 进度与待办
 
 - 待办：
-  - **给 Codex 的接入说明**：素材与场景已可用，`assets/_tools/*.py` 已强制入库（`assets/` 其它内容仍被忽略），改脚本直接改这些；当前最佳场景是 `assets/demo_v5.xml`（可直接 `mujoco.MjModel.from_xml_path` 加载，含 2 个相机 `wide`/`close` 与房屋相机 `house`）。集成到 `outdoor_scene.py` 属 Codex 主责。
+  - **村落布局已就绪（v6）**：`assets/demo_v6.xml` = 5 栋房（H1 主塌 / H2、H5 半损 / H3、H4 完好）+ 土路 ribbon 网格 + 集结点 P0 + 西北坡加密林；每栋房有 `<site name="site_H*">` 标记，任务分配算法直接读坐标。相机：`village`（村口）、`top`（俯视，可当论文布局图）。
+  - **房子是插槽**：改 `assets/buildings.json` 的 `model` 字段就能换真实模型（放 `assets/props/buildings/<名>/<名>.obj` + `_diffuse.png`），跑 `assets/_tools/village.py` 重生成。`model_house()` 目前是纯视觉（`contype=0`），要参与物理需补简化 box 代理。
+  - 道路：`assets/_tools/roadgen.py` 把折线重采样成 ribbon 网格（OBJ+UV，贴地 0.05 m）；踩坑：OBJ 面索引必须从 1 开始，否则 MuJoCo 报 `could not parse OBJ file`。
   - `build_scene.py` 的 `--ground-tex` 默认值仍是 `forest_floor`（那张贴图已被我压到 1K、约 1.5 MB，留着没删）；想要林地绿请显式传 `--ground-tex leafy_grass`，或由 Codex 改默认值。
   - **复查发现（给 Codex）**：`build_scene.py` 把 `--ground-tex` 默认值改成 `forest_floor` 后，全场景偏沙黄（那张贴图是干枯落叶土），配合暖色主光（diffuse 1.0 0.87 0.70）像沙漠，不像川西林地。已验证：换 `leafy_grass` + 绿色 rgba 立刻变回草地。另：废墟/楼板原本是纯白 rgba，无贴图时过曝成白纸片，可用 `_tools/tune.py` 换成混凝土贴图。
   - 已产出对照：`assets/demo_v2.xml`（混凝土 + 降曝）、`demo_v4.xml`（再换绿地面）、**`demo_v5.xml`（加密植被 + 程序化半塌砖房 + 房屋专用相机 `house`）**；渲染图 `_now_wide.png` / `_v2_wide.png` / `_v4_wide.png` / `_v5_wide.png` / `_v5_house.png`；脚本 `_tools/tune.py`（材质/曝光）、`_tools/scatter.py`（加密 + 建房）。
   - 房子做法（`scatter.py::house`）：8.4×6.2 m、墙高 3 m，砖墙贴图 + 混凝土楼板；南北墙留窗洞/门洞，东墙塌一段、西墙剩半截，两块楼板斜搭在墙上，室内外各堆碎块。**仍是"方盒拼接"，结构对、细节假**；要更像需要真扫描建筑模型。
   - 草的问题：`props/ground/grass_medium_01` 是扁平扫描草皮（5.6×0.33×0.34 m），铺多了侧看像"灰刺"，已从场景撤掉。MuJoCo 无 GPU 实例化、无 alpha 剪裁，几何草只能靠 Blender 散布后合并成单一 mesh，或干脆用地面贴图。
-  - `assets/demo_rescue_scene.xml` 还没接进 `outdoor_scene.py` / `outdoor_rescue_demo.py`（那属于仓库代码改动，建议 Codex 主责，DSH 只提供素材与参数）。
+  - 二次坍塌触发逻辑与救援机器人接入尚未做（`outdoor_rescue_demo.py` 仍是早期程序化场景）。
   - 复查 Codex 的提交：`e6a27ba`（修 .gitignore）、`1eccf2f`（导入 MuJoCo 脚本/论文/AGENTS.md）。DSH 尚未逐行复查这两个 commit，下一步可做。
   - 仓库卫生：Codex 已修好根目录 `.gitignore`（补齐 `.env.*`、`*.log`、`MUJOCO_LOG.TXT`、`__pycache__/`、`.vscode/` 等），DSH 复查通过；磁盘上的 `debug.log`、`MUJOCO_LOG.TXT`、`__pycache__/` 仍在，但已被忽略，可选清理。
   - 脚本、papers、`AGENTS.md` 现已由 Codex 在 `1eccf2f` 入库（`git ls-files` 22 个文件），未跟踪风险解除。
 - 进行中：
 - 已完成：
+  - 2026-10-22 Codex 接入：`outdoor_scene.py` 已优先加载 `assets/demo_v5.xml`（446 body / 995 geom / 3 相机），文件不存在时回退到程序化场景；`run_scene.py` 指向 `demo_v5.xml`；`build_scene.py` 的 `--ground-tex` 默认值改回 `leafy_grass`（原先 `forest_floor` 偏沙黄）。两个入口 `--headless` 验证通过。
   - 2026-10-22 DSH 主责交付：野外救灾场景素材包 `assets/`（47 MB，自带 `assets/.gitignore` 排除，只有 README 值得入库）。内容：①真实地形 `terrain/dem_wenchuan_200m.png`、`_400m.png`——AWS Terrarium 公开 DEM，坐标 31.055°N/103.483°E（汶川），落差 66.5/92.1 m；②Poly Haven CC0 扫描道具 10 件（boulder_01、rock_07、rock_moss_set_01、tree_stump_01、bark_debris_01、grass_medium_01、moss_01、covered_car、concrete_road_barrier、old_tyre）+ 3 张可平铺地面贴图；③`demo_rescue_scene.xml`：hfield 地形 + 22 棵程序化针叶树 + 岩石/车/隔离墩 + 90 块废墟 + 3 块楼板，`render_scene.py` 渲过两版预览。工具链在 `assets/_tools/`（fetch_dem / fetch_ph_model / fetch_texture / build_scene / render_scene / preview）。
   - 2026-10-22 同日踩坑结论（重要，别再重复）：MuJoCo **不读 glTF**（Poly Haven 只有 glTF/FBX，故自写展平器）；`hfield size` 四个数必须全为正，`base=0` 直接报错，用 0.01；hfield PNG **第 0 行 = +Y**，行↔−y 搞反会让人物浮空；MuJoCo 把 16 位 PNG 压回 8 位，66 m 落差必然有台阶，靠抖动掩盖；Terrarium 最高 z15（约 4.1 m/px），要 1 m 得换 Copernicus/USGS GeoTIFF + GDAL；`fir_tree_01` 有 698 万面，降面后成灰团，**照片扫描树在 MuJoCo 里不可用**。
   - 2026-10-22 文档三层落地并提交：根 `README.md`（入口表）、`ASSETS.md`（素材索引与硬约束）、`assets/README.md`（详解）、`.github/copilot-instructions.md`（VS Code Copilot 自动加载的分工约定）；`assets/.gitignore` 只放行 README 与自身，47 MB 素材不入库。提交后工作区干净。
