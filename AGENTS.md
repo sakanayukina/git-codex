@@ -4,10 +4,10 @@
 
 ## 工作区地图
 
-- **仿真场景**：`assets/demo_v6.xml`（当前场景，535 body / 1307 geom / 10 相机，约 82 MB 素材，gitignore 不入库）
+- **仿真场景**：`assets/demo_v6.xml`（当前场景，344 body / 1108 geom / 10 相机 / 2.59 M 三角面，素材约 82 MB，gitignore 不入库）
 - **生成链**：`assets/_tools/` — `build_scene.py`(拼地形) → `tune.py`(材质) → `scatter.py`(植被/废墟) → `village.py`(村落, base 是 `demo_v5.xml`)，`roadgen.py` 生成土路网格
 - **导入链**：`convert_multi.py`(glTF/GLB 按材质拆分) → `import_gltf.py` / `import_building.py`(建筑) → `fix_obj_faces.py`(OBJ 体检)
-- **渲染/清理**：`render_scene.py`、`preview_parts.py`、`cleanup.py`
+- **渲染/清理**：`render_scene.py`、`preview_parts.py`、`cleanup.py`、`slim_rocks.py`（石头瘦身）、`bake_ground.py`（路烘进地面贴图）
 - 其他：`papers/`（LLM/异构多机器人）、`skills/paper-reader`、`PerpetualCalendar.java`、`scripts/extract_papers.py`
 
 ## 环境
@@ -27,11 +27,20 @@
 
 ## 当前状态（2026-10-22）
 
-- **场景**：汶川 DEM 地形（200 m² / 落差 66.5 m）+ 5 栋房（H1 真实废墟，H2–H5 程序化）+ 土路 + 24 块岩石 + 92 棵程序化针叶树 + 30 棵 Sketchfab 枫树 + 90 块废墟 + 车辆（**2.50 M 三角面**）
-- **H1 = `collapsed_uk_terraced_house`**（22,631 面，15 材质分件、1 张 2K 图集），有不可见碰撞外壳（留 1.3 m 门洞），相机 `cam_H1`…`cam_H5` + `close`
-- **已解决**：石头瘦身（_tools/slim_rocks.py，140→24 个 + 删掉 75 个扁平草皮，**8.61 M → 2.50 M**）
-- **未解决**：① 树叶近看发白点（单面片）；② 废墟是英式排屋，风格与川西砖房不完全一致
-- **待素材**：H2/H5 的真实废墟模型（≤25 万面、glTF）
+- **场景**：汶川 DEM 地形（200 m² / 落差 66.5 m）+ **7 个可搜索点**（H1 真实砖房废墟、H6 混凝土塌楼、H7 塌墙扫描件、H2–H5 占位房）+ 烘焙地面（主路 + 5 条入户支路）+ 24 块岩石 + 92 棵程序化针叶树 + 30 棵 Sketchfab 枫树 + 车辆（**2.59 M 三角面**，344 body / 1108 geom / 10 相机）
+- **H1 = `collapsed_uk_terraced_house`**（22,631 面，15 材质分件、1 张 2K 图集），有不可见碰撞外壳（留 1.3 m 门洞）；H6 = `ruined_building.glb`（3,407 面，含瓦砾场）；H7 = `free_ruined_wall_3d_scan.glb`（670k→90k 面，塌墙）
+- **已解决**：石头瘦身（8.61 M → 2.50 M）；道路改为烘焙进地面贴图（不再抖动）；GLB 内嵌贴图提取；扫描件减面 `--max-tris`
+- **未解决**：① 树叶近看发白点（单面片）；② H2–H5 仍是程序化占位房；③ H6/H7 没碰撞
+- **待素材（暂缓，用户先不找）**：H2/H5 的民房尺度废墟（6–10 m 宽、有门窗、≤25 万面）
+- **用不上的素材**：`snowy_mountain_road_scene.zip`（雪山公路 kit）——雪地/标线季节不符；里面 ROAD_POLE 是「一排电线杆」跨度 35 m、CLIFF 的 zmin = −11 m（属于雪景已摆好的布景件，不是干净单体），已抽到 `props/imported/road_props/` 但**未入场景**
+- 仓库根目录还有 `ruined_building.glb`、`free_ruined_wall_3d_scan.glb`、`snowy_mountain_road_scene.zip`，已转进 `props/imported/`，可删
+
+## 给 Codex 的提醒
+
+- `village.py` 每次重建都会把石头加回来 → 必须接着跑 `slim_rocks.py --keep 24 --drop-grass --apply --in-place`，否则三角面从 2.59 M 涨回 8.6 M
+- 场景加载：`mujoco.MjModel.from_xml_path("assets/demo_v6.xml")`；入口 `outdoor_scene.py` / `run_scene.py` 已指向它
+- 相机：`wide` / `close`(H1) / `village` / `top`(俯视) / `cam_H1`…`cam_H5`
+- 可搜索点坐标读 `<site name="site_H1">`…`site_H7`、`site_P0`（`group=3`，不渲染）
 
 ## 关键结论（踩过的坑，别重复）
 
@@ -49,7 +58,7 @@
 ## 下一步
 
 1. **道路 v3 收尾**（DSH）：已改成烘焙贴图（不再抖动），但入户支路太淡、缺宽度变化与路缘、车辙不明显
-2. **H2/H5 换真房子**（用户找素材，DSH 接入）：`buildings.json` 的 `model` 支持目录
+2. **H2/H5 换真房子**：用户已暂缓（找到 6–10 m 宽、有门窗的民房废墟再说），`buildings.json` 的 `model` 已支持目录
 3. **二次坍塌触发 + 机器人接入**（Codex 主责，DSH 复查）：DSH 出可塌结构与 `site_*` 命名规范
 
 > 生成顺序：`village.py` 每次重建都会把石头加回来，跑完必须再执行

@@ -42,6 +42,7 @@ def main():
     ap.add_argument("--src", required=True)
     ap.add_argument("--name", required=True)
     ap.add_argument("--skip", default="", help="要丢弃的材质名，逗号分隔（如 grass,groundcover）")
+    ap.add_argument("--only", default="", help="只保留这些材质名（逗号分隔），空=全保留")
     ap.add_argument("--scale", type=float, default=1.0, help="导出时统一缩放")
     ap.add_argument("--target-height", type=float, default=0.0, help="按总高度等比缩放（米）")
     ap.add_argument("--max-tex", type=int, default=2048, help="贴图最长边上限")
@@ -68,6 +69,7 @@ def main():
     gltf = ig.materialize(gltf, out_dir, stem)
 
     skip = {s.strip().lower() for s in args.skip.split(",") if s.strip()}
+    only = {s.strip().lower() for s in args.only.split(",") if s.strip()}
 
     # 展平场景图，按材质归组
     inst = []
@@ -81,6 +83,8 @@ def main():
                 continue
             mi = prim.get("material")
             mname = gltf["materials"][mi]["name"] if mi is not None else "default"
+            if only and mname.lower() not in only:
+                continue
             if any(k in mname.lower() for k in skip):
                 continue
             g = groups[mname]
