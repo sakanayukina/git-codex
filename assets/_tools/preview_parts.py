@@ -18,7 +18,10 @@ parts = sorted(f for f in os.listdir(D) if f.endswith(".obj"))
 assets, geoms = [], []
 for i, obj in enumerate(parts):
     stem = obj[:-4]
-    png = f"{stem}_diffuse.png"
+    # 贴图命名有两种：<stem>_diffuse.png 或共享的 <name>_atlas_N.png
+    cands = [f"{stem}_diffuse.png"] + sorted(
+        f for f in os.listdir(D) if f.endswith(".png") and "atlas" in f)
+    png = next((c for c in cands if os.path.exists(os.path.join(D, c))), cands[0])
     assets.append(f'<mesh name="m{i}" file="{D}/{obj}" inertia="shell"/>')
     if os.path.exists(os.path.join(D, png)):
         assets.append(f'<texture name="t{i}" type="2d" file="{D}/{png}"/>')

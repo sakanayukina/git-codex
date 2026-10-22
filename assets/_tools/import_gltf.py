@@ -75,6 +75,21 @@ def materialize(gltf, model_dir, stem):
             open(os.path.join(model_dir, name), "wb").write(blob)
             img["uri"] = name
             changed = True
+        elif not uri and "bufferView" in img:
+            # GLB 常见：贴图存在二进制块里，没有外部文件
+            bv = gltf["bufferViews"][img["bufferView"]]
+            buf = gltf["buffers"][bv.get("buffer", 0)]
+            buf_path = os.path.join(model_dir, buf["uri"])
+            start = bv.get("byteOffset", 0)
+            length = bv["byteLength"]
+            with open(buf_path, "rb") as f:
+                f.seek(start)
+                blob = f.read(length)
+            ext = ".jpg" if "jpeg" in img.get("mimeType", "") else ".png"
+            name = f"tex{i}{ext}"
+            open(os.path.join(model_dir, name), "wb").write(blob)
+            img["uri"] = name
+            changed = True
         elif uri:
             img["uri"] = urllib.parse.unquote(uri)
 
