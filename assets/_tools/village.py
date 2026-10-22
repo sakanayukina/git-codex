@@ -244,6 +244,7 @@ def main():
                 best, bd = (px, py), d
         return best
 
+    junctions = []
     for p in plots:
         a = math.radians(p["yaw"])
         # 门在局部 (0, -D/2)，转到世界坐标
@@ -254,27 +255,28 @@ def main():
             continue
         mid = ((door[0] + target[0]) / 2, (door[1] + target[1]) / 2)
         polylines.append([target, mid, door])
-        widths.append(2.4)
+        widths.append(3.0)
+        junctions.append((target, 3.0))
 
-    write_roads_obj(polylines, widths, t.height,
-                    os.path.join(ASSETS, "generated", "road.obj"), lift=0.12, rut=0.02)
-    extra_assets.append('<mesh name="roadmesh" file="generated/road.obj"/>')
-    extra_assets.append('<material name="dirtroad" texture="dirt_tex" texuniform="false" '
-                        'rgba="0.72 0.62 0.46 1" specular="0.02" shininess="0.1"/>')
-    body.append('<geom name="road" type="mesh" mesh="roadmesh" material="dirtroad" '
-                'contype="0" conaffinity="0" group="1"/>')
-    print(f"road: {len(polylines)} 条（主路 + {len(polylines) - 1} 条入户支路）")
+    # 注意：这里**不再**生成贴地道路网格——路已经烘进地面贴图了。
+    # 留着旧的 mesh 会盖在烘焙贴图上面，把路盖成一条发白的带子（踩过）。
+    print(f"road: {len(polylines)} 条（主路 + {len(polylines) - 1} 条入户支路，全部烘进地面贴图）")
 
     # ---- 地面：把主路 + 入户支路一起烘进地形贴图（贴地网格会抖动+边缘锯齿）
     baked = os.path.join(ASSETS, "tex", "ground_baked.png")
     try:
         from bake_ground import bake
         bake(extent, list(zip(polylines, widths)),
-             os.path.join(ASSETS, "tex", "leafy_grass_diffuse.png"), baked, 2048)
+             os.path.join(ASSETS, "tex", "leafy_grass_diffuse.png"), baked, 2048,
+             junctions=junctions)
         xml = xml.replace('file="tex/leafy_grass_diffuse.png"', 'file="tex/ground_baked.png"')
         xml = re.sub(r'(name="gmat"[^>]*?rgba=")[^"]*(")', r"\g<1>1 1 1 1\g<2>", xml)
-        xml = re.sub(r'(name="gmat"[^>]*?texrepeat=")[^"]*(")', r"\g<1>1 1\g<2>", xml)
-        print(f"ground: 烘好的地面贴图已启用（{os.path.getsize(baked)/1e6:.1f} MB, 2048²）")
+        # hfield 的 texrepeat 按"米"计，不是按整块地形归一化：
+        # 要 1:1 覆盖 extent 米，就填 1/extent（200 m -> 0.005），填 1 1 会变成每米铺一次。
+        rep = 1.0 / extent
+        xml = re.sub(r'(name="gmat"[^>]*?texrepeat=")[^"]*(")',
+                     rf"\g<1>{rep:.6f} {rep:.6f}\g<2>", xml)
+        print(f"ground: 烘好的地面贴图已启用（{os.path.getsize(baked)/1e6:.1f} MB, 2048x2048）")
     except Exception as e:      # 烘焙失败也不阻塞场景生成
         print(f"! ground bake skipped: {e}")
 

@@ -1,10 +1,14 @@
 r"""把路直接画进地面贴图（1:1 覆盖整块地形），避免贴地网格的抖动、锯齿和阴影自遮挡。
 
-    from bake_ground import bake
-    bake(extent=200, roads=[(main_pts, 3.6), (spur_pts, 2.4)],
-         ground_png="tex/leafy_grass_diffuse.png", out_png="tex/ground_baked.png")
+v2 改动：
+- 路用多边形铺（逐点宽度抖动 ±15% + 横向抖动），边缘不再是一条直尺线
+- 车辙更深更宽；路面整体压暗
+- 岔口处画一块加宽的"路口补丁"
+- 草沿路边侵入，形成不规则路缘
 
-产物配合 hfield 材质 texrepeat="1 1" 使用：路是"长在地形上"的，没有浮空。
+    from bake_ground import bake
+    bake(extent=200, roads=[(pts, 4.2), (spur, 3.0)],
+         junctions=[(x, y)], ground_png=..., out_png=...)
 """
 import argparse
 import json
@@ -26,34 +30,70 @@ def world_to_px(x, y, extent, size):
 
 def make_noise(size, scale=128, rng=None):
     rng = rng or np.random.default_rng(0)
-    small = rng.normal(0.5, 0.12, (scale, scale))
+    small = rng.normal(0.5, 0.1, (scale, scale))
     img = Image.fromarray(np.clip(small * 255, 0, 255).astype(np.uint8), "L")
     return img.resize((size, size), Image.BICUBIC)
 
 
-def _draw_road(draw, points, width, extent, size, rng):
+def _sample_polyline(points, step_px, extent, size):
+    """把世界坐标折线按像素步长重采样，返回 [(px, py), ...]。"""
     pts = [world_to_px(x, y, extent, size) for x, y in points]
+    out = [pts[0]]
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        L = math.hypot(x1 - x0, y1 - y0)
+        n = max(1, int(L / step_px))
+        for i in range(1, n + 1):
+            t = i / n
+            out.append((x0 + (x1 - x0) * t, y0 + (y1 - y0) * t))
+    return out
+
+
+def _road_polygon(pts, half_w, rng):
+    """沿中线生成左右边，宽度和横向位置都带抖动 → 不规则路缘。"""
+    left, right = [], []
+    phase = rng.uniform(0, 6.28)
+    for i, (px, py) in enumerate(pts):
+        if i + 1 < len(pts):
+            dx, dy = pts[i + 1][0] - px, pts[i + 1][1] - py
+        else:
+            dx, dy = px - pts[i - 1][0], py - pts[i - 1][1]
+        L = math.hypot(dx, dy) or 1.0
+        nx, ny = -dy / L, dx / L
+        s = i / max(1, len(pts) - 1)
+        wob = 1.0 + 0.15 * math.sin(s * 21 + phase) + 0.08 * math.sin(s * 57 + phase * 2)
+        lateral = rng.normal(0, half_w * 0.06)
+        w = half_w * wob
+        left.append((px + nx * w + nx * lateral, py + ny * w + ny * lateral))
+        right.append((px - nx * w + nx * lateral, py - ny * w + ny * lateral))
+    return left + right[::-1]
+
+
+def _draw_road(draw, points, width, extent, size, rng):
+    pts = _sample_polyline(points, step_px=max(2.0, size / extent * 0.5), extent=extent, size=size)
     if len(pts) < 2:
         return
     half_w = width / extent * size / 2
-    # 路肩（被车压实的浅色边）
-    draw.line(pts, fill=(132, 112, 82, 140), width=int(half_w * 2 + size / 200), joint="curve")
+    # 路肩：比路面略宽一圈的浅色（被压实的土）
+    draw.polygon(_road_polygon(pts, half_w * 1.18, rng), fill=(126, 106, 76, 130))
     # 路面
-    draw.line(pts, fill=(112, 92, 66, 255), width=int(half_w * 2), joint="curve")
-    # 两条车辙
-    for off in (-0.55, 0.55):
-        ruts = []
+    draw.polygon(_road_polygon(pts, half_w, rng), fill=(96, 80, 58, 255))
+    # 两条车辙：更深、更宽
+    for off in (-0.5, 0.5):
+        rut = []
         for i, (px, py) in enumerate(pts):
             if i + 1 < len(pts):
                 dx, dy = pts[i + 1][0] - px, pts[i + 1][1] - py
             else:
                 dx, dy = px - pts[i - 1][0], py - pts[i - 1][1]
             L = math.hypot(dx, dy) or 1.0
-            ruts.append((px - dy / L * half_w * off, py + dx / L * half_w * off))
-        draw.line(ruts, fill=(92, 74, 52, 190), width=max(2, int(half_w * 0.4)), joint="curve")
+            jitter = rng.normal(0, half_w * 0.03)
+            rut.append((px - dy / L * (half_w * off + jitter),
+                        py + dx / L * (half_w * off + jitter)))
+        draw.line(rut, fill=(72, 58, 40, 210), width=max(2, int(half_w * 0.5)), joint="curve")
 
 
-def bake(extent, roads, ground_png, out_png, size=2048, tile_m=200.0, seed=7):
+def bake(extent, roads, ground_png, out_png, size=2048, tile_m=200.0, junctions=(),
+         seed=7):
     ground = Image.open(ground_png).convert("RGB")
     # 草贴图偏黄：压红、提绿、压蓝，让它像林地而不是沙地
     r, g, b = ground.split()
@@ -74,25 +114,34 @@ def bake(extent, roads, ground_png, out_png, size=2048, tile_m=200.0, seed=7):
     for points, width in roads:
         _draw_road(draw, points, width, extent, size, rng)
 
-    # 路面上撒一点草色斑块，像少有人走的斑驳
+    # 岔口补丁：路口加宽，看起来像真有人在那儿拐弯
+    for (jx, jy), jw in junctions:
+        cx, cy = world_to_px(jx, jy, extent, size)
+        r = jw / extent * size * 0.62
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(96, 80, 58, 255))
+        draw.ellipse([cx - r * 0.8, cy - r * 0.8, cx + r * 0.8, cy + r * 0.8],
+                     fill=(88, 73, 52, 255))
+
+    # 草沿路边侵入：在路面附近撒草点，形成不规则路缘
     patch = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     gp = ImageDraw.Draw(patch)
     for points, width in roads:
-        pts = [world_to_px(x, y, extent, size) for x, y in points]
+        pts = _sample_polyline(points, 3.0, extent, size)
         half_w = width / extent * size / 2
-        for _ in range(int(size * size / 12000)):
+        for _ in range(int(size * size / 9000)):
             t = rng.integers(0, max(1, len(pts) - 1))
             (x0, y0) = pts[t]
             (x1, y1) = pts[min(t + 1, len(pts) - 1)]
             a = rng.uniform(0, 1)
             cx, cy = x0 + (x1 - x0) * a, y0 + (y1 - y0) * a
-            off = rng.uniform(-half_w, half_w)
+            edge = rng.uniform(0.75, 1.25)          # 集中在路缘附近
             L = math.hypot(x1 - x0, y1 - y0) or 1.0
+            off = rng.uniform(-1, 1) * half_w * edge
             cx += -(y1 - y0) / L * off
             cy += (x1 - x0) / L * off
-            rad = rng.uniform(1.2, 4.5)
+            rad = rng.uniform(1.5, 5.0)
             gp.ellipse([cx - rad, cy - rad, cx + rad, cy + rad],
-                       fill=(96, 120, 62, int(rng.uniform(40, 130))))
+                       fill=(92, 116, 60, int(rng.uniform(50, 150))))
     canvas = Image.alpha_composite(canvas.convert("RGBA"), patch).convert("RGB")
 
     # 全图亮度噪声，压掉平涂感
