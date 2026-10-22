@@ -295,18 +295,30 @@ def main():
         if p.get("collision", "walls") == "none":
             continue
         W, D, H = p["size"][0], p["size"][1], p["size"][2]
+        # 可选覆盖：collision_box = [宽, 进深, 高, 门洞宽]
+        # 例如 H6 只有中间楼体要挡（外面一圈是瓦砾），H7 是一堵墙（门洞 0）
+        box = p.get("collision_box")
+        if box:
+            W, D, H = box[0], box[1], box[2]
+            door = box[3] if len(box) > 3 else 1.3
+        else:
+            door = 1.3
         corners = [(p["x"] + dx, p["y"] + dy) for dx in (-W / 2, W / 2) for dy in (-D / 2, D / 2)]
         gz = min(t.height(cx_, cy_) for cx_, cy_ in corners)
-        th, door = 0.18, 1.3
-        seg = (W / 2 - door / 2) / 2
+        th = 0.18
+        seg = max(0.05, (W / 2 - door / 2) / 2)
         shell = [f'<body name="{p["id"]}_collision" pos="{p["x"]:.2f} {p["y"]:.2f} {gz:.3f}" '
                  f'euler="0 0 {p["yaw"]}">']
-        # 前墙（留门洞）
-        for s in (-1, 1):
-            shell.append(f'<geom type="box" size="{seg:.2f} {th:.2f} {H / 2:.2f}" '
-                         f'pos="{s * (door / 2 + seg):.2f} {-D / 2:.2f} {H / 2:.2f}" group="3"/>')
-        shell.append(f'<geom type="box" size="{door / 2:.2f} {th:.2f} 0.55" '
-                     f'pos="0 {-D / 2:.2f} {H - 0.55:.2f}" group="3"/>')   # 门楣
+        # 前墙（留门洞；门洞 0 就是整面实墙）
+        if door > 0:
+            for s in (-1, 1):
+                shell.append(f'<geom type="box" size="{seg:.2f} {th:.2f} {H / 2:.2f}" '
+                             f'pos="{s * (door / 2 + seg):.2f} {-D / 2:.2f} {H / 2:.2f}" group="3"/>')
+            shell.append(f'<geom type="box" size="{door / 2:.2f} {th:.2f} 0.55" '
+                         f'pos="0 {-D / 2:.2f} {H - 0.55:.2f}" group="3"/>')   # 门楣
+        else:
+            shell.append(f'<geom type="box" size="{W / 2:.2f} {th:.2f} {H / 2:.2f}" '
+                         f'pos="0 {-D / 2:.2f} {H / 2:.2f}" group="3"/>')
         # 后墙 + 两侧墙
         shell.append(f'<geom type="box" size="{W / 2:.2f} {th:.2f} {H / 2:.2f}" '
                      f'pos="0 {D / 2:.2f} {H / 2:.2f}" group="3"/>')
