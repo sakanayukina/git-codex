@@ -4,7 +4,7 @@
 
 ## 工作区地图
 
-- **仿真场景**：`assets/demo_v24.xml`（598 body / 1040 geom / 12 相机 / 8 site；**3.81 M 三角面**；基座 0、悬空瓦砾 0；H1/H6 塌落堆积锥 48 块 + 5 栋房边缘接缝碎石 187 块；`demo_v23.xml` 为上一版，`demo_v7.xml` 为原版对照；素材约 230 MB，gitignore 不入库）
+- **仿真场景**：`assets/demo_v25.xml`（598 body / 1037 geom / 12 相机 / 8 site；**3.81 M 三角面**；整平过渡带 **11 m**（`flatten_sites.py --band 11`）；基座 0、悬空瓦砾 0；塌落堆积锥 48 + 接缝碎石 187；`demo_v24.xml` 为 6 m 过渡带对照）
 - **生成链**：`build_scene.py`(地形+道具) → `tune.py`(材质曝光) → `scatter.py`(植被/废墟) → `village.py`(村落，base = `demo_v5.xml`) → `slim_rocks.py`(石头瘦身)
 - **导入链**：`convert_multi.py`(glTF/GLB 按材质拆分、减面、只保留指定材质) → `import_gltf.py` / `import_building.py` → `fix_obj_faces.py`(OBJ 体检) → `prune_imported.py`(删转换中间文件) → `decimate_obj.py`(单个 OBJ 减面)
 - **场景辅助**：`bake_ground.py`(把路烘进地面贴图)、`polish.py`(树/草/瓦砾/天空/地面)、`seam_ring.py`(房子边缘接缝碎石)、`layout_check.py`(压路/重叠体检)、`check_floating.py`(瓦砾悬空体检)、`render_scene.py`、`preview_parts.py`、`cleanup.py`
@@ -73,7 +73,17 @@
 
 > 生成顺序：`village.py` → `slim_rocks.py --keep 24 --drop-grass --apply --in-place`
 > → `optimize_trees.py`（Codex 的树优化）→ 如需碰撞：`add_collision.py --xml demo_v7.xml --apply`
-> → 局部整平：`flatten_sites.py`（footprint + 6 m 平滑过渡）→ `reground_props.py` → `fix_grounding.py --no-platform` → `remove_plinths.py`
+> → 局部整平：`flatten_sites.py --band 11`（**过渡带 11 m**，6 m 会留明显坡折）→ `reground_props.py`
+> → `fix_grounding.py --no-platform` → `remove_plinths.py` → `polish.py --ground-tex --grass-count 60`
+> → `seam_ring.py --band 11`（碎石要跟着 band 走）
+
+## 给 Codex 的请求（DSH 已实测，待并入你的链路）
+
+1. **`flatten_sites.py` 请固定用 `--band 11`**（原默认 6 m）。实测 6 m 时房子边缘有一圈明显的坡折
+   + 亮度突变，像"摆在圆托盘上"；11 m 的 smoothstep 过渡明显更自然。参数已经是现成的，不用改代码。
+   如果以后要更缓，试 12–14 m，但整平面积会跟着变大。
+2. 跑完 `flatten_sites.py` 之后，`seam_ring.py` 的 `--band` 要和它保持一致，
+   否则接缝碎石会压错位置（碎石环半径 = footprint + band ± 1.5 m）。
 
 ## 历史
 
@@ -85,3 +95,5 @@
 - 2026-10-23 Codex 局部整平：恢复原始 66.5 m 山势，只在房子 footprint 整平（3 m 过渡带），215 个道具重新贴地，场景切到 demo_v16.xml
 - 2026-10-23 Codex 局部整平 + 去基座：过渡带 6 m smoothstep、房子不再加台地、删除 village.py 自带混凝土基座，场景切到 demo_v19.xml
 - 2026-10-23 DSH d437147：修基座命名/平台、瓦砾移到 polish.py 消除悬空、H1/H6 堆积锥，产出 demo_v23.xml；Codex 切入口并清理中间版本
+- 2026-10-23 DSH 0eb60f8/c069853：接缝碎石环（187 块，混凝土色）+ 岩石低模化 14,844→2,320 面（4.16 M → 3.81 M），产出 demo_v24.xml
+- 2026-10-23 DSH 8f36da1 之后：`flatten_sites.py --band` 6→**11 m**，接缝坡折明显变缓；`seam_ring.py --band 11` 同步，产出 demo_v25.xml（面数不变 3.81 M）

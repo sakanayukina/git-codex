@@ -14,9 +14,9 @@ import numpy as np
 
 from polish import ASSETS, terrain_fn
 
-# 房子整平 footprint 之外，过渡带大约 6 m（flatten_sites.py）
-# 接缝（坡折）就在 footprint+6 那条线上，碎石要压在它上面才有用
-RING_IN, RING_OUT = 5.2, 7.4
+# 整平过渡带宽度由 flatten_sites.py --band 决定（默认 6 m，现在用 11 m）。
+# 接缝（坡折）就在 footprint+band 那条线上，碎石要压在它附近才有用。
+DEFAULT_BAND = 11.0
 PER_PLOT = 42
 
 
@@ -26,7 +26,10 @@ def main():
     ap.add_argument("--out", dest="dst", default=os.path.join(ASSETS, "demo_v24.xml"))
     ap.add_argument("--seed", type=int, default=13)
     ap.add_argument("--per-plot", type=int, default=PER_PLOT)
+    ap.add_argument("--band", type=float, default=DEFAULT_BAND,
+                    help="与 flatten_sites.py --band 保持一致")
     args = ap.parse_args()
+    ring_in, ring_out = max(1.0, args.band - 1.2), args.band + 1.6
 
     cfg = json.load(open(os.path.join(ASSETS, "buildings.json"), encoding="utf-8"))
     plots = [p for p in cfg["plots"] if (p.get("model") or "").strip()]
@@ -41,7 +44,7 @@ def main():
         hw, hd = p["size"][0] / 2, p["size"][1] / 2
         for k in range(args.per_plot):
             ang = 2 * math.pi * k / args.per_plot + rng.normal(0, 0.05)
-            extra = rng.uniform(RING_IN, RING_OUT)
+            extra = rng.uniform(ring_in, ring_out)
             lx = (hw + extra) * math.cos(ang)
             ly = (hd + extra) * math.sin(ang)
             x = p["x"] + lx * math.cos(a) - ly * math.sin(a)
