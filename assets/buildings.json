@@ -1,17 +1,22 @@
 {
-  "_comment": "村落布局配置。model 留空则用程序化占位房；填相对路径（如 props/buildings/ruin_01/ruin_01.obj）就换成真实模型。x/y 为场景坐标（米），yaw 度，size 为 [宽, 进深, 墙高]。damage: collapse 主塌 / half 半损 / intact 完好。",
+  "_comment": "村落布局配置。model 留空则用程序化占位房；填相对路径就换成真实模型。x/y 为场景坐标（米），yaw 度，size 为 [宽, 进深, 墙高]。damage: collapse 主塌 / half 半损 / intact 完好。修改后务必跑 layout_check.py 确认没有压路/重叠。",
   "assembly_point": {"x": -2, "y": -46, "name": "P0"},
   "road": {
     "width": 4.2,
     "points": [[-4, -62], [0, -40], [4, -20], [6, 2], [10, 30], [18, 58]]
   },
   "plots": [
-    {"id": "H1", "x": 8, "y": -14, "yaw": 196, "size": [8.4, 6.2, 3.0], "damage": "collapse", "model": "props/imported/ruin_uk", "model_scale": 1.0},
+    {"id": "H1", "x": 15, "y": -14, "yaw": 196, "size": [8.4, 6.2, 3.0], "damage": "collapse", "model": "props/imported/ruin_uk", "model_scale": 1.0},
     {"id": "H2", "x": -24, "y": -8, "yaw": -12, "size": [16.7, 8.4, 6.0], "damage": "collapse", "model": "props/imported/house2", "model_scale": 1.0, "collision_box": [16.7, 8.4, 5.4, 1.4]},
     {"id": "H3", "x": -26, "y": 24, "yaw": 38, "size": [8.0, 6.4, 3.1], "damage": "intact", "model": ""},
-    {"id": "H4", "x": 16, "y": 30, "yaw": 104, "size": [7.2, 5.8, 2.8], "damage": "intact", "model": ""},
-    {"id": "H5", "x": 34, "y": 2, "yaw": -28, "size": [8.8, 6.6, 3.0], "damage": "half", "model": ""},
+    {"id": "H4", "x": 2, "y": 36, "yaw": 104, "size": [7.2, 5.8, 2.8], "damage": "intact", "model": ""},
+    {"id": "H5", "x": 34, "y": 2, "yaw": -28, "size": [8.4, 7.0, 5.0], "damage": "half", "model": "props/imported/h5a", "model_scale": 1.0, "collision_box": [8.0, 6.8, 4.6, 1.3]},
     {"id": "H6", "x": -12, "y": -26, "yaw": 42, "size": [15.6, 15.9, 4.0], "damage": "collapse", "model": "props/imported/ruin2", "model_scale": 1.0, "collision_box": [9.0, 6.5, 3.2, 1.6]},
-    {"id": "H7", "x": -16, "y": -36, "yaw": 20, "size": [12.2, 7.7, 2.2], "damage": "collapse", "model": "props/imported/ruin_wall", "model_scale": 1.0, "collision_box": [12.2, 0.9, 2.2, 0]}
+    {"id": "H7", "x": -26, "y": -44, "yaw": 20, "size": [12.2, 7.7, 2.2], "damage": "collapse", "model": "props/imported/ruin_wall", "model_scale": 1.0, "collision_box": [12.2, 0.9, 2.2, 0]}
+  ],
+  "blockades": [
+    {"x": 2.0, "y": -30, "yaw": 15, "n": 14, "radius": 3.2, "label": "瓦砾封路（村南）"},
+    {"x": 7.2, "y": 16, "yaw": 72, "n": 12, "radius": 2.8, "label": "塌墙封路（村中）"},
+    {"x": 14.0, "y": 44, "yaw": 40, "n": 9, "radius": 2.4, "label": "抛锚车 + 碎石（村北）"}
   ]
 }

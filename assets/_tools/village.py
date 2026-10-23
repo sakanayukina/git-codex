@@ -395,6 +395,44 @@ def main():
             gc += 1
         print(f"grass clumps (real scan): {gc}")
 
+    # ---- 封路障碍：真实灾区里路是被瓦砾/塌墙/抛锚车堵死的，不是干净的
+    blockades = cfg.get("blockades") or []
+    if blockades:
+        rock_obj = "props/rocks/rock_07/rock_07_1k.obj"
+        rock_tex = "props/rocks/rock_07/rock_07_1k_diffuse.png"
+        have_rock = os.path.exists(os.path.join(ASSETS, rock_obj))
+        if have_rock:
+            # 同一份 OBJ 注册三个不同缩放的 mesh，做出大小混杂的瓦砾堆
+            for i, sc in enumerate((0.55, 0.85, 1.25)):
+                extra_assets.append(
+                    f'<mesh name="blk_rock{i}" file="{rock_obj}" scale="{sc} {sc} {sc}"/>')
+            if os.path.exists(os.path.join(ASSETS, rock_tex)):
+                extra_assets.append(f'<texture name="blk_rock_tex" type="2d" file="{rock_tex}"/>')
+                extra_assets.append('<material name="blk_rock_mat" texture="blk_rock_tex" '
+                                    'specular="0.05" shininess="0.1"/>')
+            else:
+                extra_assets.append('<material name="blk_rock_mat" rgba="0.46 0.43 0.39 1"/>')
+        planted = 0
+        for bi, b in enumerate(blockades):
+            for k in range(int(b.get("n", 10))):
+                ang = rng.uniform(0, 2 * math.pi)
+                rad = math.sqrt(rng.uniform(0, 1)) * float(b.get("radius", 3.0))
+                x, y = b["x"] + rad * math.cos(ang), b["y"] + rad * math.sin(ang)
+                z = t.height(x, y)
+                yaw = rng.uniform(0, 360)
+                if have_rock and rng.random() < 0.62:
+                    nm = f"blk_rock{int(rng.integers(3))}"
+                    geo = (f'<geom type="mesh" mesh="{nm}" material="blk_rock_mat" '
+                           f'friction="1.1 0.02 0.001"/>')
+                else:                       # 碎砖块：用便宜的长方体补足堆积感
+                    sx, sy, sz = (rng.uniform(0.35, 1.1) for _ in range(3))
+                    geo = (f'<geom type="box" size="{sx:.2f} {sy:.2f} {sz:.2f}" '
+                           f'pos="0 0 {sz:.2f}" material="brick" friction="1.1 0.02 0.001"/>')
+                body.append(f'<body name="blk_{bi}_{k}" pos="{x:.2f} {y:.2f} {z:.2f}" '
+                            f'euler="0 0 {yaw:.1f}">{geo}</body>')
+                planted += 1
+        print(f"road blockades: {len(blockades)} 处, {planted} 块障碍")
+
     # ---- 真实枫树（导入的 Sketchfab CC-BY 模型，按材质拆成 bark + leaf 两个 mesh）
     half = extent / 2 - 8
     placed = []
