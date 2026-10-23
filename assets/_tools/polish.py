@@ -140,6 +140,66 @@ def main():
     xml = xml.replace("</worldbody>", "".join(bodies) + "</worldbody>", 1)
     print(f"grass: +{added} 簇（房子四周）")
 
+    # ---------- 2.5 封路障碍 + 塌落堆积锥：在最终地形上摆，绕开 reground 的"抬飞邻居"问题 ----------
+    rock_obj = "props/rocks/rock_07/rock_07_1k.obj"
+    rock_tex = "props/rocks/rock_07/rock_07_1k_diffuse.png"
+    have_rock = os.path.exists(os.path.join(ASSETS, rock_obj))
+    asset_extra, rubble_bodies = [], []
+
+    def rb_geom():
+        if have_rock and rng.random() < 0.6:
+            return (f'<geom type="mesh" mesh="rb_rock{int(rng.integers(3))}" '
+                    f'material="rb_rock_mat" friction="1.1 0.02 0.001"/>')
+        sx, sy, sz = (rng.uniform(0.3, 0.9) for _ in range(3))
+        return (f'<geom type="box" size="{sx:.2f} {sy:.2f} {sz:.2f}" pos="0 0 {sz:.2f}" '
+                f'material="brick" friction="1.1 0.02 0.001"/>')
+
+    def drop(name, x, y, sink=0.06):
+        z = tz(x, y)
+        if z is None:
+            return None
+        return (f'<body name="{name}" pos="{x:.2f} {y:.2f} {z - sink:.3f}" '
+                f'euler="0 0 {rng.uniform(0, 360):.1f}">{rb_geom()}</body>')
+
+    if have_rock:
+        # 岩石 OBJ 只有 0.14 m 高，放大 3/6/10 倍做出小中大三种块
+        for i, sc in enumerate((3.0, 6.0, 10.0)):
+            asset_extra.append(f'<mesh name="rb_rock{i}" file="{rock_obj}" scale="{sc} {sc} {sc}"/>')
+        if os.path.exists(os.path.join(ASSETS, rock_tex)):
+            asset_extra.append(f'<texture name="rb_rock_tex" type="2d" file="{rock_tex}"/>')
+            asset_extra.append('<material name="rb_rock_mat" texture="rb_rock_tex" '
+                               'specular="0.05" shininess="0.1"/>')
+        else:
+            asset_extra.append('<material name="rb_rock_mat" rgba="0.46 0.43 0.39 1"/>')
+
+        for bi, b in enumerate(cfg.get("blockades") or []):
+            for k in range(int(b.get("n", 10))):
+                ang = rng.uniform(0, 2 * math.pi)
+                rad = math.sqrt(rng.uniform(0, 1)) * float(b.get("radius", 3.0))
+                bd = drop(f"blk_{bi}_{k}", b["x"] + rad * math.cos(ang),
+                          b["y"] + rad * math.sin(ang))
+                if bd:
+                    rubble_bodies.append(bd)
+
+        plot_by_id = {p["id"]: p for p in (cfg.get("plots") or [])}
+        for c in cfg.get("debris_cones") or []:
+            p = plot_by_id.get(c["plot"])
+            if not p:
+                continue
+            half = math.hypot(p["size"][0], p["size"][1]) / 2
+            for k in range(int(c.get("n", 22))):
+                ang = rng.uniform(0, 2 * math.pi)
+                dist = half + float(c.get("reach", 6.0)) * rng.random() ** 1.6
+                bd = drop(f"debris_cone_{p['id']}_{k}",
+                          p["x"] + dist * math.cos(ang), p["y"] + dist * math.sin(ang))
+                if bd:
+                    rubble_bodies.append(bd)
+
+        if rubble_bodies:
+            xml = xml.replace("</asset>", "".join(asset_extra) + "</asset>", 1)
+            xml = xml.replace("</worldbody>", "".join(rubble_bodies) + "</worldbody>", 1)
+            print(f"rubble: {len(rubble_bodies)} 块（封路 + 塌落堆积锥，落在最终地形）")
+
     # ---------- 3. 天空：地平线提亮，远山不那么"贴纸" ----------
     xml = re.sub(r'rgb1="[^"]*"', 'rgb1="0.42 0.56 0.72"', xml, count=1)
     xml = re.sub(r'rgb2="[^"]*"', 'rgb2="0.80 0.86 0.92"', xml, count=1)

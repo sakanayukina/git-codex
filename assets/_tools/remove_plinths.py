@@ -11,6 +11,8 @@ def main():
 
     xml = open(args.src, encoding="utf-8").read()
     before = len(xml)
+    # 按名字删（village.py 现在给基座起名 plinth_<id>），再按位置兜底
+    xml = re.sub(r'<geom name="plinth_[^"]*"[^>]*/>', "", xml)
     for z in ("-0.55", "-0.35"):
         xml = re.sub(
             r'<geom[^>]*pos="0 0 ' + re.escape(z) + r'"[^>]*/>',
