@@ -4,10 +4,10 @@
 
 ## 工作区地图
 
-- **仿真场景**：`assets/demo_v23.xml`（411 body / 850 geom / 57 mesh / 40 tex / 12 相机 / 8 site；4.16 M 三角面；基座 0、悬空瓦砾 0、H1/H6 塌落堆积锥 48 块；`demo_v7.xml` 为原版对照；素材 **152 MB**，gitignore 不入库）
+- **仿真场景**：`assets/demo_v24.xml`（598 body / 1040 geom / 12 相机 / 8 site；**3.81 M 三角面**；基座 0、悬空瓦砾 0；H1/H6 塌落堆积锥 48 块 + 5 栋房边缘接缝碎石 187 块；`demo_v23.xml` 为上一版，`demo_v7.xml` 为原版对照；素材约 230 MB，gitignore 不入库）
 - **生成链**：`build_scene.py`(地形+道具) → `tune.py`(材质曝光) → `scatter.py`(植被/废墟) → `village.py`(村落，base = `demo_v5.xml`) → `slim_rocks.py`(石头瘦身)
-- **导入链**：`convert_multi.py`(glTF/GLB 按材质拆分、减面、只保留指定材质) → `import_gltf.py` / `import_building.py` → `fix_obj_faces.py`(OBJ 体检) → `prune_imported.py`(删转换中间文件)
-- **场景辅助**：`bake_ground.py`(把路烘进地面贴图)、`roadgen.py`(3D 路面，当前未用)、`render_scene.py`、`preview_parts.py`、`cleanup.py`
+- **导入链**：`convert_multi.py`(glTF/GLB 按材质拆分、减面、只保留指定材质) → `import_gltf.py` / `import_building.py` → `fix_obj_faces.py`(OBJ 体检) → `prune_imported.py`(删转换中间文件) → `decimate_obj.py`(单个 OBJ 减面)
+- **场景辅助**：`bake_ground.py`(把路烘进地面贴图)、`polish.py`(树/草/瓦砾/天空/地面)、`seam_ring.py`(房子边缘接缝碎石)、`layout_check.py`(压路/重叠体检)、`check_floating.py`(瓦砾悬空体检)、`render_scene.py`、`preview_parts.py`、`cleanup.py`
 - 其他：`papers/`、`skills/paper-reader`、`PerpetualCalendar.java`、`scripts/extract_papers.py`
 
 ## 环境

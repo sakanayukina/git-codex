@@ -13,7 +13,8 @@ gg = np.array([1, 0, 0, 0, 0, 0], dtype=np.uint8)
 rows = []
 for i in range(m.nbody):
     n = mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, i)
-    if not n or not (n.startswith("blk_") or n.startswith("debris_cone_")):
+    if not n or not (n.startswith("blk_") or n.startswith("debris_cone_")
+                     or n.startswith("seam_")):
         continue
     x, y, z = (float(v) for v in m.body_pos[i])
     gid = np.array([-1], dtype=np.int32)

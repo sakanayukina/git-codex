@@ -141,7 +141,7 @@ def main():
     print(f"grass: +{added} 簇（房子四周）")
 
     # ---------- 2.5 封路障碍 + 塌落堆积锥：在最终地形上摆，绕开 reground 的"抬飞邻居"问题 ----------
-    rock_obj = "props/rocks/rock_07/rock_07_1k.obj"
+    rock_obj = "props/rocks/rock_07/rock_07_low.obj"
     rock_tex = "props/rocks/rock_07/rock_07_1k_diffuse.png"
     have_rock = os.path.exists(os.path.join(ASSETS, rock_obj))
     asset_extra, rubble_bodies = [], []
