@@ -162,10 +162,37 @@ def main():
     args = ap.parse_args()
 
     cfg = json.load(open(args.config, encoding="utf-8"))
-    roads = [(cfg["road"]["points"], cfg["road"]["width"])]
-    out, sz = bake(args.extent, roads, args.ground, args.out, args.size)
+    main_pts = cfg["road"]["points"]
+    roads = [(main_pts, cfg["road"]["width"])]
+    junctions = []
+
+    # 入户支路：跟 village.py 同一套算法（门 -> 主路最近点），保证贴图对得上
+    def closest(px, py, pts):
+        best, bd = None, 1e9
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            dx, dy = x1 - x0, y1 - y0
+            L2 = dx * dx + dy * dy or 1e-6
+            t = max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / L2))
+            cx, cy = x0 + dx * t, y0 + dy * t
+            d = math.hypot(px - cx, py - cy)
+            if d < bd:
+                best, bd = (cx, cy), d
+        return best
+
+    for p in cfg.get("plots", []):
+        a = math.radians(p["yaw"])
+        dx, dy = math.sin(a) * p["size"][1] / 2, -math.cos(a) * p["size"][1] / 2
+        door = (p["x"] + dx, p["y"] + dy)
+        tgt = closest(door[0], door[1], main_pts)
+        if tgt is None or math.hypot(door[0] - tgt[0], door[1] - tgt[1]) < 1.0:
+            continue
+        mid = ((door[0] + tgt[0]) / 2, (door[1] + tgt[1]) / 2)
+        roads.append(([tgt, mid, door], 3.0))
+        junctions.append((tgt, 3.0))
+
+    out, sz = bake(args.extent, roads, args.ground, args.out, args.size, junctions=junctions)
     print(f"wrote {os.path.relpath(out, ASSETS)} {sz[0]}x{sz[1]} "
-          f"({os.path.getsize(out)/1e6:.1f} MB)")
+          f"({os.path.getsize(out)/1e6:.1f} MB, {len(roads)} 条路)")
 
 
 if __name__ == "__main__":
