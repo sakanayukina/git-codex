@@ -55,10 +55,10 @@ def main():
                 geo = (f'<geom type="mesh" mesh="{nm}" material="rb_rock_mat" '
                        f'friction="1.1 0.02 0.001"/>')
                 n_rock += 1
-            elif r < 0.86:                    # 细碎砖块（12 个面，便宜），压小一点别像箱子
+            elif r < 0.86:                    # 细碎混凝土块（12 个面，便宜）
                 sx, sy, sz = (rng.uniform(0.10, 0.28) for _ in range(3))
                 geo = (f'<geom type="box" size="{sx:.2f} {sy:.2f} {sz:.2f}" '
-                       f'pos="0 0 {sz:.2f}" material="brick" friction="1.1 0.02 0.001"/>')
+                       f'pos="0 0 {sz:.2f}" material="concrete" friction="1.1 0.02 0.001"/>')
                 n_box += 1
             else:
                 continue
