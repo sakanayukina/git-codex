@@ -33,7 +33,7 @@ def main():
     ap.add_argument("--in", dest="src", default=os.path.join(ASSETS, "demo_v7.xml"))
     ap.add_argument("--out", dest="dst", default=os.path.join(ASSETS, "demo_v15.xml"))
     ap.add_argument("--config", default=os.path.join(ASSETS, "buildings.json"))
-    ap.add_argument("--band", type=float, default=6.0)
+    ap.add_argument("--band", type=float, default=11.0)
     args = ap.parse_args()
 
     cfg = json.load(open(args.config, encoding="utf-8"))
