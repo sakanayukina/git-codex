@@ -30,6 +30,14 @@ def plan():
             # 转换时从 GLB 抽出来的原始贴图（tex0.png 等），有 atlas 就可以删
             if has_atlas and f.startswith("tex") and ext in (".png", ".jpg", ".jpeg"):
                 drop = True
+            # normal / occlusion / metallicRoughness 在 MuJoCo 3.3.2 完全不用（没有 PBR），
+            # 但这些原图常有 8K、几十 MB，留着纯占地方
+            low = f.lower()
+            if any(k in low for k in ("_normal", "_occlusion", "metallicroughness", "_rough", "_metallic")):
+                drop = True
+            # 有 atlas 之后，原始 baseColor/diffuse 大图也多余（atlas 就是从它们压出来的）
+            if has_atlas and ("basecolor" in low or "diffuse" in low) and ext in (".png", ".jpg", ".jpeg"):
+                drop = True
             if drop:
                 todos.append(p)
                 drop_bytes += size
