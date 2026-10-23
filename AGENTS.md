@@ -4,7 +4,7 @@
 
 ## 工作区地图
 
-- **仿真场景**：`assets/demo_v16.xml`（340 body / 909 geom / 48 mesh / 34 tex / 12 相机 / 8 site；原始 66.5 m 山势 + 房子 footprint 局部整平 + 3 m 过渡带；`demo_v7.xml` 为原版对照；素材 **152 MB**，gitignore 不入库）
+- **仿真场景**：`assets/demo_v19.xml`（340 body / 895 geom / 48 mesh / 34 tex / 12 相机 / 8 site；原始 66.5 m 山势 + 房子 footprint 局部整平 + 6 m 平滑过渡；已去掉额外台地和混凝土基座；`demo_v7.xml` 为原版对照；素材 **152 MB**，gitignore 不入库）
 - **生成链**：`build_scene.py`(地形+道具) → `tune.py`(材质曝光) → `scatter.py`(植被/废墟) → `village.py`(村落，base = `demo_v5.xml`) → `slim_rocks.py`(石头瘦身)
 - **导入链**：`convert_multi.py`(glTF/GLB 按材质拆分、减面、只保留指定材质) → `import_gltf.py` / `import_building.py` → `fix_obj_faces.py`(OBJ 体检) → `prune_imported.py`(删转换中间文件)
 - **场景辅助**：`bake_ground.py`(把路烘进地面贴图)、`roadgen.py`(3D 路面，当前未用)、`render_scene.py`、`preview_parts.py`、`cleanup.py`
@@ -21,7 +21,7 @@
 
 ## 现在有什么
 
-**场景**（`assets/demo_v16.xml`，局部整平版；`demo_v7.xml` 为原版对照）
+**场景**（`assets/demo_v19.xml`，局部整平 + 去基座版；`demo_v7.xml` 为原版对照）
 - 地形：汶川真实 DEM，200 m²，落差 66.5 m，`hfield` + 烘焙地面贴图（路长在地形上）
 - 道路：主路 4.2 m + 7 条入户支路 3.0 m + 岔口补丁，全部烘进 2048² 地面贴图
 - 建筑/废墟 7 个可搜索点：
@@ -73,7 +73,7 @@
 
 > 生成顺序：`village.py` → `slim_rocks.py --keep 24 --drop-grass --apply --in-place`
 > → `optimize_trees.py`（Codex 的树优化）→ 如需碰撞：`add_collision.py --xml demo_v7.xml --apply`
-> → 局部整平：`flatten_sites.py`（房子 footprint + 3 m 过渡带）→ `reground_props.py` → `fix_grounding.py`
+> → 局部整平：`flatten_sites.py`（footprint + 6 m 平滑过渡）→ `reground_props.py` → `fix_grounding.py --no-platform` → `remove_plinths.py`
 
 ## 历史
 
@@ -83,3 +83,4 @@
 - 2026-10-22 Codex 二次坍塌触发器：`_tools/collapse_trigger.py` 按 `collapse_<group>_<index>` + 同名 weld 扫描，按组/时间置 `data.eq_active=0`；自包含测试验证 t=1 s 释放后 z 2.0→0.2
 - 2026-10-23 Codex 降山势：relief 66.5→35 m、sigma=5 平滑、房子用土色台地、215 个树/石/草重新贴地，场景切到 demo_v14.xml
 - 2026-10-23 Codex 局部整平：恢复原始 66.5 m 山势，只在房子 footprint 整平（3 m 过渡带），215 个道具重新贴地，场景切到 demo_v16.xml
+- 2026-10-23 Codex 局部整平 + 去基座：过渡带 6 m smoothstep、房子不再加台地、删除 village.py 自带混凝土基座，场景切到 demo_v19.xml

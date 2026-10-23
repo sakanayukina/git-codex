@@ -33,7 +33,7 @@ def main():
     ap.add_argument("--in", dest="src", default=os.path.join(ASSETS, "demo_v7.xml"))
     ap.add_argument("--out", dest="dst", default=os.path.join(ASSETS, "demo_v15.xml"))
     ap.add_argument("--config", default=os.path.join(ASSETS, "buildings.json"))
-    ap.add_argument("--band", type=float, default=3.0)
+    ap.add_argument("--band", type=float, default=6.0)
     args = ap.parse_args()
 
     cfg = json.load(open(args.config, encoding="utf-8"))
@@ -78,12 +78,13 @@ def main():
                 dx = abs(xs[j] - p["x"])
                 if dx > W + args.band:
                     continue
-                inside = dx <= W and dy <= D
+                inside = dx <= W + 1.5 and dy <= D + 1.5
                 if inside:
                     h[i, j] = pdata
                 else:
-                    dist_out = max(dx - W, dy - D)
+                    dist_out = max(dx - W - 1.5, dy - D - 1.5)
                     w = max(0.0, 1.0 - dist_out / args.band)
+                    w = w * w * (3.0 - 2.0 * w)
                     h[i, j] = h[i, j] * (1.0 - w) + pdata * w
         print(f"{bid}: platform={platform:.2f}")
 

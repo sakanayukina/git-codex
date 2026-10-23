@@ -28,6 +28,7 @@ def main():
     ap.add_argument("--out", dest="dst", default=os.path.join(ASSETS, "demo_v9.xml"))
     ap.add_argument("--config", default=os.path.join(ASSETS, "buildings.json"))
     ap.add_argument("--sink", type=float, default=0.05)
+    ap.add_argument("--no-platform", action="store_true")
     args = ap.parse_args()
 
     cfg = json.load(open(args.config, encoding="utf-8"))
@@ -71,7 +72,7 @@ def main():
             r'(<body name="' + re.escape(bid) + r'"[^>]*?pos="[-\d.]+ [-\d.]+ )([-\d.]+)(")'
         )
         xml, n = pattern.subn(lambda m: m.group(1) + f"{new_z:.3f}" + m.group(3), xml, count=1)
-        if depth > 0.3:
+        if depth > 0.3 and not args.no_platform:
             platform = (
                 f'<geom type="box" size="{W + 0.6:.2f} {D + 0.6:.2f} {depth / 2:.2f}" '
                 f'pos="0 0 {min_z - depth / 2:.2f}" material="dirt" '
