@@ -126,11 +126,18 @@ def build_house(plot, gz, rng):
 
 
 def model_house(plot, gz, parts):
-    """真实模型插槽：parts = [(mesh_name, material), ...]，一个 body 挂多个 geom。"""
+    """真实模型插槽：parts = [(mesh_name, material), ...]，一个 body 挂多个 geom。
+
+    大进深模型放在坡地上必然一侧陷进土里、一侧悬空（H2 是 16.7 m 长的木屋）。
+    所以在下面垫一块混凝土基座，把缝挡住。
+    """
     g = "".join(f'<geom type="mesh" mesh="{nm}" material="{mat}" '
                 f'contype="0" conaffinity="0" group="1"/>' for nm, mat in parts)
+    w, d = plot["size"][0] * 0.94, plot["size"][1] * 0.94
+    plinth = (f'<geom type="box" size="{w / 2:.2f} {d / 2:.2f} 0.7" pos="0 0 -0.55" '
+              f'material="concrete"/>')
     return (f'<body name="{plot["id"]}" pos="{plot["x"]:.2f} {plot["y"]:.2f} {gz:.3f}" '
-            f'euler="0 0 {plot["yaw"]}">{g}</body>')
+            f'euler="0 0 {plot["yaw"]}">{plinth}{g}</body>')
 
 
 def main():
@@ -182,7 +189,7 @@ def main():
         corners = [(p["x"] + dx, p["y"] + dy)
                    for dx in (-p["size"][0] / 2, p["size"][0] / 2)
                    for dy in (-p["size"][1] / 2, p["size"][1] / 2)]
-        gz = min(t.height(cx_, cy_) for cx_, cy_ in corners)  # 取最低角，避免悬空
+        gz = max(t.height(cx_, cy_) for cx_, cy_ in corners)  # 取最高角：靠基座填坡，避免埋进土里
         rel_model = (p.get("model") or "").strip()
         abs_model = os.path.join(ASSETS, rel_model) if rel_model else ""
         if rel_model and os.path.exists(abs_model):
@@ -197,8 +204,19 @@ def main():
                         extra_assets.append(
                             f'<mesh name="{nm}" file="{rel_model}/{f}" inertia="shell"{sc_attr}/>')
                         mat = f"{nm}_mat"
-                        png = f"{rel_model}/{f[:-4]}_diffuse.png"
-                        if os.path.exists(os.path.join(ASSETS, png)):
+                        # 贴图名可能是 <材质>_diffuse.png，也可能是共享的 atlas_N.png，
+                        # convert_multi 会在目录里写 manifest.json 说明对应关系
+                        png = None
+                        man = os.path.join(abs_model, "manifest.json")
+                        if os.path.exists(man):
+                            for part in json.load(open(man, encoding="utf-8")).get("parts", []):
+                                if part.get("obj") == f and part.get("png"):
+                                    png = f"{rel_model}/{part['png']}"
+                                    break
+                        if png is None:
+                            cand = f"{rel_model}/{f[:-4]}_diffuse.png"
+                            png = cand if os.path.exists(os.path.join(ASSETS, cand)) else None
+                        if png and os.path.exists(os.path.join(ASSETS, png)):
                             extra_assets.append(f'<texture name="{nm}_tex" type="2d" file="{png}"/>')
                             extra_assets.append(
                                 f'<material name="{mat}" texture="{nm}_tex" specular="0.05" shininess="0.1"/>')
@@ -342,6 +360,40 @@ def main():
                                  np.array([0.075, 0.20, 0.085])))
         added += 1
     print(f"northwest forest added: {added}")
+
+    # ---- 真实草簇（扫描件，铺在地面上；无碰撞、无 site）
+    gdir = os.path.join(ASSETS, "props", "imported", "grass_chunks")
+    gman = os.path.join(gdir, "manifest.json")
+    if os.path.exists(gman):
+        want = ("rostlinka_07c", "ground_close_04", "rostlinka12_2k")   # 丢掉 52k 面那块
+        variants = []
+        for p in json.load(open(gman, encoding="utf-8"))["parts"]:
+            if p["material"] not in want:
+                continue
+            nm = f"gc{len(variants)}"
+            extra_assets.append(
+                f'<mesh name="{nm}" file="props/imported/grass_chunks/{p["obj"]}" inertia="shell"/>')
+            mat = f"{nm}_mat"
+            extra_assets.append(
+                f'<texture name="{nm}_tex" type="2d" file="props/imported/grass_chunks/{p["png"]}"/>')
+            extra_assets.append(f'<material name="{mat}" texture="{nm}_tex" '
+                                f'specular="0.02" shininess="0.1"/>')
+            variants.append((nm, mat))
+        gc = 0
+        half_g = extent / 2 - 6
+        for _ in range(4000):
+            if gc >= 45:
+                break
+            x, y = rng.uniform(-half_g, half_g, 2)
+            if t.slope(x, y) > 1.9 or inside_keepout(x, y):
+                continue
+            nm, mat = variants[rng.integers(len(variants))]
+            body.append(f'<body name="grass_{gc}" pos="{x:.2f} {y:.2f} {t.height(x, y):.3f}" '
+                        f'euler="0 0 {rng.uniform(0, 360):.1f}">'
+                        f'<geom type="mesh" mesh="{nm}" material="{mat}" '
+                        f'contype="0" conaffinity="0" group="1"/></body>')
+            gc += 1
+        print(f"grass clumps (real scan): {gc}")
 
     # ---- 真实枫树（导入的 Sketchfab CC-BY 模型，按材质拆成 bark + leaf 两个 mesh）
     half = extent / 2 - 8

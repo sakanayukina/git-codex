@@ -30,6 +30,11 @@ def mat_texture(gltf, mat_idx):
     mat = gltf["materials"][mat_idx]
     tex = mat.get("pbrMetallicRoughness", {}).get("baseColorTexture", {}).get("index")
     if tex is None:
+        # 老式 glTF（Sketchfab 常见）走 KHR_materials_pbrSpecularGlossiness，
+        # 颜色贴图叫 diffuseTexture，baseColorTexture 是空的
+        sg = (mat.get("extensions") or {}).get("KHR_materials_pbrSpecularGlossiness") or {}
+        tex = (sg.get("diffuseTexture") or {}).get("index")
+    if tex is None:
         return None
     src = gltf["textures"][tex].get("source")
     if src is None:
@@ -47,6 +52,7 @@ def main():
     ap.add_argument("--target-height", type=float, default=0.0, help="按总高度等比缩放（米）")
     ap.add_argument("--max-tex", type=int, default=2048, help="贴图最长边上限")
     ap.add_argument("--max-tris", type=int, default=0, help="每个材质的面数上限（0=不限制）")
+    ap.add_argument("--ground-anchor", action="store_true", help="把最低点平移到 z=0")
     args = ap.parse_args()
 
     src = args.src
@@ -125,6 +131,15 @@ def main():
         scale = args.target_height / model_h
     print(f"原始高度 {model_h:.2f}（glTF Y-up），缩放系数 {scale:.4f}")
 
+    # 有些模型的坐标原点不在底面（zmin = -3.75 那种），放到地形上会陷进去半截。
+    # --ground-anchor 把所有顶点整体上移，让最低点落在 z=0。
+    zoff = 0.0
+    if args.ground_anchor:
+        _all = np.vstack([np.vstack(g["v"]) * scale for g in groups.values() if g["v"]])
+        _z = np.column_stack([_all[:, 0], -_all[:, 2], _all[:, 1]])[:, 2]
+        zoff = float(_z.min())
+        print(f"ground anchor: 顶点整体上移 {zoff:.3f} m（原 zmin）")
+
     tex_cache = {}
     report = []
     for mname, g in groups.items():
@@ -140,6 +155,8 @@ def main():
             v, uv, nrm, f = fpm.decimate(v, uv, nrm, f, args.max_tris)
         # glTF Y-up -> MJCF Z-up
         vmj = np.column_stack([v[:, 0], -v[:, 2], v[:, 1]])
+        if zoff:
+            vmj[:, 2] -= zoff
         safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in mname)
         obj_name = f"{stem}_{safe}"
         obj_path = os.path.join(out_dir, f"{obj_name}.obj")
@@ -183,6 +200,19 @@ def main():
               f"  zmin {lo[2]:6.2f}  贴图 {'有' if png else '无'}")
     total = sum(r[1] for r in report)
     print(f"  合计 {total} 面；输出目录 props/imported/{args.name}/")
+
+    # 清单：材质 -> (obj, png, 面数, 尺寸)。village.py 靠它把 obj 和贴图对上，
+    # 因为贴图是按源文件去重命名的（atlas_N），名字和 obj 不是一一对应。
+    manifest = {
+        "name": args.name,
+        "parts": [
+            {"material": mname, "obj": f"{obj}.obj", "png": png,
+             "tris": int(nf), "size": [round(float(x), 3) for x in size]}
+            for (mname, nf, size, lo, png, obj) in report
+        ],
+    }
+    with open(os.path.join(out_dir, "manifest.json"), "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, ensure_ascii=False, indent=2)
 
 
 if __name__ == "__main__":
