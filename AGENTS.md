@@ -5,6 +5,7 @@
 ## 工作区地图
 
 - **仿真场景**：`assets/demo_v27.xml`（598 body / 1037 geom / 12 相机 / 8 site；**3.81 M 三角面**；整平过渡带 **11 m**；H2 footprint 地形整平到 9.40 m，body z 9.38（diff -0.02，完全贴地）；基座 0、悬空瓦砾 0；堆积锥 48 + 接缝碎石 187；`demo_v7.xml` 为原版对照）
+- **场景结构说明**：根目录 `SCENE_GUIDE.md`（文件地图、生成链、每步作用、修改方法、已知问题）
 - **生成链**：`build_scene.py`(地形+道具) → `tune.py`(材质曝光) → `scatter.py`(植被/废墟) → `village.py`(村落，base = `demo_v5.xml`) → `slim_rocks.py`(石头瘦身)
 - **导入链**：`convert_multi.py`(glTF/GLB 按材质拆分、减面、只保留指定材质) → `import_gltf.py` / `import_building.py` → `fix_obj_faces.py`(OBJ 体检) → `prune_imported.py`(删转换中间文件) → `decimate_obj.py`(单个 OBJ 减面)
 - **场景辅助**：`bake_ground.py`(把路烘进地面贴图)、`polish.py`(树/草/瓦砾/天空/地面)、`seam_ring.py`(房子边缘接缝碎石)、`layout_check.py`(压路/重叠体检)、`check_floating.py`(瓦砾悬空体检)、`render_scene.py`、`preview_parts.py`、`cleanup.py`
@@ -43,7 +44,7 @@
 
 | 缺 | 影响 | 谁来补 |
 |---|---|---|
-| **H5 的民房废墟模型** | 现在还是方盒占位房，论文图里一眼假 | 用户找素材（6–10 m 宽、有门窗、≤25 万面、glTF） |
+| **H3/H4 的民房废墟模型** | 现在还是方盒占位房，论文图里一眼假 | 用户找素材（6–10 m 宽、有门窗、≤25 万面、glTF） |
 | **机器人本体** | 场景里没有机器人 | 用户老师那边有模型 |
 | **二次坍塌触发** | 场景是静态的，没有动态事件 | Codex 主责（DSH 出可塌结构）；触发器框架 `_tools/collapse_trigger.py` 已就绪，等 v8 的 `collapse_*` 结构接入 |
 | **地面细节** | 2048² 覆盖 200 m，草偏糊 | 升 4096 可解（25 MB） |
@@ -69,7 +70,7 @@
 
 1. ~~H6/H7 补碰撞~~ ✅ 已完成（`add_collision.py`，H6 楼体+门洞、H7 实墙，射线验证通过）
 2. ~~树叶翻面~~ ✅ 已完成（`double_side.py`，枫叶 6,488→12,976 面，场景 2.78 M）
-3. **H5 换真房子**（等用户素材；H2 已完成）
+3. **H3/H4 换真房子**（等用户素材；H2/H5 已完成）
 4. **二次坍塌 + 机器人**（Codex 主责，DSH 复查）
 
 > 生成顺序：`village.py` → `slim_rocks.py --keep 24 --drop-grass --apply --in-place`
@@ -101,3 +102,4 @@
 - 2026-10-23 Codex：`flatten_sites.py` 默认 band 对齐 11 m，入口切到 demo_v25.xml，清理 v8~v24 中间版本与旧预览图
 - 2026-10-23 Codex：H2 木屋 z 9.38→9.03（悬空/嵌入各 0.35 m），入口切到 demo_v26.xml，清理 v25 中间版本
 - 2026-10-23 Codex：直接整平 H2 footprint 地形（考虑 yaw，band 11），H2 body z 9.03→9.38，diff -0.02 完全贴地，入口切到 demo_v27.xml
+- 2026-10-23 Codex：新增根目录 `SCENE_GUIDE.md`，整理场景结构、生成链、脚本作用与修改方法
