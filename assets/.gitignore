@@ -5,7 +5,7 @@
 # 布局配置（文本、需要版本化）
 !buildings.json
 !demo_v7.xml
-!demo_v26.xml
+!demo_v27.xml
 !terrain/
 !terrain/dem_wenchuan_200m_smooth.png
 !terrain/dem_wenchuan_flat.png
