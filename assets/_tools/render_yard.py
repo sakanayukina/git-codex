@@ -20,7 +20,7 @@ def save_png(arr, path):
 
 
 ASSETS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-m = mujoco.MjModel.from_xml_path(os.path.join(ASSETS, "yard_v1.xml"))
+m = mujoco.MjModel.from_xml_path(os.path.join(ASSETS, "yard_full.xml"))
 d = mujoco.MjData(m)
 if m.nkey > 0:
     mujoco.mj_resetDataKeyframe(m, d, 0)

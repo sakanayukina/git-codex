@@ -1,0 +1,46 @@
+<mujoco model="go2 scene">
+  <option timestep="0.002" integrator="implicitfast"/>
+  <include file="props/robots/go2_urdf/go2_robot.xml"/>
+
+  <statistic center="0 0 0.1" extent="0.8" />
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.45 0.45 0.45" specular="0 0 0" />
+    <rgba haze="0.15 0.25 0.35 1" />
+    <global azimuth="-130" elevation="-20"  offwidth="1280" offheight="800"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072" />
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300" />
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2" />
+  
+    <mesh name="bld0_0" file="props/imported/ruin_uk/ruin_uk_Black.obj" inertia="shell"/>
+    <mesh name="bld0_1" file="props/imported/ruin_uk/ruin_uk_Brick.obj" inertia="shell"/>
+    <mesh name="bld0_2" file="props/imported/ruin_uk/ruin_uk_Damaged_Bricks.obj" inertia="shell"/>
+    <mesh name="bld0_3" file="props/imported/ruin_uk/ruin_uk_Debris_Bricks_scattered.obj" inertia="shell"/>
+    <mesh name="bld0_4" file="props/imported/ruin_uk/ruin_uk_Debris_Ceiling_scattered.obj" inertia="shell"/>
+    <mesh name="bld0_5" file="props/imported/ruin_uk/ruin_uk_IMG_4599_jpg.obj" inertia="shell"/>
+    <mesh name="bld0_6" file="props/imported/ruin_uk/ruin_uk_IMG_4600_jpg.obj" inertia="shell"/>
+    <mesh name="bld0_7" file="props/imported/ruin_uk/ruin_uk_Main_house_damaged.obj" inertia="shell"/>
+    <mesh name="bld0_8" file="props/imported/ruin_uk/ruin_uk_Material.obj" inertia="shell"/>
+    <mesh name="bld0_9" file="props/imported/ruin_uk/ruin_uk_Material_001.obj" inertia="shell"/>
+    <mesh name="bld0_10" file="props/imported/ruin_uk/ruin_uk_Material_002.obj" inertia="shell"/>
+    <mesh name="bld0_11" file="props/imported/ruin_uk/ruin_uk_Rafters_wood.obj" inertia="shell"/>
+    <mesh name="bld0_12" file="props/imported/ruin_uk/ruin_uk_Rafters_wood_001.obj" inertia="shell"/>
+    <mesh name="bld0_13" file="props/imported/ruin_uk/ruin_uk_Rafters_wood_002.obj" inertia="shell"/>
+    <mesh name="bld0_14" file="props/imported/ruin_uk/ruin_uk_Right_Houses_no_door.obj" inertia="shell"/>
+    <texture name="h1_atlas" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png"/>
+    <material name="h1_mat" texture="h1_atlas" specular="0.05" shininess="0.1"/>
+  </asset>
+
+  <worldbody>
+    <body name="H1" pos="0.00 12.00 0.00" euler="0 0 180.0"><geom type="mesh" mesh="bld0_0" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_1" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_2" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_3" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_4" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_5" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_6" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_7" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_8" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_9" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_10" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_11" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_12" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_13" material="h1_mat" contype="0" conaffinity="0" group="1"/><geom type="mesh" mesh="bld0_14" material="h1_mat" contype="0" conaffinity="0" group="1"/></body>
+    <body name="H1_collision" pos="0.00 12.00 0.00" euler="0 0 180.0"><geom type="box" size="1.78 0.18 1.50" pos="-2.43 -3.10 1.50" group="3"/><geom type="box" size="1.78 0.18 1.50" pos="2.43 -3.10 1.50" group="3"/><geom type="box" size="0.65 0.18 0.55" pos="0 -3.10 2.45" group="3"/><geom type="box" size="4.20 0.18 1.50" pos="0 3.10 1.50" group="3"/><geom type="box" size="0.18 3.10 1.50" pos="-4.20 0 1.50" group="3"/><geom type="box" size="0.18 3.10 1.50" pos="4.20 0 1.50" group="3"/></body>
+    <light pos="0 0 6" dir="0 0 -1" directional="true" diffuse="0.55 0.55 0.55"/><light pos="8 -8 6" dir="-0.6 0.6 -1" diffuse="0.45 0.45 0.45"/>
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane" />
+  <geom pos="-8.7 2.0 0.075" type="box" size="0.15 1.0 0.075" quat="1.0 0.0 0.0 0.0" /><geom pos="-8.4 2.0 0.22499999999999998" type="box" size="0.15 1.0 0.075" quat="1.0 0.0 0.0 0.0" /><geom pos="-8.1 2.0 0.375" type="box" size="0.15 1.0 0.075" quat="1.0 0.0 0.0 0.0" /><geom pos="-7.8 2.0 0.525" type="box" size="0.15 1.0 0.075" quat="1.0 0.0 0.0 0.0" /><geom pos="-7.5 2.0 0.675" type="box" size="0.15 1.0 0.075" quat="1.0 0.0 0.0 0.0" /><geom pos="-7.2 2.0 0.8250000000000001" type="box" size="0.15 1.0 0.075" quat="1.0 0.0 0.0 0.0" /><geom pos="-8.7 -4.0 0.075" type="box" size="0.15 1.0 0.024999999999999994" quat="1.0 0.0 0.0 0.0" /><geom pos="-8.4 -4.0 0.22499999999999998" type="box" size="0.15 1.0 0.024999999999999994" quat="1.0 0.0 0.0 0.0" /><geom pos="-8.1 -4.0 0.375" type="box" size="0.15 1.0 0.024999999999999994" quat="1.0 0.0 0.0 0.0" /><geom pos="-7.8 -4.0 0.525" type="box" size="0.15 1.0 0.024999999999999994" quat="1.0 0.0 0.0 0.0" /><geom pos="-7.5 -4.0 0.675" type="box" size="0.15 1.0 0.024999999999999994" quat="1.0 0.0 0.0 0.0" /><geom pos="-7.2 -4.0 0.8250000000000001" type="box" size="0.15 1.0 0.024999999999999994" quat="1.0 0.0 0.0 0.0" />  <site name="site_start" pos="0 0 0.02" size="0.6" rgba="0.2 0.9 0.4 1" group="3"/>
+    <camera name="cam_yard" pos="13 -13 9" xyaxes="0.707 0.707 0 -0.35 0.35 0.87"/>
+    <camera name="cam_start" pos="3 -3 1.4" xyaxes="0.707 0.707 0 -0.25 0.25 0.94"/>
+  </worldbody>
+</mujoco>

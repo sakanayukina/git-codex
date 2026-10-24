@@ -22,7 +22,7 @@ YARD = os.path.join(ASSETS, "yard_v1.xml")
 RAW = os.path.join(ASSETS, "_yard_raw.xml")
 
 # 房子在院子里的位置（x, y, yaw）
-HOUSE = (0.0, 9.0, 180.0)
+HOUSE = (0.0, 12.0, 180.0)      # 房子实际 12.6 m 长，得往后挪，别压住地形模块
 
 
 def make_robot_file():
@@ -37,7 +37,8 @@ def make_robot_file():
     return len(x)
 
 
-def build_terrain():
+def build_terrain(tier="full"):
+    """tier: flat（纯平地）/ stairs（加台阶）/ full（再加碎石与起伏）。"""
     import terrain_generator as tg
 
     tg.INPUT_SCENE_PATH = os.path.join(TERRAIN_TOOL, "scene.xml")
@@ -46,21 +47,25 @@ def build_terrain():
     g = tg.TerrainGenerator()
 
     stats = []
-    # 0.15 m 台阶 × 6（上坡方向 -y）
-    g.AddStairs(init_pos=[-8.0, 3.0, 0.0], yaw=0.0, width=0.30, height=0.15,
-                length=2.0, stair_nums=6)
-    stats.append("台阶 6×0.15 m")
-    # 0.1 m 缝的悬空台阶
-    g.AddSuspendStairs(init_pos=[-8.0, -4.0, 0.0], yaw=0.0, width=0.30, height=0.15,
-                       length=2.0, gap=0.1, stair_nums=6)
-    stats.append("悬空台阶 6 级 (gap 0.1 m)")
-    # 碎石阵：0.5 m 方块，8×8
-    g.AddRoughGround(init_pos=[4.0, -6.0, 0.0], euler=[0, 0, 0], nums=[8, 8])
-    stats.append("碎石阵 8×8 (0.5 m 块)")
-    # 起伏 0.2 m 的 Perlin 地形 8×8 m
-    g.AddPerlinHeighField(position=[6.0, 6.0, 0.0], size=[8.0, 8.0],
-                          height_scale=0.2, negative_height=0.05)
-    stats.append("Perlin 起伏 ±0.2 m (8×8 m)")
+    if tier in ("stairs", "full"):
+        # 0.15 m 台阶 × 6
+        g.AddStairs(init_pos=[-9.0, 2.0, 0.0], yaw=0.0, width=0.30, height=0.15,
+                    length=2.0, stair_nums=6)
+        stats.append("台阶 6×0.15 m")
+        # 0.1 m 缝的悬空台阶
+        g.AddSuspendStairs(init_pos=[-9.0, -4.0, 0.0], yaw=0.0, width=0.30, height=0.15,
+                           length=2.0, gap=0.1, stair_nums=6)
+        stats.append("悬空台阶 6 级 (gap 0.1 m)")
+    if tier == "full":
+        # 碎石阵：0.5 m 方块，8×8
+        g.AddRoughGround(init_pos=[5.0, -6.0, 0.0], euler=[0, 0, 0], nums=[8, 8])
+        stats.append("碎石阵 8×8 (0.5 m 块)")
+        # 起伏 0.2 m 的 Perlin 地形 8×8 m
+        g.AddPerlinHeighField(position=[5.0, 4.0, 0.0], size=[8.0, 8.0],
+                              height_scale=0.2, negative_height=0.05)
+        stats.append("Perlin 起伏 ±0.2 m (8×8 m)")
+    if not stats:
+        stats.append("纯平地（训练分布内）")
     g.Save()
     return stats
 
@@ -101,13 +106,16 @@ def inject_house(xml):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--tier", choices=("flat", "stairs", "full"), default="full",
+                    help="地形难度：flat=纯平地 / stairs=台阶 / full=台阶+碎石+起伏")
     args = ap.parse_args()
+    out_path = os.path.join(ASSETS, f"yard_{args.tier}.xml")
 
-    print("[1/3] 生成机器人 include 片段")
+    print(f"[1/3] 生成机器人 include 片段（tier={args.tier}）")
     print(f"   go2_robot.xml {make_robot_file()/1024:.1f} KB")
 
     print("[2/3] 用宇树 terrain_tool 生成地形")
-    for s in build_terrain():
+    for s in build_terrain(args.tier):
         print("   " + s)
     if args.check:
         return
@@ -142,10 +150,10 @@ def main():
                  '    <camera name="cam_yard" pos="13 -13 9" xyaxes="0.707 0.707 0 -0.35 0.35 0.87"/>\n'
                  '    <camera name="cam_start" pos="3 -3 1.4" xyaxes="0.707 0.707 0 -0.25 0.25 0.94"/>\n'
                  '  </worldbody>', xml, count=1)
-    open(YARD, "w", encoding="utf-8").write(xml)
+    open(out_path, "w", encoding="utf-8").write(xml)
     os.remove(RAW)
     print(f"   H1 资产 {n_assets} 条（网格/贴图/材质）")
-    print(f"wrote {os.path.relpath(YARD, ASSETS)} ({os.path.getsize(YARD)/1024:.1f} KB)")
+    print(f"wrote {os.path.relpath(out_path, ASSETS)} ({os.path.getsize(out_path)/1024:.1f} KB)")
 
 
 if __name__ == "__main__":
