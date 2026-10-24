@@ -20,6 +20,34 @@
 
 `village.py` / `scatter.py` / `build_scene.py` / `bake_ground.py` 依赖 PIL，**必须用 base python**；`render_scene.py`、`slim_rocks.py` 用 mujoco 环境。
 
+## 怎么跑（给人和 Codex 都看）
+
+```powershell
+$py     = "C:/Users/18967/anaconda3/python.exe"          # PIL/requests
+$mjpy   = "C:/Users/18967/anaconda3/envs/mujoco/python.exe"   # 仿真/渲染
+
+# 村子（交互窗口，默认 demo_v27.xml）
+cd C:\Users\18967\Desktop\git
+& $mjpy run_scene.py                 # 打开被动窗口
+& $mjpy run_scene.py --headless      # 只加载自检
+
+# 机器狗 Go2（URDF 导入版，独立场景）
+& $mjpy run_go2.py                   # 打开窗口，home 姿态站住
+& $mjpy run_go2.py --headless --sim 2   # 无窗口：跑 2 s 物理并汇报机身高度
+& $mjpy run_go2.py --sim 5           # 先跑 5 s 再开窗口
+
+# 通用（不用写脚本，直接看任意 MJCF）
+& $mjpy -m mujoco.viewer --mjcf=assets/props/robots/go2_urdf/go2_scene.xml
+
+# 出图（不弹窗）
+& $mjpy assets/_tools/render_scene.py assets/demo_v27.xml out.png 1100 650 2500 2
+```
+
+> `run_go2.py` 会先 `mj_resetDataKeyframe(..., 0)` 用 home 姿态起步；
+> 直接 `python -m mujoco.viewer` 打开 go2_scene.xml 时用的是 qpos0（腿伸直零位），
+> 站着会塌一点，属正常，不是模型坏。
+
+
 ## 现在有什么
 
 **场景**（`assets/demo_v27.xml`，band 11 + H2 地形整平版；`demo_v7.xml` 为原版对照）
