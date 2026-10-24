@@ -19,7 +19,7 @@ BASE = os.path.join(ASSETS, "props", "robots", "g1", "g1_12dof_scene.xml")
 RAW = os.path.join(ASSETS, "_g1_yard_raw.xml")
 
 
-def build_terrain(tier):
+def build_terrain(tier, step_h=0.15):
     import terrain_generator as tg
     tg.INPUT_SCENE_PATH = os.path.join(HERE, "unitree_terrain", "scene.xml")
     tg.OUTPUT_DIR = os.path.join(ASSETS, "terrain")
@@ -27,11 +27,12 @@ def build_terrain(tier):
     g = tg.TerrainGenerator()
     stats = []
     if tier in ("stairs", "full"):
-        g.AddStairs(init_pos=[1.2, 0.0, 0.0], yaw=0.0, width=0.30, height=0.15,
+        g.AddStairs(init_pos=[1.2, 0.0, 0.0], yaw=0.0, width=0.30, height=step_h,
                     length=2.5, stair_nums=6)
-        stats.append("台阶 6×0.15 m（x=1.5，朝 +y 铺开）")
-        g.AddSuspendStairs(init_pos=[1.2, 0.0, 0.0], yaw=0.0, width=0.30, height=0.15,
+        stats.append(f"台阶 6×{step_h} m（x=1.2，朝 +x 铺开）")
+        g.AddSuspendStairs(init_pos=[1.2, 4.0, 0.0], yaw=0.0, width=0.30, height=step_h,
                            length=2.5, gap=0.1, stair_nums=6)
+        stats.append("悬空台阶 gap 0.1 m（y=4，离主路不重叠）")
         stats.append("悬空台阶 gap 0.1 m")
     if tier == "full":
         g.AddRoughGround(init_pos=[4.0, 0.0, 0.0], euler=[0, 0, 0], nums=[6, 6])
@@ -48,10 +49,11 @@ def build_terrain(tier):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tier", choices=("flat", "stairs", "full"), default="stairs")
+    ap.add_argument("--step-h", type=float, default=0.15, help="台阶高度（米）")
     a = ap.parse_args()
 
     print("[1/2] terrain_tool 生成地形块")
-    for s in build_terrain(a.tier):
+    for s in build_terrain(a.tier, a.step_h):
         print("   " + s)
 
     print("[2/2] 把地形 geom 追加进官方 G1 场景（保留 default / 地面材质）")
