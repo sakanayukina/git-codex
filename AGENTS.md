@@ -157,35 +157,35 @@ cd C:\Users\18967\Desktop\git
 
 ### 机器人运动（B 阶段，2026-10-24 DSH）
 
-- **Go2 爬行步态可用**：_tools/walk_go2.py（--sweep 调参）+ _tools/run_walk.py（看窗口）。
-  最优参数 req=2.0 a_thigh=0.22 a_calf=0.55 thigh0=0.95 gait=crawl
+- **Go2 爬行步态可用**：`_tools/walk_go2.py`（`--sweep` 调参）+ `_tools/run_walk.py`（看窗口）。
+  最优参数 `freq=2.0 a_thigh=0.22 a_calf=0.55 thigh0=0.95 gait=crawl`
   → 6 s 走 **2.58 m**（≈0.43 m/s），航向漂移 **0.21 rad**，机身 z 全程 **0.27~0.30**（没趴）。
   **局限：超过 8 s 会失稳**（开环无平衡反馈）。
-- **对角 trot 不行**：req=2.0 a_thigh=0.25 a_calf=0.70 → 8 s 走 3.48 m 但航向漂 1.84 rad（绕圈）。
-- **_tools/trot_ik.py 未通**：三自由度 IK 的 FK 基准和 MuJoCo 的 body 原点对不上（自检
-  --selftest 输出 thigh −1.697 vs 实际 +0.900），要接 IK 步态得先重标定髋/膝的几何约定。
+- **对角 trot 不行**：`freq=2.0 a_thigh=0.25 a_calf=0.70` → 8 s 走 3.48 m 但航向漂 1.84 rad（绕圈）。
+- **`_tools/trot_ik.py` 未通**：三自由度 IK 的 FK 基准和 MuJoCo 的 body 原点对不上（自检
+  `--selftest` 输出 thigh −1.697 vs 实际 +0.900），要接 IK 步态得先重标定髋/膝的几何约定。
 - **G1 无法用手写控制器行走**：双足要平衡反馈，手写 PD 只能站着。
-  官方策略 deploy/pre_train/g1/motion.pt（142 KB）是唯一现实路径，但**需要 torch**，
-  本机 pip 安装被拦：直接装（site-packages 在工作区外）和 --target .vendor/torch 都报
-  [Errno 13] Permission denied ...whl.metadata。**要装 torch 必须先放宽沙箱或由用户手动装**。
 
-
-### G1 官方策略：已装 torch，但发现策略是 12 自由度版（2026-10-24 DSH）
+### G1 官方策略：已装 torch，但策略是 12 自由度版（2026-10-24 DSH）
 
 - torch **2.8.0+cpu 已装进 mujoco 环境**（用户批准 danger-full-access 后成功）。
-- deploy/pre_train/g1/motion.pt（145,745 B）已下到 ssets/props/robots/g1/motion.pt，
-  用 	orch.jit.load 可加载，是 **TorchScript + LSTM**（PolicyExporterLSTM，带内部 hidden state）。
-- **关键发现：这个策略是 G1 12 自由度版**（G1RoughCfg）：
-  
-um_observations=47、
-um_actions=12、sset.file=g1_12dof.urdf、
-  默认角 hip_pitch=-0.1, knee=0.3, ankle_pitch=-0.2（其余 0）、
-  ction_scale=0.25、decimation=4、
-  stiffness={hip_yaw 100, hip_roll 100, hip_pitch 100, knee 150, ankle 40}、
-  damping={hip_yaw 2, hip_roll 2, hip_pitch 2, knee 4, ankle 2}。
-  配置已存 ssets/_tools/unitree_policy/g1_12dof_config.py。
-- 所以**不能直接拿我们导入的 g1_29dof（29 关节含双臂）跑这个策略**，必须补一份 12 自由度版模型
-  （g1_description/g1_12dof.xml，网格可复用已下的 36 个 STL）再按 47 维 obs 接线。
+- `deploy/pre_train/g1/motion.pt`（145,745 B）已下到 `assets/props/robots/g1/motion.pt`；
+  `torch.jit.load` 可加载，是 **TorchScript + LSTM**（`PolicyExporterLSTM`，带内部 hidden state）。
+- **关键发现：这个策略是 G1 12 自由度版**（`G1RoughCfg`）：
+
+  | 项 | 值 |
+  |---|---|
+  | num_observations | **47** |
+  | num_actions | **12**（只含双腿 6×2，不含双臂） |
+  | asset.file | `g1_description/g1_12dof.urdf` |
+  | 默认关节角 | hip_pitch −0.1, knee 0.3, ankle_pitch −0.2（其余 0） |
+  | action_scale / decimation | 0.25 / 4 |
+  | stiffness | hip_yaw 100, hip_roll 100, hip_pitch 100, knee 150, ankle 40 |
+  | damping | hip_yaw 2, hip_roll 2, hip_pitch 2, knee 4, ankle 2 |
+
+  配置已存 `assets/_tools/unitree_policy/g1_12dof_config.py`。
+- 所以**不能直接拿我们导入的 `g1_29dof`（29 关节含双臂）跑这个策略**，必须补一份 12 自由度版模型
+  （`g1_description/g1_12dof.xml`，网格可复用已下的 36 个 STL）再按 47 维 obs 接线。
 
 ## 历史
 
