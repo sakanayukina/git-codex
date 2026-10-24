@@ -101,9 +101,21 @@ convert_multi.py（glTF/GLB 按材质拆分、减面、过滤材质）
 
 ## 6. 怎么运行
 
+村子（交互窗口，默认 `demo_v27.xml`）：
+
 ```powershell
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py
 ```
+
+无窗口自检：加上 `--headless`。
+
+机器狗 Go2（独立场景，home 姿态起步）：
+
+```powershell
+C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_go2.py
+```
+
+场景文件是 `assets/props/robots/go2_urdf/go2_scene.xml`，独立于 `demo_v27.xml`；狗目前还没并进村子，合并后入口再统一。`run_go2.py --headless --sim 2` 可以做无窗口自检。
 
 窗口里左键旋转、右键平移、滚轮缩放。`outdoor_scene.py` 也能启动，逻辑相同但带程序化场景回退。
 

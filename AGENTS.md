@@ -114,7 +114,7 @@ cd C:\Users\18967\Desktop\git
    如果以后要更缓，试 12–14 m，但整平面积会跟着变大。
 2. 跑完 `flatten_sites.py` 之后，`seam_ring.py` 的 `--band` 要和它保持一致，
    否则接缝碎石会压错位置（碎石环半径 = footprint + band ± 1.5 m）。
-3. **`SCENE_GUIDE.md` 请补一行入口**：机器狗用 `run_go2.py`（不是 `run_scene.py`），
+3. **`SCENE_GUIDE.md` 请补一行入口**（✅ Codex 已补，见 §6）：机器狗用 `run_go2.py`（不是 `run_scene.py`），
    场景是 `assets/props/robots/go2_urdf/go2_scene.xml`，独立于 `demo_v27.xml`。
    目前狗还没并进村子，等合并后入口再统一。
 
