@@ -20,6 +20,7 @@ import math
 import os
 
 import mujoco
+import mujoco.viewer   # 放到模块级：函数内 import 会让 mujoco 变成局部变量
 import numpy as np
 import torch
 
@@ -67,6 +68,7 @@ def main():
     ap.add_argument("--seconds", type=float, default=5.0)
     ap.add_argument("--vx", type=float, default=0.5)
     ap.add_argument("--render")
+    ap.add_argument("--viewer", action="store_true", help="打开交互窗口实时看它走")
     ap.add_argument("--swap-roll-yaw", action="store_true",
                     help="若策略的关节顺序是 (pitch, yaw, roll)，用它换回来")
     a = ap.parse_args()
@@ -103,6 +105,35 @@ def main():
     steps = int(a.seconds / m.opt.timestep)
     zs, xs = [], []
     bid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "pelvis")
+
+    if a.viewer:
+        i = 0
+        with mujoco.viewer.launch_passive(m, d) as v:
+            v.cam.lookat[:] = [0.0, 0.0, 0.6]
+            v.cam.distance, v.cam.elevation = 3.5, -12
+            while v.is_running():
+                with torch.no_grad():
+                    q = d.qpos[7:19]
+                    dq = d.qvel[6:18]
+                    d.ctrl[:] = np.clip(kp * (target - q) - kd * dq, -200, 200)
+                    mujoco.mj_step(m, d)
+                    if i % decim == 0:
+                        t = i * m.opt.timestep
+                        ph = (t % PERIOD) / PERIOD
+                        obs = np.zeros(NUM_OBS, dtype=np.float32)
+                        obs[0:3] = d.qvel[3:6] * SCALE["ang_vel"]
+                        obs[3:6] = gravity_orientation(d.qpos[3:7])
+                        obs[6:9] = cmd * CMD_SCALE
+                        obs[9:21] = (d.qpos[7:19] - default)[perm] * SCALE["dof_pos"]
+                        obs[21:33] = d.qvel[6:18][perm] * SCALE["dof_vel"]
+                        obs[33:45] = action
+                        obs[45:47] = [math.sin(2 * math.pi * ph), math.cos(2 * math.pi * ph)]
+                        action = policy(torch.from_numpy(obs).unsqueeze(0)).numpy().flatten()[:NUM_ACT]
+                        target = default + SCALE["action"] * action[inv]
+                i += 1
+                v.cam.lookat[:] = [float(d.xpos[bid][0]), float(d.xpos[bid][1]), 0.6]
+                v.sync()
+        return
 
     with torch.no_grad():
         for i in range(steps):
