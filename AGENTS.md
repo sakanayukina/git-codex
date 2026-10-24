@@ -169,6 +169,24 @@ cd C:\Users\18967\Desktop\git
   本机 pip 安装被拦：直接装（site-packages 在工作区外）和 --target .vendor/torch 都报
   [Errno 13] Permission denied ...whl.metadata。**要装 torch 必须先放宽沙箱或由用户手动装**。
 
+
+### G1 官方策略：已装 torch，但发现策略是 12 自由度版（2026-10-24 DSH）
+
+- torch **2.8.0+cpu 已装进 mujoco 环境**（用户批准 danger-full-access 后成功）。
+- deploy/pre_train/g1/motion.pt（145,745 B）已下到 ssets/props/robots/g1/motion.pt，
+  用 	orch.jit.load 可加载，是 **TorchScript + LSTM**（PolicyExporterLSTM，带内部 hidden state）。
+- **关键发现：这个策略是 G1 12 自由度版**（G1RoughCfg）：
+  
+um_observations=47、
+um_actions=12、sset.file=g1_12dof.urdf、
+  默认角 hip_pitch=-0.1, knee=0.3, ankle_pitch=-0.2（其余 0）、
+  ction_scale=0.25、decimation=4、
+  stiffness={hip_yaw 100, hip_roll 100, hip_pitch 100, knee 150, ankle 40}、
+  damping={hip_yaw 2, hip_roll 2, hip_pitch 2, knee 4, ankle 2}。
+  配置已存 ssets/_tools/unitree_policy/g1_12dof_config.py。
+- 所以**不能直接拿我们导入的 g1_29dof（29 关节含双臂）跑这个策略**，必须补一份 12 自由度版模型
+  （g1_description/g1_12dof.xml，网格可复用已下的 36 个 STL）再按 47 维 obs 接线。
+
 ## 历史
 
 - 2026-10-20 分工确立
