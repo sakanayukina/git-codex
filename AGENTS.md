@@ -239,6 +239,34 @@ cd C:\Users\18967\Desktop\git
 还没做：**把人形放进 yard 做地形测试**（0.15 m 台阶）。需要把 `g1_policy.py` 改成按关节名
 定位（现在硬编码 `qpos[7:]`），才能跑在同时含 Go2 的场景里。
 
+### G1 地形测试结果（2026-10-24 DSH，B-G1-4）
+
+官方策略在**平地**上很好，在**台阶**上不行。实测（`cmd vx=0.5`，8 s）：
+
+| 场景 | 位移 | 骨盆 z（末） | 结论 |
+|---|---|---|---|
+| 平地 | **3.64 m** | 0.77 | ✅ 稳 |
+| 台阶 0.15 m（在前进路上） | 1.00 m | 0.09 | ❌ 撞上第一级就摔 |
+| 台阶 0.05 m（同上） | 1.74 m | 0.19 | ❌ 5 cm 就会绊倒 |
+
+**结论：官方 motion.pt 是平地策略，抬腿高度不够，台阶 ≥5 cm 就失败。**
+想在废墟里跑，必须换成粗糙地形训练的策略（IsaacGym 重训），不是调参能解决的。
+
+两个踩坑（都会让结果假性异常）：
+1. **不能漏 `<default>`**：官方模型里 `<default><joint damping="0.001" armature="0.01" frictionloss="0.1"/>`
+   必须跟着搬，漏了会"走两步就摔"。
+2. **地面材质/场景结构要与训练一致**：从 terrain_tool 模板起场景时，机器人会"站住不走"；
+   改成**以官方 12dof 场景为底、只追加地形 geom**（`make_g1_yard.py` 现在的做法）就正常了。
+
+工具：
+```powershell
+& $py  assets/_tools/make_g1_yard.py --tier stairs|flat|full   # 造人形院子
+& $mjpy assets/_tools/g1_policy.py --xml assets/g1_yard_stairs.xml --vx 0.5 --seconds 8
+```
+
+另：`torso_link_23dof_rev_1_0.STL`（7.6 MB）已下到 `props/robots/g1/meshes/`，
+外观恢复正常（之前临时用 `torso_link.STL` 顶替）。
+
 ## 历史
 
 - 2026-10-20 分工确立
