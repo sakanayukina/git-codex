@@ -187,6 +187,26 @@ cd C:\Users\18967\Desktop\git
 - 所以**不能直接拿我们导入的 `g1_29dof`（29 关节含双臂）跑这个策略**，必须补一份 12 自由度版模型
   （`g1_description/g1_12dof.xml`，网格可复用已下的 36 个 STL）再按 47 维 obs 接线。
 
+### B-G1：官方策略接了一半（2026-10-24 DSH）
+
+已完成：
+- `make_g1_12dof.py` → `props/robots/g1/g1_12dof_scene.xml`：把 29 自由度模型裁成**腿部 12 自由度**
+  （删腰/臂关节，执行器 `<position>` → `<motor>` 力矩，补回 freejoint），校验 **nq=19 / nu=12**。
+- `g1_policy.py`：完全按官方 `g1.yaml` + `deploy_mujoco.py` 接线——47 维 obs 切片、
+  `action_scale=0.25`、50 Hz（dt 0.002 × decimation 10）、力矩 `tau = kp(target−q) − kd·dq`、
+  LSTM `reset_memory()`。
+- `fetch_g1_12dof.py`：等网络恢复后一键下官方 `g1_12dof.xml`（4 个源 + 重试）。
+
+卡住的地方：
+- **策略一上就摔**：`cmd vx=0` 跑 3 s，骨盆 0.80 → **0.12**，航向漂 1.9 rad。
+  `--swap-roll-yaw`（关节顺序另一种可能）也一样摔，排除关节序问题。
+- 最可能原因：**我们的 12dof 是从 29dof 裁的，双臂/腰的 body 还被焊在躯干上**（16 个），
+  质量/惯量分布和官方"无手臂"的 12dof 模型不一致，策略没见过这种本体。
+  尝试用 `_drop_bodies()` 整块删手臂子树，标签配对有 bug，只删掉 1 个 body，需要重写。
+- **官方 `g1_12dof.xml` 下不下来**：raw.githubusercontent / jsDelivr / ghfast 全部
+  `WinError 10054`（当时网络整体不通）。网络恢复后先跑 `fetch_g1_12dof.py`，
+  再用 `g1_policy.py --xml .../g1_12dof_official.xml` 重试，这是最干净的路径。
+
 ## 历史
 
 - 2026-10-20 分工确立
