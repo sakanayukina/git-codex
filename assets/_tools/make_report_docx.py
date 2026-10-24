@@ -52,7 +52,7 @@ def heading(doc, text, level=1):
     return h
 
 
-def table(doc, rows, widths=None, header=True):
+def table(doc, rows, widths=None, header=True, size=9.5):
     t = doc.add_table(rows=len(rows), cols=len(rows[0]))
     t.style = "Table Grid"
     t.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -63,7 +63,7 @@ def table(doc, rows, widths=None, header=True):
             c.text = ""
             p = c.paragraphs[0]
             p.paragraph_format.space_after = Pt(2)
-            set_cn(p.add_run(str(cell)), 9.5, bold=(header and i == 0))
+            set_cn(p.add_run(str(cell)), size, bold=(header and i == 0))
     if widths:
         for j, w in enumerate(widths):
             for row in t.rows:
@@ -183,6 +183,45 @@ def main():
     para(doc, "建议先明确课题定位。若目标是提供仿真平台与评测方法，现有成果（场景、机器人、"
               "通过性量化曲线）已经可以支撑阶段性产出；若目标是机器人运动控制，建议采用路线 B "
               "先用 Go2（四足容错高、1–2 小时可验证训练链路），再投入 G1 上台阶的训练。")
+
+    # 9 附录
+    heading(doc, "附录 A  运行环境")
+    para(doc, "MuJoCo 3.3.2（Python 3.9）；NVIDIA RTX 5060 Laptop（8 GB，驱动 591.91）；"
+              "PyTorch 2.8.0（当前 CPU 版，可切 CUDA 版）；工作目录 C:\\Users\\18967\\Desktop\\git。",
+         size=9.0, space_after=4)
+
+    heading(doc, "附录 B  关键文件与复现命令")
+    table(doc, [
+        ["用途", "文件 / 命令"],
+        ["村落展示场景", "assets/demo_v29.xml（含两台机器人，静态摆位）"],
+        ["验证小院（三档）", "assets/yard_{flat,stairs,full}.xml"],
+        ["G1 可跑场景", "assets/props/robots/g1/g1_12dof_scene.xml"],
+        ["官方策略", "assets/props/robots/g1/motion.pt（宇树预训练）"],
+        ["平地行走", "python assets/_tools/g1_policy.py --viewer --vx 0.5"],
+        ["台阶测试", "python assets/_tools/make_g1_yard.py --step-h 0.05，再跑 g1_policy.py"],
+        ["Go2 步态", "python assets/_tools/run_walk.py"],
+        ["场景自检", "python assets/_tools/check_yard.py"],
+    ], widths=[4.6, 12.0], size=8.5)
+
+    heading(doc, "附录 C  待解决问题清单")
+    table(doc, [
+        ["编号", "问题", "现状 / 已排查到哪一步"],
+        ["P1", "机器人无法上废墟台阶（≥5 cm）",
+         "策略训练地形为平地；需重训，非调参可解"],
+        ["P2", "是否投入训练、用哪条路线",
+         "待导师决策（见第六节四个问题）"],
+        ["P3", "IsaacGym 本机不可用",
+         "官方仅支持 Ubuntu；RTX 5060（Blackwell）兼容性存疑"],
+        ["P4", "Go2 无官方预训练策略",
+         "官方只有 G1/H1/H1-2 策略；Go2 为手写步态，长时不稳"],
+        ["P5", "废墟场景台阶尺寸与机器人能力不匹配",
+         "台阶 15 cm vs 上限 2–3 cm，需明确取舍"],
+    ], widths=[1.6, 6.0, 9.0], size=8.5)
+
+    # 去掉末尾多余空段，避免多出一页
+    while doc.paragraphs and not doc.paragraphs[-1].text.strip():
+        el = doc.paragraphs[-1]._element
+        el.getparent().remove(el)
 
     doc.save(OUT)
     print("saved:", OUT)
