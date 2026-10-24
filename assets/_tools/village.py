@@ -216,6 +216,13 @@ def main():
                         if png is None:
                             cand = f"{rel_model}/{f[:-4]}_diffuse.png"
                             png = cand if os.path.exists(os.path.join(ASSETS, cand)) else None
+                        if png is None:
+                            # 老资产（如 ruin_uk）只有一张共享图集 <name>_atlas_N.png，
+                            # 没有 manifest.json → 这里兜底，否则整栋房子会渲染成灰模
+                            atlases = sorted(x for x in os.listdir(abs_model)
+                                             if x.endswith(".png") and "atlas" in x)
+                            if atlases:
+                                png = f"{rel_model}/{atlases[0]}"
                         if png and os.path.exists(os.path.join(ASSETS, png)):
                             extra_assets.append(f'<texture name="{nm}_tex" type="2d" file="{png}"/>')
                             extra_assets.append(

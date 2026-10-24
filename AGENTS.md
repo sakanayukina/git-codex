@@ -4,7 +4,8 @@
 
 ## 工作区地图
 
-- **仿真场景**：`assets/demo_v27.xml`（598 body / 1037 geom / 12 相机 / 8 site；**3.81 M 三角面**；整平过渡带 **11 m**；H2 footprint 地形整平到 9.40 m，body z 9.38（diff -0.02，完全贴地）；基座 0、悬空瓦砾 0；堆积锥 48 + 接缝碎石 187；`demo_v7.xml` 为原版对照）
+- **展示场景**：`assets/demo_v27.xml`（598 body / 1037 geom / 12 相机 / 8 site；**3.81 M 三角面**；整平过渡带 **11 m**；H2 footprint 地形整平到 9.40 m，body z 9.38（diff -0.02，完全贴地）；基座 0、悬空瓦砾 0；堆积锥 48 + 接缝碎石 187；`demo_v7.xml` 为原版对照）
+- **验证场景（新）**：`assets/yard_v1.xml`（45 body / 143 geom / 1 hfield；宇树 terrain_tool 的可控地形 + H1 房子 + Go2，**给机器人做运动验证**；生成器 `_tools/yard.py`）
 - **场景结构说明**：根目录 `SCENE_GUIDE.md`（文件地图、生成链、每步作用、修改方法、已知问题）
 - **生成链**：`build_scene.py`(地形+道具) → `tune.py`(材质曝光) → `scatter.py`(植被/废墟) → `village.py`(村落，base = `demo_v5.xml`) → `slim_rocks.py`(石头瘦身)
 - **导入链**：`convert_multi.py`(glTF/GLB 按材质拆分、减面、只保留指定材质) → `import_gltf.py` / `import_building.py` → `fix_obj_faces.py`(OBJ 体检) → `prune_imported.py`(删转换中间文件) → `decimate_obj.py`(单个 OBJ 减面)
@@ -42,7 +43,12 @@ cd C:\Users\18967\Desktop\git
 & $mjpy run_g1.py --headless --sim 1 # 无窗口自检
 
 # 通用（不用写脚本，直接看任意 MJCF）
-& $mjpy -m mujoco.viewer --mjcf=assets/props/robots/go2_urdf/go2_scene.xml
+& $mjpy -m mujoco.viewer --mjcf=assets/yard_v1.xml
+
+# 验证场景 yard（30 m 小院：0.15 m 台阶 / 碎石阵 / Perlin 起伏 / H1 房子 / Go2）
+& $py  assets/_tools/yard.py         # 重新生成（**必须 base python**）
+& $mjpy -m mujoco.viewer --mjcf=assets/yard_v1.xml
+& $mjpy assets/_tools/render_yard.py # 出图（自由相机取景）
 
 # 出图（不弹窗）
 & $mjpy assets/_tools/render_scene.py assets/demo_v27.xml out.png 1100 650 2500 2
@@ -98,6 +104,11 @@ cd C:\Users\18967\Desktop\git
 10. **`site` 会渲染成球** → `group="3"`；相机要避开门洞，否则近景全灰。
 11. **GBK 控制台**：脚本里写 `²` 会抛 UnicodeEncodeError，被 try/except 吞掉后静默失败。
 12. **贴地道路网格会抖/锯齿** → 改烘进地面贴图；但别忘了删旧网格，否则它盖在上面。
+13. **DEM hfield 有 0.26 m 的隐形台阶**：66.5 m 落差 ÷ 8 位灰度 255 级 = 0.26 m/级，且沿网格正交排列。
+    用 demo_v27 测机器人通过性会被这个量化伪影污染 → 机器人验证一律用 `yard_v1.xml`（0.15 m 显式台阶）。
+14. **H1 之前一直是灰模**：`ruin_uk` 的 15 个 material 只有 `rgba`（没接图集），因为老资产没有
+    `manifest.json`。已在 `village.py` 加"共享 `<name>_atlas_N.png` 兜底"，`yard.py` 里已验证有效；
+    **demo_v27 要重跑生成链才会变**。
 
 ## 下一步（按优先级）
 
@@ -141,3 +152,4 @@ cd C:\Users\18967\Desktop\git
 - 2026-10-23 Codex：新增根目录 `SCENE_GUIDE.md`，整理场景结构、生成链、脚本作用与修改方法
 - 2026-10-24 DSH 8957533：**Go2 URDF 导入 MuJoCo** —— 新增 `dae2obj.py`(COLLADA→OBJ，含节点矩阵)、`fetch_go2_urdf.py`(下载 unitree_ros 描述)、`import_go2_urdf.py`(一键：转网格→改写 URDF→导出 MJCF→加 freejoint/12 位置电机/home 姿态)、`check_go2.py`(站立测试+渲染)。产物 `props/robots/go2_urdf/go2_scene.xml`：nq=19 / nu=12 / 16.28 kg / 20.8 万面 / 静置 2 s 站 0.271 m
 - 2026-10-24 DSH f8617d8：**G1 人形导入 MuJoCo** —— 官方 `g1_description/g1_29dof.xml` 自带 MuJoCo 格式（36 个 STL + 29 个 motor + `<joint type="free">`），新增 `import_g1.py`：并行下网格(19.1 MB)→motor 改 position(kp=150)→加地面/光/相机→按真实最低顶点贴地；出 `g1_scene.xml`(固定基座，脚底 z=0.0004 m) 与 `g1_free.xml`(浮动基座，无控制器 2 s 内摔到 0.111 m，符合预期)；新增 `run_g1.py`、`check_g1.py`
+- 2026-10-24 DSH：**验证场景 `yard_v1.xml`** —— 引入宇树 `terrain_tool`（BSD-3，见 `_tools/unitree_terrain/`，已打懒加载补丁：cv2/noise 缺失也能跑，PIL 兜底写高度图，并修了 `AddHeighFieldFromImage` 的 `255 - position` bug）。`_tools/yard.py` 生成 30 m 小院：台阶 6×0.15 m + 悬空台阶 gap 0.1 m + 碎石阵 8×8(0.5 m 块) + Perlin 起伏 ±0.2 m，注入 H1 房子（顺带修好它缺贴图的问题，改用共享图集）与 Go2；静止 0.8 s 后 base z=0.271 m 站住。文件整理：清掉一次性脚本，`render_yard.py` 保留为出图入口

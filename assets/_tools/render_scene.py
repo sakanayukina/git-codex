@@ -29,6 +29,10 @@ cam_idx = int(sys.argv[6]) if len(sys.argv) > 6 else 0
 model = mujoco.MjModel.from_xml_string(open(xml_path, encoding="utf-8").read())
 data = mujoco.MjData(model)
 print(f"nbody={model.nbody} ngeom={model.ngeom} nmesh={model.nmesh} ntex={model.ntex}")
+# 有 keyframe 就先按它摆好姿态（否则机器人从零位起步会瘫成一坨）
+if model.nkey > 0:
+    mujoco.mj_resetDataKeyframe(model, data, 0)
+    print(f"reset to keyframe[0] = {model.key(0).name or '(unnamed)'}")
 for _ in range(steps):
     mujoco.mj_step(model, data)
 mujoco.mj_forward(model, data)
