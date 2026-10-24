@@ -5,7 +5,7 @@
 ## 工作区地图
 
 - **展示场景**：`assets/demo_v27.xml`（598 body / 1037 geom / 12 相机 / 8 site；**3.81 M 三角面**；整平过渡带 **11 m**；H2 footprint 地形整平到 9.40 m，body z 9.38（diff -0.02，完全贴地）；基座 0、悬空瓦砾 0；堆积锥 48 + 接缝碎石 187；`demo_v7.xml` 为原版对照）
-- **验证场景（新）**：`assets/yard_v1.xml`（45 body / 143 geom / 1 hfield；宇树 terrain_tool 的可控地形 + H1 房子 + Go2，**给机器人做运动验证**；生成器 `_tools/yard.py`）
+- **验证场景（新）**：`assets/yard_{flat,stairs,full}.xml`（三档难度：纯平地 / 台阶 / 台阶+碎石+Perlin；每份都含 H1 房子 + Go2；`full` 是 45 body / 143 geom）；生成器 `_tools/yard.py --tier`，自检 `_tools/check_yard.py`，出图 `_tools/render_yard.py`
 - **场景结构说明**：根目录 `SCENE_GUIDE.md`（文件地图、生成链、每步作用、修改方法、已知问题）
 - **生成链**：`build_scene.py`(地形+道具) → `tune.py`(材质曝光) → `scatter.py`(植被/废墟) → `village.py`(村落，base = `demo_v5.xml`) → `slim_rocks.py`(石头瘦身)
 - **导入链**：`convert_multi.py`(glTF/GLB 按材质拆分、减面、只保留指定材质) → `import_gltf.py` / `import_building.py` → `fix_obj_faces.py`(OBJ 体检) → `prune_imported.py`(删转换中间文件) → `decimate_obj.py`(单个 OBJ 减面)
@@ -133,6 +133,26 @@ cd C:\Users\18967\Desktop\git
 3. **`SCENE_GUIDE.md` 请补一行入口**（✅ Codex 已补，见 §6）：机器狗用 `run_go2.py`（不是 `run_scene.py`），
    场景是 `assets/props/robots/go2_urdf/go2_scene.xml`，独立于 `demo_v27.xml`。
    目前狗还没并进村子，等合并后入口再统一。
+
+### 2026-10-24 新增请求（yard 那一轮之后）
+
+4. **【要做】重建一次 `demo_v27`**：`village.py` 已修好"H1 材质缺图集"的 bug（老资产 `ruin_uk` 没有
+   `manifest.json`，素材只有共享 `ruin_uk_atlas_0.png`），但**现有 demo_v27.xml 里 H1 还是灰模**，
+   必须按上面那条生成链重跑一次才会贴上砖墙。DSH 随时可以跑，**只要确认你那侧没有并发改 `demo_*.xml`**；
+   跑完的验收：`grep 'bld0_0_mat' demo_v28.xml` 应带 `texture=`，且三角面仍 ≈3.8 M。
+5. **【要做】`SCENE_GUIDE.md` 增加"验证场景"一节**：三档 `assets/yard_{flat,stairs,full}.xml`、
+   生成器 `_tools/yard.py --tier`、自检 `_tools/check_yard.py`、出图 `_tools/render_yard.py`。
+   并写清一条纪律：**机器人运动验证只用 yard，不要用 demo_v27**（DEM 8 位量化 = 每级 0.26 m 隐形台阶）。
+6. **【注意，别手改】`assets/props/robots/go2_urdf/go2_robot.xml` 是 `yard.py` 每次自动生成的**
+   （从 `go2_scene.xml` 抽出的"只有机器人"片段，去掉了 floor/light/camera/option/visual）。
+   要改机器人本体请改 `go2_scene.xml` 或 `import_go2_urdf.py`，再跑一次 `yard.py`。
+7. **【交接点】二次坍塌若要和机器人联动**（机器人靠近才塌），建议把可塌结构放进 `yard_full.xml`
+   而不是 `demo_v27.xml`：yard 地面是解析几何，接触稳定、可复现；demo 的 hfield 有 0.26 m 量化噪声，
+   塌落初始条件会不可控。`collapse_trigger.py` 的 `collapse_<group>_<index>` 命名直接沿用即可。
+8. **【已知事实，供你决策】宇树官方预训练策略只有 G1/H1/H1-2，没有 Go2**：
+   `unitree_rl_gym/deploy/pre_train/` 下是 `g1/motion.pt`（142 KB）、`h1/`、`h1_2/`。
+   且这些 config 的 `terrain.mesh_type` 都是 `'plane'` → **官方策略是平地训练的**，
+   在崎岖地形上不要预期它能跑，得先在 `yard_flat.xml` 上验证。
 
 ## 历史
 
