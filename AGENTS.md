@@ -4,7 +4,7 @@
 
 ## 工作区地图
 
-- **展示场景**：`assets/demo_v28.xml`（598 body / 1037 geom / 12 相机 / 8 site；**3.81 M 三角面**；整平过渡带 **11 m**；H1 已贴图集纹理；H2 footprint 地形整平到 9.40 m，body z 9.38（diff -0.02）；基座 0、悬空瓦砾 0；堆积锥 48 + 接缝碎石 187；`demo_v7.xml` 为原版对照）
+- **展示场景**：`assets/demo_v29.xml`（**670 body / 1154 geom / 13 相机 / 10 site / 4.62 M 三角面**）= `demo_v28`（598 body / 3.81 M，纯环境）+ 集结点 P0 上的 **Go2 + G1**（两台都焊死基座，只为静态出图；相机 `cam_robots`）。生成：`add_robots.py` → `fix_robot_z.py` → `set_standing.py`
 - **验证场景（新）**：`assets/yard_{flat,stairs,full}.xml`（三档难度：纯平地 / 台阶 / 台阶+碎石+Perlin；每份都含 H1 房子 + Go2；`full` 是 45 body / 143 geom）；生成器 `_tools/yard.py --tier`，自检 `_tools/check_yard.py`，出图 `_tools/render_yard.py`
 - **场景结构说明**：根目录 `SCENE_GUIDE.md`（文件地图、生成链、每步作用、修改方法、已知问题）
 - **生成链**：`build_scene.py`(地形+道具) → `tune.py`(材质曝光) → `scatter.py`(植被/废墟) → `village.py`(村落，base = `demo_v5.xml`) → `slim_rocks.py`(石头瘦身)
