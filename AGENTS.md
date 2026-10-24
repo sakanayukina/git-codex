@@ -36,6 +36,11 @@ cd C:\Users\18967\Desktop\git
 & $mjpy run_go2.py --headless --sim 2   # 无窗口：跑 2 s 物理并汇报机身高度
 & $mjpy run_go2.py --sim 5           # 先跑 5 s 再开窗口
 
+# 人形 G1（官方 g1_29dof.xml + STL 导入版，独立场景）
+& $mjpy run_g1.py                    # fixed 基座版：站着不动，当场景 NPC 用
+& $mjpy run_g1.py --free             # 带 freejoint：没有平衡控制器会摔（正常现象）
+& $mjpy run_g1.py --headless --sim 1 # 无窗口自检
+
 # 通用（不用写脚本，直接看任意 MJCF）
 & $mjpy -m mujoco.viewer --mjcf=assets/props/robots/go2_urdf/go2_scene.xml
 
@@ -73,7 +78,7 @@ cd C:\Users\18967\Desktop\git
 | 缺 | 影响 | 谁来补 |
 |---|---|---|
 | **H3/H4 的民房废墟模型** | 现在还是方盒占位房，论文图里一眼假 | 用户找素材（6–10 m 宽、有门窗、≤25 万面、glTF） |
-| **机器人本体** | ✅ 已导入：`props/robots/go2_urdf/go2_scene.xml`（unitree_ros URDF → MuJoCo，nq=19 / 12 位置电机 / kp=100 站 0.271 m / 20.8 万面） | DSH 已完成；还差"放进 demo_v27 村子"这一步 |
+| **机器人本体** | ✅ Go2：`props/robots/go2_urdf/go2_scene.xml`（URDF 导入，nq=19 / 12 电机 / 16.28 kg / 20.8 万面）。✅ G1：`props/robots/g1/g1_scene.xml`（官方 MJCF+STL，nq=29 / 29 电机 / 35.1 kg / 59.8 万面 / 脚底 z=0.0004 m） | DSH 已完成；还差"放进 demo_v27 村子"这一步 |
 | **二次坍塌触发** | 场景是静态的，没有动态事件 | Codex 主责（DSH 出可塌结构）；触发器框架 `_tools/collapse_trigger.py` 已就绪，等 v8 的 `collapse_*` 结构接入 |
 | **地面细节** | 2048² 覆盖 200 m，草偏糊 | 升 4096 可解（25 MB） |
 | **动态物体物理** | 废墟块是静态的，不会二次塌落 | 需把部分块改成 free joint |
@@ -135,3 +140,4 @@ cd C:\Users\18967\Desktop\git
 - 2026-10-23 Codex：直接整平 H2 footprint 地形（考虑 yaw，band 11），H2 body z 9.03→9.38，diff -0.02 完全贴地，入口切到 demo_v27.xml
 - 2026-10-23 Codex：新增根目录 `SCENE_GUIDE.md`，整理场景结构、生成链、脚本作用与修改方法
 - 2026-10-24 DSH 8957533：**Go2 URDF 导入 MuJoCo** —— 新增 `dae2obj.py`(COLLADA→OBJ，含节点矩阵)、`fetch_go2_urdf.py`(下载 unitree_ros 描述)、`import_go2_urdf.py`(一键：转网格→改写 URDF→导出 MJCF→加 freejoint/12 位置电机/home 姿态)、`check_go2.py`(站立测试+渲染)。产物 `props/robots/go2_urdf/go2_scene.xml`：nq=19 / nu=12 / 16.28 kg / 20.8 万面 / 静置 2 s 站 0.271 m
+- 2026-10-24 DSH f8617d8：**G1 人形导入 MuJoCo** —— 官方 `g1_description/g1_29dof.xml` 自带 MuJoCo 格式（36 个 STL + 29 个 motor + `<joint type="free">`），新增 `import_g1.py`：并行下网格(19.1 MB)→motor 改 position(kp=150)→加地面/光/相机→按真实最低顶点贴地；出 `g1_scene.xml`(固定基座，脚底 z=0.0004 m) 与 `g1_free.xml`(浮动基座，无控制器 2 s 内摔到 0.111 m，符合预期)；新增 `run_g1.py`、`check_g1.py`
