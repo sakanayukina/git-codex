@@ -6,7 +6,7 @@ import mujoco.viewer
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-XML = os.path.join(BASE_DIR, "assets", "demo_v27.xml")
+XML = os.path.join(BASE_DIR, "assets", "demo_v28.xml")
 
 
 def run(headless=False):

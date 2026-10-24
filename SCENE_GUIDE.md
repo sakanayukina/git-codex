@@ -4,9 +4,9 @@
 
 ## 1. 当前场景
 
-- 场景文件：`assets/demo_v27.xml`
-- 规模：598 body / 1037 geom / 57 mesh / 40 texture / 12 相机 / 8 site，约 3.81 M 三角面
-- 入口：`run_scene.py`（交互窗口）、`outdoor_scene.py`（优先加载 v27，缺失时回退程序化场景）
+- 场景文件：`assets/demo_v28.xml`
+- 规模：598 body / 1037 geom / 57 mesh / 55 texture / 12 相机 / 8 site，约 3.81 M 三角面
+- 入口：`run_scene.py`（交互窗口）、`outdoor_scene.py`（优先加载 v28，缺失时回退程序化场景）
 - 解释器：`C:/Users/18967/anaconda3/envs/mujoco/python.exe`（MuJoCo 3.3.2）
 
 ## 2. 文件地图
@@ -90,7 +90,7 @@ convert_multi.py（glTF/GLB 按材质拆分、减面、过滤材质）
 
 ## 5. XML 是怎么组织的
 
-`demo_v27.xml` 是标准 MJCF：
+`demo_v28.xml` 是标准 MJCF：
 
 - `<asset>`：hfield 地形、texture 贴图、material 材质、mesh 模型（每栋真实房子的分件都在这里）
 - `<worldbody>`：地面、太阳光、房子 body、道具 body、植被 body、camera、site
@@ -101,7 +101,7 @@ convert_multi.py（glTF/GLB 按材质拆分、减面、过滤材质）
 
 ## 6. 怎么运行
 
-村子（交互窗口，默认 `demo_v27.xml`）：
+村子（交互窗口，默认 `demo_v28.xml`）：
 
 ```powershell
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py
@@ -115,9 +115,27 @@ C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_s
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_go2.py
 ```
 
-场景文件是 `assets/props/robots/go2_urdf/go2_scene.xml`，独立于 `demo_v27.xml`；狗目前还没并进村子，合并后入口再统一。`run_go2.py --headless --sim 2` 可以做无窗口自检。
+场景文件是 `assets/props/robots/go2_urdf/go2_scene.xml`，独立于 `demo_v28.xml`；狗目前还没并进村子，合并后入口再统一。`run_go2.py --headless --sim 2` 可以做无窗口自检。
 
 窗口里左键旋转、右键平移、滚轮缩放。`outdoor_scene.py` 也能启动，逻辑相同但带程序化场景回退。
+
+### 6.1 验证场景（yard，机器人专用）
+
+**纪律：机器人站立/运动验证只用 yard，不要把 `demo_v28` 当运动场地。** `demo_v28` 是 200 m 真实山地展示场景，不是训练/验证地形。
+
+yard 由 `assets/_tools/yard.py` 生成三档：
+
+```powershell
+C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\yard.py --tier flat
+C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\yard.py --tier stairs
+C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\yard.py --tier full
+```
+
+- `yard_flat.xml`：平地，验证站立/基础步态
+- `yard_stairs.xml`：台阶，验证越障
+- `yard_full.xml`：完整小院（房子 + 地形）；后续可塌结构和机器人联动放这里
+
+自检用 `assets/_tools/check_yard.py`。`go2_robot.xml` 由 `yard.py` 每次自动生成，**不要手动修改**。
 
 ## 7. 怎么改
 
@@ -128,7 +146,7 @@ C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_g
 | 调整平过渡带 | `flatten_sites.py --band`（当前 11） | 同步 `seam_ring.py --band` |
 | 调道路/封路 | `buildings.json` 的 `road` / `blockades` | `village.py` / `polish.py` |
 | 调堆积锥 | `buildings.json` 的 `debris_cones` | `polish.py` |
-| 加机器人 | `props/imported` + `convert_multi.py` 导入链 | 还没接，等模型 |
+| 加机器人 | Go2 已导入；验证用 yard，并进村子待定 | `yard.py` 或后续合并脚本 |
 | 加二次坍塌 | DSH 产出 `collapse_*` body + 同名 weld | `collapse_trigger.py` 按组/时间解锁 |
 
 ## 8. 已知问题与下一步
@@ -140,6 +158,7 @@ C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_g
 | H3/H4 还是占位房 | 论文图里一眼假 | 等真实 6–10 m 宽、≤25 万面的 glTF |
 | 机器人未接 | 场景没有救援主体 | 需要 menagerie 或老师提供的模型 |
 | 二次坍塌未接 | 场景是静态的 | 等 DSH 的 `collapse_*` 结构，触发器已就绪 |
+| 官方策略限制 | 官方只提供 G1 平地策略，不能预期它在崎岖地形上能跑 | 需要训练则走 unitree_rl_gym 流程 |
 
 ## 9. 关键坑（改之前先看）
 

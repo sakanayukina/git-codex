@@ -4,7 +4,7 @@
 
 ## 工作区地图
 
-- **展示场景**：`assets/demo_v27.xml`（598 body / 1037 geom / 12 相机 / 8 site；**3.81 M 三角面**；整平过渡带 **11 m**；H2 footprint 地形整平到 9.40 m，body z 9.38（diff -0.02，完全贴地）；基座 0、悬空瓦砾 0；堆积锥 48 + 接缝碎石 187；`demo_v7.xml` 为原版对照）
+- **展示场景**：`assets/demo_v28.xml`（598 body / 1037 geom / 12 相机 / 8 site；**3.81 M 三角面**；整平过渡带 **11 m**；H1 已贴图集纹理；H2 footprint 地形整平到 9.40 m，body z 9.38（diff -0.02）；基座 0、悬空瓦砾 0；堆积锥 48 + 接缝碎石 187；`demo_v7.xml` 为原版对照）
 - **验证场景（新）**：`assets/yard_{flat,stairs,full}.xml`（三档难度：纯平地 / 台阶 / 台阶+碎石+Perlin；每份都含 H1 房子 + Go2；`full` 是 45 body / 143 geom）；生成器 `_tools/yard.py --tier`，自检 `_tools/check_yard.py`，出图 `_tools/render_yard.py`
 - **场景结构说明**：根目录 `SCENE_GUIDE.md`（文件地图、生成链、每步作用、修改方法、已知问题）
 - **生成链**：`build_scene.py`(地形+道具) → `tune.py`(材质曝光) → `scatter.py`(植被/废墟) → `village.py`(村落，base = `demo_v5.xml`) → `slim_rocks.py`(石头瘦身)
@@ -27,7 +27,7 @@
 $py     = "C:/Users/18967/anaconda3/python.exe"          # PIL/requests
 $mjpy   = "C:/Users/18967/anaconda3/envs/mujoco/python.exe"   # 仿真/渲染
 
-# 村子（交互窗口，默认 demo_v27.xml）
+# 村子（交互窗口，默认 demo_v28.xml）
 cd C:\Users\18967\Desktop\git
 & $mjpy run_scene.py                 # 打开被动窗口
 & $mjpy run_scene.py --headless      # 只加载自检
@@ -43,7 +43,7 @@ cd C:\Users\18967\Desktop\git
 & $mjpy run_g1.py --headless --sim 1 # 无窗口自检
 
 # 通用（不用写脚本，直接看任意 MJCF）
-& $mjpy -m mujoco.viewer --mjcf=assets/yard_v1.xml
+& $mjpy -m mujoco.viewer --mjcf=assets/yard_flat.xml   # 另有 yard_stairs / yard_full
 
 # 验证场景 yard（30 m 小院：0.15 m 台阶 / 碎石阵 / Perlin 起伏 / H1 房子 / Go2）
 & $py  assets/_tools/yard.py         # 重新生成（**必须 base python**）
@@ -51,7 +51,7 @@ cd C:\Users\18967\Desktop\git
 & $mjpy assets/_tools/render_yard.py # 出图（自由相机取景）
 
 # 出图（不弹窗）
-& $mjpy assets/_tools/render_scene.py assets/demo_v27.xml out.png 1100 650 2500 2
+& $mjpy assets/_tools/render_scene.py assets/demo_v28.xml out.png 1100 650 2500 2
 ```
 
 > `run_go2.py` 会先 `mj_resetDataKeyframe(..., 0)` 用 home 姿态起步；
@@ -136,11 +136,11 @@ cd C:\Users\18967\Desktop\git
 
 ### 2026-10-24 新增请求（yard 那一轮之后）
 
-4. **【要做】重建一次 `demo_v27`**：`village.py` 已修好"H1 材质缺图集"的 bug（老资产 `ruin_uk` 没有
+4. **【已完成】重建 `demo_v27` → `demo_v28`**：`village.py` 已修好"H1 材质缺图集"的 bug（老资产 `ruin_uk` 没有
    `manifest.json`，素材只有共享 `ruin_uk_atlas_0.png`），但**现有 demo_v27.xml 里 H1 还是灰模**，
    必须按上面那条生成链重跑一次才会贴上砖墙。DSH 随时可以跑，**只要确认你那侧没有并发改 `demo_*.xml`**；
    跑完的验收：`grep 'bld0_0_mat' demo_v28.xml` 应带 `texture=`，且三角面仍 ≈3.8 M。
-5. **【要做】`SCENE_GUIDE.md` 增加"验证场景"一节**：三档 `assets/yard_{flat,stairs,full}.xml`、
+5. **【已完成】`SCENE_GUIDE.md` 增加"验证场景"一节**：三档 `assets/yard_{flat,stairs,full}.xml`、
    生成器 `_tools/yard.py --tier`、自检 `_tools/check_yard.py`、出图 `_tools/render_yard.py`。
    并写清一条纪律：**机器人运动验证只用 yard，不要用 demo_v27**（DEM 8 位量化 = 每级 0.26 m 隐形台阶）。
 6. **【注意，别手改】`assets/props/robots/go2_urdf/go2_robot.xml` 是 `yard.py` 每次自动生成的**
@@ -171,5 +171,6 @@ cd C:\Users\18967\Desktop\git
 - 2026-10-23 Codex：直接整平 H2 footprint 地形（考虑 yaw，band 11），H2 body z 9.03→9.38，diff -0.02 完全贴地，入口切到 demo_v27.xml
 - 2026-10-23 Codex：新增根目录 `SCENE_GUIDE.md`，整理场景结构、生成链、脚本作用与修改方法
 - 2026-10-24 DSH 8957533：**Go2 URDF 导入 MuJoCo** —— 新增 `dae2obj.py`(COLLADA→OBJ，含节点矩阵)、`fetch_go2_urdf.py`(下载 unitree_ros 描述)、`import_go2_urdf.py`(一键：转网格→改写 URDF→导出 MJCF→加 freejoint/12 位置电机/home 姿态)、`check_go2.py`(站立测试+渲染)。产物 `props/robots/go2_urdf/go2_scene.xml`：nq=19 / nu=12 / 16.28 kg / 20.8 万面 / 静置 2 s 站 0.271 m
+- 2026-10-24 Codex：H1 图集修复（15 个材质换 `ruin_uk_atlas_0`），产出 demo_v28.xml；SCENE_GUIDE 补 yard 验证场景与机器人纪律；入口切到 v28
 - 2026-10-24 DSH f8617d8：**G1 人形导入 MuJoCo** —— 官方 `g1_description/g1_29dof.xml` 自带 MuJoCo 格式（36 个 STL + 29 个 motor + `<joint type="free">`），新增 `import_g1.py`：并行下网格(19.1 MB)→motor 改 position(kp=150)→加地面/光/相机→按真实最低顶点贴地；出 `g1_scene.xml`(固定基座，脚底 z=0.0004 m) 与 `g1_free.xml`(浮动基座，无控制器 2 s 内摔到 0.111 m，符合预期)；新增 `run_g1.py`、`check_g1.py`
 - 2026-10-24 DSH：**验证场景 `yard_v1.xml`** —— 引入宇树 `terrain_tool`（BSD-3，见 `_tools/unitree_terrain/`，已打懒加载补丁：cv2/noise 缺失也能跑，PIL 兜底写高度图，并修了 `AddHeighFieldFromImage` 的 `255 - position` bug）。`_tools/yard.py` 生成 30 m 小院：台阶 6×0.15 m + 悬空台阶 gap 0.1 m + 碎石阵 8×8(0.5 m 块) + Perlin 起伏 ±0.2 m，注入 H1 房子（顺带修好它缺贴图的问题，改用共享图集）与 Go2；静止 0.8 s 后 base z=0.271 m 站住。文件整理：清掉一次性脚本，`render_yard.py` 保留为出图入口
