@@ -22,8 +22,18 @@ SCENE = """  <option timestep="0.002" integrator="implicitfast"/>
 """
 
 FLOOR = """    <light pos="0 0 3" dir="0 0 -1" directional="true" diffuse="0.7 0.7 0.7"/>
-    <geom name="floor" type="plane" size="0 0 0.05" rgba="0.55 0.58 0.55 1"/>
+    <light pos="4 -4 2" dir="-1 1 -1" diffuse="0.35 0.35 0.35"/>
+    <geom name="floor" type="plane" size="0 0 0.05" material="yard_ground"/>
     <camera name="track" pos="2.6 -2.6 1.4" xyaxes="0.707 0.707 0 -0.35 0.35 0.87"/>
+"""
+
+# 天空盒 + 地面棋盘：默认没有天空盒，出图背景是全黑，放进汇报文档很难看
+ENV_ASSET = """    <texture type="skybox" builtin="gradient" rgb1="0.48 0.64 0.84"
+             rgb2="0.86 0.90 0.94" width="512" height="3072"/>
+    <texture type="2d" name="yard_grid" builtin="checker" mark="edge"
+             rgb1="0.46 0.50 0.44" rgb2="0.40 0.44 0.38" markrgb="0.58 0.60 0.55"
+             width="300" height="300"/>
+    <material name="yard_ground" texture="yard_grid" texuniform="true" texrepeat="10 10"/>
 """
 
 
@@ -47,7 +57,11 @@ def main():
         print(f"  替代 {old} → {new}")
     s = re.sub(r"<mujoco([^>]*)>", r"<mujoco\1>" + "\n" + SCENE, s, count=1)
     s = re.sub(r"<worldbody>", "<worldbody>\n" + FLOOR, s, count=1)
-    # robot 文件里的 <asset> 可能缺失网格贴图，不影响（全用 STL 纯色）
+    # 天空盒 + 地面材质塞进 <asset>（官方模型只有 mesh，没有贴图）
+    if "<asset>" in s:
+        s = s.replace("<asset>", "<asset>\n" + ENV_ASSET, 1)
+    else:
+        s = s.replace("<worldbody>", "<asset>\n" + ENV_ASSET + "  </asset>\n  <worldbody>", 1)
     open(DST, "w", encoding="utf-8").write(s)
 
     import mujoco

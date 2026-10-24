@@ -14,6 +14,13 @@
   </default>
 
   <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.48 0.64 0.84"
+             rgb2="0.86 0.90 0.94" width="512" height="3072"/>
+    <texture type="2d" name="yard_grid" builtin="checker" mark="edge"
+             rgb1="0.46 0.50 0.44" rgb2="0.40 0.44 0.38" markrgb="0.58 0.60 0.55"
+             width="300" height="300"/>
+    <material name="yard_ground" texture="yard_grid" texuniform="true" texrepeat="10 10"/>
+
     <mesh name="pelvis" file="pelvis.STL"/>
     <mesh name="pelvis_contour_link" file="pelvis_contour_link.STL"/>
     <mesh name="left_hip_pitch_link" file="left_hip_pitch_link.STL"/>
@@ -45,7 +52,8 @@
 
   <worldbody>
     <light pos="0 0 3" dir="0 0 -1" directional="true" diffuse="0.7 0.7 0.7"/>
-    <geom name="floor" type="plane" size="0 0 0.05" rgba="0.55 0.58 0.55 1"/>
+    <light pos="4 -4 2" dir="-1 1 -1" diffuse="0.35 0.35 0.35"/>
+    <geom name="floor" type="plane" size="0 0 0.05" material="yard_ground"/>
     <camera name="track" pos="2.6 -2.6 1.4" xyaxes="0.707 0.707 0 -0.35 0.35 0.87"/>
 
     <body name="pelvis" pos="0 0 0.793">
