@@ -1,11 +1,104 @@
+import os
 import xml.etree.ElementTree as xml_et
+
 import numpy as np
-import cv2
-import noise
+
+# ---------------------------------------------------------------------------
+# DSH 补丁（2026-10-24）：原版在模块顶部 `import cv2` / `import noise`，本机两者都没装，
+# 导致连 AddBox/AddStairs 这种纯几何方法都用不了。改成按需加载 + 兜底实现。
+#
+# - cv2 用于读写高度图 PNG → 缺失时退回 PIL（写）/ numpy+PIL（读）
+# - noise 是 C 扩展（Windows 上常编译失败）→ 缺失时用 numpy 值噪声兜底，
+#   输出同样落在 [-1, 1]，AddPerlinHeighField 的参数语义不变。
+# ---------------------------------------------------------------------------
+
+
+def _imwrite(path, arr):
+    """写灰度 PNG：优先 cv2，没有就用 PIL。"""
+    d = os.path.dirname(os.path.abspath(path))
+    if d:
+        os.makedirs(d, exist_ok=True)
+    try:
+        import cv2
+        cv2.imwrite(path, arr)
+        return
+    except ImportError:
+        pass
+    from PIL import Image
+    Image.fromarray(np.asarray(arr, dtype=np.uint8)).save(path)
+
+
+def _imread_gray(path, image_scale=(1.0, 1.0)):
+    """读图并转灰度：优先 cv2，没有就用 PIL。"""
+    try:
+        import cv2
+        img = cv2.imread(path)
+        if img is None:
+            raise FileNotFoundError(path)
+        w = int(img.shape[1] * image_scale[0])
+        h = int(img.shape[0] * image_scale[1])
+        img = cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA)
+        return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    except ImportError:
+        pass
+    from PIL import Image
+    img = Image.open(path).convert("L")
+    w = max(1, int(img.width * image_scale[0]))
+    h = max(1, int(img.height * image_scale[1]))
+    return np.asarray(img.resize((w, h), Image.LANCZOS))
+
+
+def _value_noise(x, y):
+    """双线性平滑的哈希值噪声，输出 [-1, 1]。"""
+    import math
+    def h(ix, iy):
+        n = int(ix) * 374761393 + int(iy) * 668265263
+        n = (n ^ (n >> 13)) * 1274126177
+        n = n ^ (n >> 16)
+        return ((n & 0xFFFF) / 32767.5) - 1.0
+    x0, y0 = math.floor(x), math.floor(y)
+    fx, fy = x - x0, y - y0
+    sx = fx * fx * (3 - 2 * fx)
+    sy = fy * fy * (3 - 2 * fy)
+    a = h(x0, y0) + (h(x0 + 1, y0) - h(x0, y0)) * sx
+    b = h(x0, y0 + 1) + (h(x0 + 1, y0 + 1) - h(x0, y0 + 1)) * sx
+    return a + (b - a) * sy
+
+
+def _pnoise2(x, y, octaves=1, persistence=0.5, lacunarity=2.0, **_):
+    total, amp, freq, norm = 0.0, 1.0, 1.0, 0.0
+    for _ in range(max(1, int(octaves))):
+        total += amp * _value_noise(x * freq, y * freq)
+        norm += amp
+        amp *= persistence
+        freq *= lacunarity
+    return total / max(norm, 1e-9)
+
+
+class _NoiseShim:
+    """假装自己是 noise 包，只实现被用到的那一个函数。"""
+    staticmethod
+
+    @staticmethod
+    def pnoise2(*args, **kwargs):
+        return _pnoise2(*args, **kwargs)
+
+
+try:                          # 装了官方 noise 就用官方的
+    import noise              # noqa: F401
+except ImportError:
+    noise = _NoiseShim()
 
 ROBOT = "go2"
 INPUT_SCENE_PATH = "./scene.xml"
+OUTPUT_DIR = "../unitree_robots/" + ROBOT          # 高度图输出目录（可覆盖）
 OUTPUT_SCENE_PATH = "../unitree_robots/" + ROBOT + "/scene_terrain.xml"
+
+
+def _hfield_relpath(name):
+    """hfield 的 file 属性要相对 scene.xml 所在目录。"""
+    scene_dir = os.path.dirname(os.path.abspath(OUTPUT_SCENE_PATH))
+    return os.path.relpath(os.path.abspath(os.path.join(OUTPUT_DIR, name)), scene_dir)
 
 
 # zyx euler angle to quaternion
@@ -200,14 +293,13 @@ class TerrainGenerator:
                                             lacunarity=perlin_lacunarity)
                 terrain_image[y, x] = int((noise_value + 1) / 2 * 255)
 
-        cv2.imwrite("../unitree_robots/" + ROBOT + "/" + output_hfield_image,
-                    terrain_image)
+        _imwrite(os.path.join(OUTPUT_DIR, output_hfield_image), terrain_image)
 
         hfield = xml_et.SubElement(self.asset, "hfield")
         hfield.attrib["name"] = "perlin_hfield"
         hfield.attrib["size"] = list_to_str(
             [size[0] / 2.0, size[1] / 2.0, height_scale, negative_height])
-        hfield.attrib["file"] = "../" + output_hfield_image
+        hfield.attrib["file"] = _hfield_relpath(output_hfield_image)
 
         geo = xml_et.SubElement(self.worldbody, "geom")
         geo.attrib["type"] = "hfield"
@@ -228,23 +320,16 @@ class TerrainGenerator:
             image_scale=[1.0, 1.0],  # reduce image resolution
             invert_gray=False):
 
-        input_image = cv2.imread(input_img)  # 替换为你的图像文件路径
-
-        width = int(input_image.shape[1] * image_scale[0])
-        height = int(input_image.shape[0] * image_scale[1])
-        resized_image = cv2.resize(input_image, (width, height),
-                                   interpolation=cv2.INTER_AREA)
-        terrain_image = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
+        terrain_image = _imread_gray(input_img, image_scale)
         if invert_gray:
-            terrain_image = 255 - position
-        cv2.imwrite("../unitree_robots/" + ROBOT + "/" + output_hfield_image,
-                    terrain_image)
+            terrain_image = 255 - terrain_image          # 原版写成 255 - position，是个 bug
+        _imwrite(os.path.join(OUTPUT_DIR, output_hfield_image), terrain_image)
 
         hfield = xml_et.SubElement(self.asset, "hfield")
         hfield.attrib["name"] = "image_hfield"
         hfield.attrib["size"] = list_to_str(
             [size[0] / 2.0, size[1] / 2.0, height_scale, negative_height])
-        hfield.attrib["file"] = "../" + output_hfield_image
+        hfield.attrib["file"] = _hfield_relpath(output_hfield_image)
 
         geo = xml_et.SubElement(self.worldbody, "geom")
         geo.attrib["type"] = "hfield"
@@ -254,6 +339,9 @@ class TerrainGenerator:
         geo.attrib["quat"] = list_to_str(quat)
 
     def Save(self):
+        d = os.path.dirname(os.path.abspath(OUTPUT_SCENE_PATH))
+        if d:
+            os.makedirs(d, exist_ok=True)
         self.scene.write(OUTPUT_SCENE_PATH)
 
 
