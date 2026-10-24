@@ -4,9 +4,9 @@
 
 ## 1. 当前场景
 
-- 场景文件：`assets/demo_v28.xml`
-- 规模：598 body / 1037 geom / 57 mesh / 55 texture / 12 相机 / 8 site，约 3.81 M 三角面
-- 入口：`run_scene.py`（交互窗口）、`outdoor_scene.py`（优先加载 v28，缺失时回退程序化场景）
+- 场景文件：`assets/demo_v29.xml`（v28 环境 + P0 上的 Go2 与 G1，固定基座展示）
+- 规模：670 body / 1154 geom / 13 相机 / 10 site，约 4.62 M 三角面
+- 入口：`run_scene.py`（交互窗口）、`outdoor_scene.py`（优先加载 v29，缺失时回退程序化场景）
 - 解释器：`C:/Users/18967/anaconda3/envs/mujoco/python.exe`（MuJoCo 3.3.2）
 
 ## 2. 文件地图
@@ -90,7 +90,7 @@ convert_multi.py（glTF/GLB 按材质拆分、减面、过滤材质）
 
 ## 5. XML 是怎么组织的
 
-`demo_v28.xml` 是标准 MJCF：
+`demo_v29.xml` 是标准 MJCF：
 
 - `<asset>`：hfield 地形、texture 贴图、material 材质、mesh 模型（每栋真实房子的分件都在这里）
 - `<worldbody>`：地面、太阳光、房子 body、道具 body、植被 body、camera、site
@@ -101,7 +101,7 @@ convert_multi.py（glTF/GLB 按材质拆分、减面、过滤材质）
 
 ## 6. 怎么运行
 
-村子（交互窗口，默认 `demo_v28.xml`）：
+村子（交互窗口，默认 `demo_v29.xml`）：
 
 ```powershell
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py
@@ -115,13 +115,15 @@ C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_s
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_go2.py
 ```
 
-场景文件是 `assets/props/robots/go2_urdf/go2_scene.xml`，独立于 `demo_v28.xml`；狗目前还没并进村子，合并后入口再统一。`run_go2.py --headless --sim 2` 可以做无窗口自检。
+独立场景是 `assets/props/robots/go2_urdf/go2_scene.xml`（`run_go2.py`）；v29 里已把 Go2 + G1 以固定基座放进 P0（相机 `cam_robots`）。`run_go2.py --headless --sim 2` 可自检。
+
+Go2 爬行步态：`assets/_tools/run_walk.py`（约 6 s 走 2.58 m）。G1：`run_g1.py`（fixed 基座站立）。
 
 窗口里左键旋转、右键平移、滚轮缩放。`outdoor_scene.py` 也能启动，逻辑相同但带程序化场景回退。
 
 ### 6.1 验证场景（yard，机器人专用）
 
-**纪律：机器人站立/运动验证只用 yard，不要把 `demo_v28` 当运动场地。** `demo_v28` 是 200 m 真实山地展示场景，不是训练/验证地形。
+**纪律：机器人站立/运动验证只用 yard，不要把 `demo_v29` 当运动场地。** `demo_v29` 是 200 m 真实山地展示场景，不是训练/验证地形。
 
 yard 由 `assets/_tools/yard.py` 生成三档：
 
@@ -156,7 +158,7 @@ C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\yard.py --tier ful
 | H2 墙面绿色裂缝 | 扫描件本身的洞，减面后变大，能看穿到草地 | 提高减面上限重导，或 `fix_obj_faces.py` 补洞 |
 | 地面 2048² 覆盖 200 m | 草和土近看偏糊 | 可升 4096（约 25 MB），加载会慢一些 |
 | H3/H4 还是占位房 | 论文图里一眼假 | 等真实 6–10 m 宽、≤25 万面的 glTF |
-| 机器人未接 | 场景没有救援主体 | 需要 menagerie 或老师提供的模型 |
+| 机器人仅静态展示 | v29 中 Go2/G1 焊死基座，不能行走；Go2 爬行步态可用 `run_walk.py`，G1 官方策略仅 12dof 平地 | 需要真机策略/训练再接 |
 | 二次坍塌未接 | 场景是静态的 | 等 DSH 的 `collapse_*` 结构，触发器已就绪 |
 | 官方策略限制 | 官方只提供 G1 平地策略，不能预期它在崎岖地形上能跑 | 需要训练则走 unitree_rl_gym 流程 |
 
