@@ -154,6 +154,21 @@ cd C:\Users\18967\Desktop\git
    且这些 config 的 `terrain.mesh_type` 都是 `'plane'` → **官方策略是平地训练的**，
    在崎岖地形上不要预期它能跑，得先在 `yard_flat.xml` 上验证。
 
+
+### 机器人运动（B 阶段，2026-10-24 DSH）
+
+- **Go2 爬行步态可用**：_tools/walk_go2.py（--sweep 调参）+ _tools/run_walk.py（看窗口）。
+  最优参数 req=2.0 a_thigh=0.22 a_calf=0.55 thigh0=0.95 gait=crawl
+  → 6 s 走 **2.58 m**（≈0.43 m/s），航向漂移 **0.21 rad**，机身 z 全程 **0.27~0.30**（没趴）。
+  **局限：超过 8 s 会失稳**（开环无平衡反馈）。
+- **对角 trot 不行**：req=2.0 a_thigh=0.25 a_calf=0.70 → 8 s 走 3.48 m 但航向漂 1.84 rad（绕圈）。
+- **_tools/trot_ik.py 未通**：三自由度 IK 的 FK 基准和 MuJoCo 的 body 原点对不上（自检
+  --selftest 输出 thigh −1.697 vs 实际 +0.900），要接 IK 步态得先重标定髋/膝的几何约定。
+- **G1 无法用手写控制器行走**：双足要平衡反馈，手写 PD 只能站着。
+  官方策略 deploy/pre_train/g1/motion.pt（142 KB）是唯一现实路径，但**需要 torch**，
+  本机 pip 安装被拦：直接装（site-packages 在工作区外）和 --target .vendor/torch 都报
+  [Errno 13] Permission denied ...whl.metadata。**要装 torch 必须先放宽沙箱或由用户手动装**。
+
 ## 历史
 
 - 2026-10-20 分工确立
