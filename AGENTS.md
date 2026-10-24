@@ -207,6 +207,38 @@ cd C:\Users\18967\Desktop\git
   `WinError 10054`（当时网络整体不通）。网络恢复后先跑 `fetch_g1_12dof.py`，
   再用 `g1_policy.py --xml .../g1_12dof_official.xml` 重试，这是最干净的路径。
 
+### B-G1 完成：官方 12 自由度模型 + motion.pt 让 G1 真的走起来了（2026-10-24 DSH）
+
+**结论：G1 走通了。** 平地实测（`cmd vx=0.5`）：
+
+| 时长 | 位移 | 骨盆 z | 航向漂移 |
+|---|---|---|---|
+| 3 s | **1.27 m** | 0.77~0.80 | −0.06 rad |
+| 5 s | **2.22 m** | 0.77~0.80 | −0.08 rad |
+| 8 s | **3.64 m**（≈0.45 m/s） | 0.77~0.80 | −0.11 rad |
+
+原地站 3 s：位移 0.02 m、骨盆 0.77~0.80、航向 −0.04 rad —— 稳。
+
+关键突破点：**之前摔是因为本体不对**。我们从 29dof 裁的 12dof 模型把双臂/腰焊在躯干上
+（总质量 35.1 kg），官方 12dof 是 **32.1 kg 无手臂**，策略只认后者。
+
+可复现的链路（网络用 `ghproxy.net` / `gh-proxy.com` 镜像，raw.githubusercontent 仍被重置）：
+
+```powershell
+& $py assets/_tools/fetch_g1_12dof.py          # 下官方 g1_12dof.xml（13 关节: 1 free + 12 腿）
+& $mjpy assets/_tools/fix_g1_12dof_meshes.py   # 补缺失 STL（含 torso_link_23dof_rev_1_0）
+& $mjpy assets/_tools/wrap_g1_12dof.py         # 套地面/光/相机 → g1_12dof_scene.xml（nq19/nu12, 32.1 kg）
+& $mjpy assets/_tools/g1_policy.py --xml props/robots/g1/g1_12dof_scene.xml --vx 0.5 --seconds 8
+```
+
+产物：`props/robots/g1/g1_12dof_official.xml`（官方原版）、`g1_12dof_scene.xml`（可跑场景）。
+
+已知小瑕疵：`torso_link_23dof_rev_1_0.STL` 下载慢，先用本地 `torso_link.STL` 顶替
+（`wrap_g1_12dof.py` 里有 remap），**只影响外观、不影响运动学**；下到真件后重跑 wrap 即可。
+
+还没做：**把人形放进 yard 做地形测试**（0.15 m 台阶）。需要把 `g1_policy.py` 改成按关节名
+定位（现在硬编码 `qpos[7:]`），才能跑在同时含 Go2 的场景里。
+
 ## 历史
 
 - 2026-10-20 分工确立
