@@ -34,7 +34,16 @@ CMD = np.array([0.5, 0.0, 0.0], dtype=np.float32)
 OBS_DIM = 45
 ACT_DIM = 12
 
+MOTOR = dict(X1=13.5, X2=30.0, Y1=20.2, Y2=23.4)     # Go2HV 转速-力矩包络
 NUL = bytes([0])
+
+
+def clip_torque_speed(effort, qd):
+    same = qd * effort > 0.0
+    max_e = np.where(same, MOTOR["Y1"], MOTOR["Y2"])
+    high = max_e * (1.0 - (np.abs(qd) - MOTOR["X1"]) / (MOTOR["X2"] - MOTOR["X1"]))
+    max_e = np.where(np.abs(qd) < MOTOR["X1"], max_e, np.maximum(high, 0.0))
+    return np.clip(effort, -max_e, max_e)
 
 
 def save_gray_png(arr, path):
@@ -67,7 +76,7 @@ def terrain_png(path, height, size=96, seed=0):
     if rng.random() < 0.5:
         step = rng.integers(3, 10) / size
         h = np.maximum(h, (x > step) * 1.0)
-    img = np.clip(h * 200 + 20, 0, 255).astype(np.uint8)
+    img = np.clip(h * 255, 0, 255).astype(np.uint8)   # 用满量程，真实起伏 = hfield z 尺寸
     save_gray_png(img, path)
     return path
 
@@ -86,16 +95,15 @@ def make_xml(png_abs, hfield_size=10.0, terrain_h=0.1):
     s = s.replace("</asset>",
                   '<hfield name="terrain" file="%s" size="%g %g %g 0.01"/>\n  </asset>'
                   % (png_abs.replace("\\", "/"), hfield_size / 2, hfield_size / 2,
-                     max(terrain_h, 0.05)), 1)
+                     max(terrain_h, 0.01)), 1)
     s = s.replace("<worldbody>",
                   '<worldbody>\n    <geom name="ground" type="hfield" hfield="terrain" '
                   'friction="1.0 0.02 0.001"/>\n'
                   '    <light pos="0 0 3" dir="0 0 -1" directional="true"/>', 1)
-    for j, (kp, kd) in enumerate(zip(KP, KD)):
+    for j in range(12):
         nm = JOINTS[j] + "_joint_pos"
         s = re.sub(r'<position name="%s"[^>]*/>' % re.escape(nm),
-                   '<position name="%s" joint="%s_joint" kp="%g" kv="%g"/>'
-                   % (nm, JOINTS[j], kp, kd), s)
+                   '<motor name="%s" joint="%s_joint"/>' % (nm, JOINTS[j]), s)
     return s
 
 
@@ -142,10 +150,19 @@ class Go2Env:
             self.prev_action,
         ]).astype(np.float32)
 
+    def _phase(self):
+        t = self.steps * SIM_DT * DECIM
+        ang = 2 * math.pi * t / PHASE_PERIOD
+        return np.array([math.sin(ang), math.cos(ang)], dtype=np.float32)
+
     def step(self, action):
         action = np.clip(np.asarray(action, dtype=np.float32), -1, 1)
-        self.d.ctrl[self.aid] = DEFAULT + ACTION_SCALE * action
+        target = DEFAULT + ACTION_SCALE * action
         for _ in range(DECIM):
+            q = self.d.qpos[self.qadr]
+            qd = self.d.qvel[self.dadr]
+            eff = KP * (target - q) - KD * qd
+            self.d.ctrl[self.aid] = clip_torque_speed(eff, qd)
             mujoco.mj_step(self.m, self.d)
         self.steps += 1
         self.prev_action = action
@@ -155,9 +172,12 @@ class Go2Env:
         up = float(self.d.xmat[self.bid].reshape(3, 3)[2, 2])   # cos(机身倾角)
         tau = float(np.abs(self.d.actuator_force[self.aid]).sum())
 
-        r = 2.0 * math.exp(-((v[0] - CMD[0]) ** 2) / 0.25)
-        r += 0.4 * up
-        r += 0.3 * math.exp(-((z - 0.30) ** 2) / 0.01)
+        # 速度跟踪用更窄的核 + 原地不动直接罚：否则"站着不动"是局部最优
+        r = 2.5 * math.exp(-((v[0] - CMD[0]) ** 2) / 0.05)
+        r += 0.3 * up
+        r += 0.2 * math.exp(-((z - 0.30) ** 2) / 0.01)
+        if self.steps > 20 and abs(v[0]) < 0.15:
+            r -= 0.6
         r -= 0.0005 * tau
         r -= 0.02 * float(np.abs(self.d.qvel[self.dadr]).sum())
         fell = z < 0.16 or up < 0.6
