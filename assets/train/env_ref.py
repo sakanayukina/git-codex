@@ -96,7 +96,8 @@ class Go2EnvRef:
         v = d.qvel[0:3]
         # 线性速度跟踪：站着不动 = 0 分，走到 0.5 m/s = 4 分（拉开差距，破除"站着"局部最优）
         r = 4.0 * float(np.clip(1.0 - abs(v[0] - 0.5) / 0.5, -1.0, 1.0))
-        r += 0.3 * up + 0.4 * math.exp(-((dz - 0.32) ** 2) / 0.01)
+        # 高度项改成线性：蹲着（dz<0.20）拿 0 分，站直（dz>=0.32）拿满 0.4
+        r += 0.3 * up + 0.4 * float(np.clip((dz - 0.20) / 0.12, 0.0, 1.0))
         r -= 0.02 * float(np.abs(d.qvel[self.dadr]).sum())
         fell = up < 0.6 or dz < 0.14
         if fell:
