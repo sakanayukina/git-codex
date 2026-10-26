@@ -264,7 +264,7 @@ class Go2Env:
         return np.array([math.sin(ang), math.cos(ang)], dtype=np.float32)
 
     def step(self, action):
-        action = np.clip(np.asarray(action, dtype=np.float32), -1, 1)
+        action = np.clip(np.asarray(action, dtype=np.float32), -100.0, 100.0)   # 与 run_ref 一致（不截到 ±1）
         target = DEFAULT + ACTION_SCALE * action
         for _ in range(DECIM):
             q = self.d.qpos[self.qadr]
