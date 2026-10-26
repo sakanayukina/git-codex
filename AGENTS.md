@@ -281,6 +281,36 @@ cd C:\Users\18967\Desktop\git
 **结论：官方策略的抬腿上限约 2–3 cm**（0.02 m 稳过，0.05 m 就倒）。
 0.10 m 那档生成时 `terrain_tool` 报重名 geom 错误（`Element name '', id 7`），跳过未测。
 
+### 地形编码缺陷（DSH 实测，待与 Codex 协同修）
+
+**问题**：`village` 的地形是 8 位灰度 hfield，`size="100 100 66.5 0.01"` + `dem_wenchuan_flat.png`（128×128）：
+- 网格：200 m / 128 格 = **1.56 m 一格**
+- 量化：66.5 m / 255 级 = **0.26 m 假台阶**，沿网格正交排列
+
+**影响**：真实山地是连续坡面，没有 26 cm 竖直跳变。任何机器人在这个地形上测出的"走不动/摔"都混入了编码伪影，
+结论不可用。这不是"任务要求平坦"，是**数据表示的问题**。
+
+**建议方案**：地形从 hfield 换成 **trimesh**（三角网，float 精度，坡面连续），保留全部真实起伏与坡度。
+
+**需要 Codex 确认/配合的点**：
+1. 生成链里谁读写 hfield：`build_scene.py`（写 hfield + 地面贴图）、`flatten_sites.py`（整平 footprint）、
+   `polish.py` 的 `terrain_fn()`（按 hfield PNG 采样高度）、`seam_ring.py` / `reground_props.py` / `fix_grounding.py`
+   都依赖 `terrain_fn`。**换 trimesh 后这些采样函数必须同步改**（改成直接对 float 高度场插值）。
+2. 是否保留一份 **float 高度场真值**（如 `terrain/dem_float.npz`），供地形采样子系统共读，避免再走 8 位回环。
+3. 换 trimesh 后三角面会涨：128×128 → 建议 200×200 顶点（约 8 万面），需要确认是否接受（当前场景 3.81 M）。
+4. 若短期不换编码，请**明确标注**：所有机器人实验只在 `assets/yard_*.xml` / `assets/train/` 里做，
+   不要用 `demo_v2x.xml` 出机器人结论（那里的台阶是假的）。
+
+**DSH 已有的机器人侧结论（供参考）**：
+- 合成起伏地形（hfield，5/10/20 cm 连续起伏）：开源 Go2 策略 10 s 走 4 m+ 不摔
+- 真实村子地形（26 cm 量化台阶 + 10–30° 陡坡）：同样策略**原地不走**（不摔但也不动）
+- 即：假台阶 + 陡坡都超出该策略分布；修编码只能解决前者，后者要靠在该坡度上微调
+
+**DSH 新增资产（Codex 重建 village 后需要重跑，不要手改）**：
+- `assets/train/`（训练环境 + PPO + 评测 + 开源策略接入）
+- `assets/village_walk.xml`：`demo_v28` + 可走 Go2（作者 Go2HV 惯量 + 我方外观网格），由 merge 脚本生成
+- `assets/train/ref/mjcf/`：参考模型的场景变体（含 `visual_100.xml`）
+
 ## 历史
 
 - 2026-10-20 分工确立
