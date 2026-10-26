@@ -409,6 +409,40 @@ diff 第一处分歧。建议下次会话第一件事做这个。
 
 
 
+### DAgger 突破：自己的网络在真实坡度上稳定行走 5.4–6.1 m（DSH 2026-10-26）
+
+在 BC 基础上做 2 轮 DAgger（学生自己走→老师给标签→重训），结果**全面超过老师**：
+
+| 种子 | 位移 | 平均速度 | 存活 | 结果 |
+|---|---|---|---|---|
+| 0 | 5.53 m | 0.54 m/s | 500（全程） | ✅ 不摔 |
+| 1 | 5.73 | 0.57 | 500 | ✅ |
+| 2 | 5.64 | 0.56 | 500 | ✅ |
+| 3 | 6.09 | 0.60 | 500 | ✅ |
+| 4 | 5.40 | 0.54 | 500 | ✅ |
+| 5 | 5.47 | 0.55 | 500 | ✅ |
+
+- 地形：真实 DEM，80 m，落差 23.6 m，坡度中位 9.5° / p95 25.6°
+- 老师（开源 TorchScript）在同一地形上是 2.82 m / 10 s；**学生 5.4–6.1 m**，因为 DAgger 让学生覆盖了老师会摔的状态
+- MSE 0.80 → 0.0795
+
+**可复现命令**：
+
+```powershell
+cd assets/train
+$env:DSH_MODEL="author"; $env:DSH_ENV="ref"
+$env:DSH_TERRAIN_PNG="$PWD\_terrain\dem80_128.png"
+$env:DSH_HFIELD_HALF="40"; $env:DSH_RELIEF="23.64"; $env:DSH_RELIEF_SCALE="1.0"
+& $mjpy dagger.py --rounds 2 --envs 24 --steps 350 --epochs 50   # 约 6 分钟
+& $mjpy eval.py --ckpt ckpt/bc.pt --n 6
+```
+
+产物：`train/dagger.py`、`train/ckpt/bc.pt`（当前最佳）、`train/ckpt/bc_before_dagger.pt`（DAgger 前）。
+
+**结论：步态不是 RL 从零练出来的，是"蒸馏 + DAgger"学出来的；PPO 微调必须在奖励调好之后再做。**
+
+
+
 ## 历史
 
 - 2026-10-20 分工确立
