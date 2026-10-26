@@ -1,0 +1,10 @@
+{
+  "half": 40.0,
+  "res": 2.0,
+  "n": 41,
+  "tris": 3200,
+  "relief": 23.63671875,
+  "slope_median": 9.522230111657425,
+  "slope_p95": 25.623653232348126,
+  "source": "C:\\Users\\18967\\Desktop\\git\\assets\\terrain\\dem_float.npz"
+}

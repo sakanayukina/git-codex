@@ -1,0 +1,8 @@
+<mujoco>
+  <asset>
+    <mesh name="dem_patch" file="C:/Users/18967/Desktop/git/assets/train/_terrain/dem_patch.obj" inertia="shell"/>
+  </asset>
+  <worldbody>
+    <geom name="ground" type="mesh" mesh="dem_patch" friction="1.0 0.02 0.001"/>
+  </worldbody>
+</mujoco>

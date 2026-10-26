@@ -311,6 +311,28 @@ cd C:\Users\18967\Desktop\git
 - `assets/village_walk.xml`：`demo_v28` + 可走 Go2（作者 Go2HV 惯量 + 我方外观网格），由 merge 脚本生成
 - `assets/train/ref/mjcf/`：参考模型的场景变体（含 `visual_100.xml`）
 
+
+### DEM float 真值与 trimesh 训练分支（DSH 已完成本轮交付）
+
+按商定方案执行：**展示场景 demo_v29 保留 hfield 碰撞不动**，float / trimesh 只服务训练与实验分支。
+
+1. **float 高度场真值**：`terrain/dem_float.npz`
+   - 由 `_tools/export_dem_float.py` 重新从 Terrarium（16 位编码）取源，**不是** 8-bit PNG 转 float
+   - 49×49 格 / 200.5 m（源数据原生 4.1 m/px，已是 Terrarium 上限 z=15）
+   - 海拔 866.4–932.7 m，落差 **66.2 m**（与 8 位版 66.5 m 一致）
+   - 字段：`z`(float32) / `extent` / `htype` / `lat` / `lon` / `zoom`；row 0 = +Y，与 `polish.terrain_fn` 约定一致
+   - **踩坑**：`fetch_dem.fetch_tile()` 把 `TILE_CACHE` 当全局用，但它定义在 `fetch_dem.main()` 里，
+     从外部模块调用会 `NameError`。DSH 在自己的脚本里补了 `fetch_dem.TILE_CACHE = ...`；
+     建议把 `TILE_CACHE` 提到模块级，供长期复用。
+2. **trimesh 训练分支**：`train/_terrain/dem_patch.obj` + `dem_patch.xml`
+   - 80 m × 80 m，2 m 网格，41×41 顶点，**3,200 三角面**
+   - 落差 23.6 m；坡度 **中位 9.5° / p95 25.6°**（全域统计为 10.6° / 31.3°，同量级）
+   - 射线验证：连续坡面，无量化台阶
+3. **采样脚本**（`flatten_sites` / `reground_props` / `fix_grounding` / `seam_ring` / `polish`）：
+   等 Codex 的 `terrain.py` 统一 API 落地后再切到 npz；DSH 侧已给出 npz 字段约定。
+
+**风险提示**：trimesh 未接入任何展示场景；`demo_v29` 的 hfield 碰撞保持原样，村子不受影响。
+
 ## 历史
 
 - 2026-10-20 分工确立
