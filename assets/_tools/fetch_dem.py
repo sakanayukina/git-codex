@@ -22,6 +22,7 @@ UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 TILE_URL = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
 EARTH_R = 6378137.0
 TILE_PX = 256
+TILE_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_tiles")
 
 
 def deg2num(lat, lon, z):
@@ -151,5 +152,4 @@ def main():
 
 
 if __name__ == "__main__":
-    TILE_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_tiles")
     main()

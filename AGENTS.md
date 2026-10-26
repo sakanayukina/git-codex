@@ -10,6 +10,7 @@
 - **生成链**：`build_scene.py`(地形+道具) → `tune.py`(材质曝光) → `scatter.py`(植被/废墟) → `village.py`(村落，base = `demo_v5.xml`) → `slim_rocks.py`(石头瘦身)
 - **导入链**：`convert_multi.py`(glTF/GLB 按材质拆分、减面、只保留指定材质) → `import_gltf.py` / `import_building.py` → `fix_obj_faces.py`(OBJ 体检) → `prune_imported.py`(删转换中间文件) → `decimate_obj.py`(单个 OBJ 减面)
 - **场景辅助**：`bake_ground.py`(把路烘进地面贴图)、`polish.py`(树/草/瓦砾/天空/地面)、`seam_ring.py`(房子边缘接缝碎石)、`layout_check.py`(压路/重叠体检)、`check_floating.py`(瓦砾悬空体检)、`render_scene.py`、`preview_parts.py`、`cleanup.py`
+- **地形采样**：`_tools/terrain.py`（`HfieldSampler` 用于 demo，row 0=-Y；`FloatDEMSampler` 用于 `terrain/dem_float.npz`，row 0=+Y；统一 `height(x,y)`）
 - 其他：`papers/`、`skills/paper-reader`、`PerpetualCalendar.java`、`scripts/extract_papers.py`
 
 ## 环境
@@ -354,3 +355,5 @@ cd C:\Users\18967\Desktop\git
 - 2026-10-24 Codex：入口切到 demo_v29（670/1154，含 Go2+G1），SCENE_GUIDE 同步 v29 与 run_walk/run_g1，清理旧中间版本
 - 2026-10-24 DSH f8617d8：**G1 人形导入 MuJoCo** —— 官方 `g1_description/g1_29dof.xml` 自带 MuJoCo 格式（36 个 STL + 29 个 motor + `<joint type="free">`），新增 `import_g1.py`：并行下网格(19.1 MB)→motor 改 position(kp=150)→加地面/光/相机→按真实最低顶点贴地；出 `g1_scene.xml`(固定基座，脚底 z=0.0004 m) 与 `g1_free.xml`(浮动基座，无控制器 2 s 内摔到 0.111 m，符合预期)；新增 `run_g1.py`、`check_g1.py`
 - 2026-10-24 DSH：**验证场景 `yard_v1.xml`** —— 引入宇树 `terrain_tool`（BSD-3，见 `_tools/unitree_terrain/`，已打懒加载补丁：cv2/noise 缺失也能跑，PIL 兜底写高度图，并修了 `AddHeighFieldFromImage` 的 `255 - position` bug）。`_tools/yard.py` 生成 30 m 小院：台阶 6×0.15 m + 悬空台阶 gap 0.1 m + 碎石阵 8×8(0.5 m 块) + Perlin 起伏 ±0.2 m，注入 H1 房子（顺带修好它缺贴图的问题，改用共享图集）与 Go2；静止 0.8 s 后 base z=0.271 m 站住。文件整理：清掉一次性脚本，`render_yard.py` 保留为出图入口
+- 2026-10-24 DSH 69e3d8c：float DEM 真值 `terrain/dem_float.npz`（49×49 / 200.5 m / 66.2 m 落差）+ trimesh 训练分支 `train/_terrain/dem_patch.xml`（80 m / 3200 面），展示场景 hfield 未动
+- 2026-10-24 Codex：修 `fetch_dem.py` 的 `TILE_CACHE` 作用域（提到模块级）；新增 `_tools/terrain.py` 统一采样（HfieldSampler row0=-Y / FloatDEMSampler row0=+Y）；SCENE_GUIDE 明确 demo_v2x 不出机器人结论

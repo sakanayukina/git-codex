@@ -18,6 +18,7 @@
 | `assets/demo_v27.xml` | 最终 MJCF 场景（地形 + 道路 + 建筑 + 植被 + 道具 + 相机 + site） |
 | `assets/buildings.json` | 村落布局配置：7 栋房、主路折线、封路点、堆积锥 |
 | `assets/_tools/` | 全部生成、导入、后处理工具（下节逐个说明） |
+| `assets/_tools/terrain.py` | 统一地形采样：`HfieldSampler`（demo，row 0=-Y）与 `FloatDEMSampler`（`terrain/dem_float.npz`，row 0=+Y） |
 | `assets/props/imported/` | 真实扫描模型：H1/H2/H5/H6/H7、枫树、草块等 |
 | `assets/props/` | Poly Haven 道具：岩石、树桩、枯枝、报废车、隔离墩、轮胎 |
 | `assets/terrain/` | 汶川 DEM 高度图和平滑/整平后的 PNG |
@@ -124,6 +125,10 @@ Go2 爬行步态：`assets/_tools/run_walk.py`（约 6 s 走 2.58 m）。G1：`r
 ### 6.1 验证场景（yard，机器人专用）
 
 **纪律：机器人站立/运动验证只用 yard，不要把 `demo_v29` 当运动场地。** `demo_v29` 是 200 m 真实山地展示场景，不是训练/验证地形。
+
+**机器人结论纪律**：`demo_v2x` 只用于展示，任何通过性/步态结论都只用 `yard_*.xml` / `train/`。
+
+**地形采样统一走 `assets/_tools/terrain.py`**：展示场景用 `HfieldSampler`（8 位 hfield，row 0=-Y）；float 真值用 `FloatDEMSampler`（`terrain/dem_float.npz`，row 0=+Y）。trimesh 只在 `train/_terrain/` 训练分支，未接入展示场景。
 
 yard 由 `assets/_tools/yard.py` 生成三档：
 

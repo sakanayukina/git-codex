@@ -17,30 +17,9 @@ ASSETS = os.path.dirname(HERE)
 
 
 def terrain_fn(model_xml):
-    """从 XML 里读 hfield 参数，返回 f(x,y)->高度。经验：第 0 行 = -Y。"""
-    import mujoco
-    m = mujoco.MjModel.from_xml_path(model_xml)
-    hid = next(g for g in range(m.ngeom) if m.geom_type[g] == mujoco.mjtGeom.mjGEOM_HFIELD)
-    fid = m.geom_dataid[hid]
-    nr, nc = int(m.hfield_nrow[fid]), int(m.hfield_ncol[fid])
-    sx, sy, sz, base = (float(v) for v in m.hfield_size[fid])
-    h = np.asarray(m.hfield_data).reshape(nr, nc)
-    px, py = float(m.geom_pos[hid][0]), float(m.geom_pos[hid][1])
-
-    def f(x, y):
-        fx = (x - px) / (2 * sx) + 0.5
-        fy = (y - py) / (2 * sy) + 0.5
-        if not (0 <= fx <= 1 and 0 <= fy <= 1):
-            return None
-        c, r = fx * (nc - 1), fy * (nr - 1)
-        r0, c0 = int(r), int(c)
-        r1, c1 = min(r0 + 1, nr - 1), min(c0 + 1, nc - 1)
-        dr, dc = r - r0, c - c0
-        v = (h[r0, c0] * (1 - dr) * (1 - dc) + h[r1, c0] * dr * (1 - dc)
-             + h[r0, c1] * (1 - dr) * dc + h[r1, c1] * dr * dc)
-        return base + float(v) * sz
-
-    return f
+    """从 XML 的 hfield 返回 f(x,y)->高度；统一走 terrain.HfieldSampler。"""
+    from terrain import HfieldSampler
+    return HfieldSampler(model_xml).height
 
 
 def jitter_tree_colors(block, rng):
