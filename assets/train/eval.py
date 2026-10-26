@@ -5,7 +5,11 @@ import os
 import numpy as np
 import torch
 
+import os
+
 from env import OBS_DIM, Go2Env
+if os.environ.get("DSH_ENV", "") == "ref":
+    from env_ref import Go2EnvRef as Go2Env
 from ppo import ActorCritic
 
 HERE = os.path.dirname(os.path.abspath(__file__))

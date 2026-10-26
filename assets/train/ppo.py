@@ -16,7 +16,11 @@ import torch
 import torch.nn as nn
 from torch.distributions import Normal
 
+import os
+
 from env import ACT_DIM, OBS_DIM, VecEnv
+if os.environ.get("DSH_ENV", "") == "ref":
+    from env_ref import VecEnvRef as VecEnv
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CKPT = os.path.join(HERE, "ckpt")
