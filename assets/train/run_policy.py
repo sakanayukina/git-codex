@@ -23,6 +23,7 @@ def main():
     ap.add_argument("--cmd-scale", type=float, default=1.0)
     ap.add_argument("--action-scale", type=float, default=0.25)
     ap.add_argument("--vx", type=float, default=0.5)
+    ap.add_argument("--warmup", type=int, default=0, help="前 N 个控制步保持默认目标（对齐参考实现的相位）")
     ap.add_argument("--perm", default="", help="策略关节顺序映射")
     ap.add_argument("--defaults", default="", help="12 个默认关节角，逗号分隔")
     ap.add_argument("--kp", type=float, default=0.0, help=">0 时覆盖伺服 kp")
@@ -68,7 +69,15 @@ def main():
         vxs, steps, fell = [], 0, False
         cmd = CMD.copy()
         cmd[0] = a.vx
-        for _ in range(a.steps):
+        for step_i in range(a.steps):
+            if step_i < a.warmup:
+                obs, r, done, info = env.step(np.zeros(ACT_DIM, dtype=np.float32))
+                vxs.append(info['vx'])
+                steps += 1
+                if done:
+                    fell = info['fell']
+                    break
+                continue
             o = obs.copy()
             o[0:3] *= a.ang_scale             # 角速度缩放
             o[6:9] = cmd * a.cmd_scale
