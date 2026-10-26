@@ -18,8 +18,8 @@ G1 = os.path.join(ASSETS, "props", "robots", "g1", "g1_scene.xml")
 
 # 相对集结点 P0 的偏移（米）与世界朝向（度）
 PLACE = {
-    "go2": dict(dx=2.8, dy=-1.6, yaw=90.0, stand=0.27, root="base"),
-    "g1": dict(dx=-2.4, dy=1.8, yaw=110.0, stand=0.862, root="pelvis"),
+    "go2": dict(dx=1.5, dy=-0.5, yaw=90.0, stand=0.27, root="base"),
+    "g1": dict(dx=-1.2, dy=0.6, yaw=110.0, stand=0.862, root="pelvis"),
 }
 
 
@@ -69,6 +69,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--in", dest="src", default=os.path.join(ASSETS, "demo_v28.xml"))
     ap.add_argument("--out", dest="dst", default=os.path.join(ASSETS, "demo_v29.xml"))
+    ap.add_argument("--cx", type=float, default=None, help="机器人锚点 x（默认用 site_P0）")
+    ap.add_argument("--cy", type=float, default=None, help="机器人锚点 y")
     args = ap.parse_args()
 
     village = open(args.src, encoding="utf-8").read()
@@ -77,7 +79,9 @@ def main():
         raise SystemExit("找不到 site_P0")
     px, py, pz = (float(g) for g in m.groups())
     ground = pz - 0.02
-    print(f"集结点 P0 = ({px:.2f}, {py:.2f}), 地面 z ≈ {ground:.2f}")
+    if args.cx is not None:
+        px, py = args.cx, args.cy
+    print(f"锚点 = ({px:.2f}, {py:.2f}), 地面 z ≈ {ground:.2f}")
 
     assets, bodies, act, keys = [], [], [], []
     for name, path, reldir in (("go2", GO2, "props/robots/go2_urdf"),
