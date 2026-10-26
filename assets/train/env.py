@@ -20,6 +20,7 @@ GO2_SCENE = os.path.join(ASSETS, "props", "robots", "go2_urdf", "go2_scene.xml")
 TMP = os.path.join(HERE, "_terrain")
 # 真实地形模式：设置这两个环境变量即可用 dem_float 派生的 hfield 训练
 AUTHOR_MODEL = os.environ.get("DSH_MODEL", "") == "author"
+PLANE_GROUND = os.environ.get("DSH_GROUND", "") == "plane"
 AUTHOR_XML = os.path.join(HERE, "ref", "mjcf", "go2_nomesh.xml")
 REAL_NPZ = os.environ.get("DSH_TERRAIN_NPZ", "")
 REAL_PNG = os.environ.get("DSH_TERRAIN_PNG", "")
@@ -105,13 +106,17 @@ def make_xml(png_abs, hfield_size=10.0, terrain_h=0.1):
   </asset>
   <worldbody>
     <light pos="0 0 10" dir="0 0 -1" directional="true"/>
-    <geom name="ground" type="hfield" hfield="terrain" friction="1.0 0.02 0.001"/>
+    %s
 %s
   </worldbody>
   <actuator>%s</actuator>
 </mujoco>
 """ % (SIM_DT, dflt, png_abs.replace("\\", "/"), hfield_size / 2, hfield_size / 2,
-       max(terrain_h, 0.01), body, act)
+       max(terrain_h, 0.01),
+       ('<geom name="ground" type="plane" size="0 0 0.05" group="1" friction="1.0 0.02 0.001"/>'
+        if PLANE_GROUND else
+        '<geom name="ground" type="hfield" hfield="terrain" group="1" friction="1.0 0.02 0.001"/>'),
+       body, act)
     s = open(GO2_SCENE, encoding="utf-8").read()
     # go2_scene 的 <mesh file="meshes/x.obj"> 是相对它自己目录的；从字符串加载时
     # 找不到，改成绝对路径（MuJoCo 接受带盘符的路径）
@@ -211,18 +216,12 @@ class Go2Env:
         self.reset()
 
     def _ground(self, x, y):
-        """当前 (x,y) 处的地面高度（真实地形用 zgrid 双线性，合成地形按 0）。"""
-        if not self.real:
-            return 0.0
-        H, W = self.zgrid.shape
-        u = np.clip((x / (2 * self.half)) + 0.5, 0, 1) * (W - 1)
-        v = np.clip(0.5 - (y / (2 * self.half)), 0, 1) * (H - 1)
-        i0, j0 = int(v), int(u)
-        i1, j1 = min(i0 + 1, H - 1), min(j0 + 1, W - 1)
-        fu, fv = u - j0, v - i0
-        z = (self.zgrid[i0, j0] * (1 - fu) * (1 - fv) + self.zgrid[i0, j1] * fu * (1 - fv)
-             + self.zgrid[i1, j0] * (1 - fu) * fv + self.zgrid[i1, j1] * fu * fv)
-        return float(z)
+        """直接用 MuJoCo 射线测地面高度——避免自建网格与 hfield 朝向/分辨率不一致。"""
+        gid = np.array([-1], dtype=np.int32)
+        grp = np.array([0, 1, 0, 0, 0, 0], dtype=np.uint8)   # 只查 group 1（地面）
+        dist = mujoco.mj_ray(self.m, self.d, np.array([x, y, 500.0]),
+                             np.array([0.0, 0.0, -1.0]), grp, 1, -1, gid)
+        return float(500.0 - dist) if dist > 0 else 0.0
 
     def reset(self):
         d, m = self.d, self.m
@@ -233,7 +232,10 @@ class Go2Env:
             v = self.rng.uniform(0.25, 0.75)
             x = (u - 0.5) * 2 * self.half
             y = (0.5 - v) * 2 * self.half
-            gz = float(self.zgrid[int(v * (H - 1)), int(u * (W - 1))])
+            # 先在高空 mj_forward，让静态 geom 的位姿有效，再用射线取地面高度
+            d.qpos[0:3] = [x, y, 60.0]
+            mujoco.mj_forward(m, d)
+            gz = self._ground(x, y)
             d.qpos[0:3] = [x, y, gz + 0.45]
         else:
             d.qpos[0:3] = [0.0, 0.0, 0.34]
