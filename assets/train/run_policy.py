@@ -61,6 +61,8 @@ def main():
             env.m.opt.ls_iterations = 50
         if hasattr(pol, "reset"):
             pol.reset()
+        if hasattr(env, '_reset_policy'):
+            pass
         obs = env.reset()
         x0, y0 = float(env.d.qpos[0]), float(env.d.qpos[1])
         vxs, steps, fell = [], 0, False

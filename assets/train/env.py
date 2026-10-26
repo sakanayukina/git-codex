@@ -18,14 +18,23 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.dirname(HERE)
 GO2_SCENE = os.path.join(ASSETS, "props", "robots", "go2_urdf", "go2_scene.xml")
 TMP = os.path.join(HERE, "_terrain")
+# 真实地形模式：设置这两个环境变量即可用 dem_float 派生的 hfield 训练
+AUTHOR_MODEL = os.environ.get("DSH_MODEL", "") == "author"
+AUTHOR_XML = os.path.join(HERE, "ref", "mjcf", "go2_nomesh.xml")
+REAL_NPZ = os.environ.get("DSH_TERRAIN_NPZ", "")
+REAL_PNG = os.environ.get("DSH_TERRAIN_PNG", "")
+REAL_HALF = float(os.environ.get("DSH_HFIELD_HALF", "40") or 40)
+REAL_RELIEF = float(os.environ.get("DSH_RELIEF", "0") or 0)
+REAL_SCALE = float(os.environ.get("DSH_RELIEF_SCALE", "1.0") or 1.0)
 
 JOINTS = ["FL_hip", "FL_thigh", "FL_calf",
           "FR_hip", "FR_thigh", "FR_calf",
           "RL_hip", "RL_thigh", "RL_calf",
           "RR_hip", "RR_thigh", "RR_calf"]
-DEFAULT = np.array([0.0, 0.9, -1.8] * 4, dtype=np.float32)
-KP = np.array([20.0, 20.0, 40.0] * 4)
-KD = np.array([1.0, 1.0, 2.0] * 4)
+DEFAULT = np.array([0.1, 0.8, -1.5, -0.1, 0.8, -1.5, 0.1, 1.0, -1.5, -0.1, 1.0, -1.5],
+                   dtype=np.float32) if AUTHOR_MODEL else np.array([0.0, 0.9, -1.8] * 4, dtype=np.float32)
+KP = np.full(12, 25.0) if AUTHOR_MODEL else np.array([20.0, 20.0, 40.0] * 4)
+KD = np.full(12, 0.5) if AUTHOR_MODEL else np.array([1.0, 1.0, 2.0] * 4)
 ACTION_SCALE = 0.25
 SIM_DT = 0.004
 DECIM = 5
@@ -82,6 +91,27 @@ def terrain_png(path, height, size=96, seed=0):
 
 
 def make_xml(png_abs, hfield_size=10.0, terrain_h=0.1):
+    if AUTHOR_MODEL:
+        raw = open(AUTHOR_XML, encoding="utf-8").read()
+        dflt = raw[raw.index("<default>"):raw.rindex("</default>") + len("</default>")]
+        body = re.search(r"<worldbody>(.*?)</worldbody>", raw, re.S).group(1)
+        act = re.search(r"<actuator>(.*?)</actuator>", raw, re.S).group(1)
+        return """<mujoco>
+  <compiler angle="radian"/>
+  <option timestep="%g" integrator="implicitfast" solver="Newton" iterations="100" ls_iterations="50"/>
+  %s
+  <asset>
+    <hfield name="terrain" file="%s" size="%g %g %g 0.01"/>
+  </asset>
+  <worldbody>
+    <light pos="0 0 10" dir="0 0 -1" directional="true"/>
+    <geom name="ground" type="hfield" hfield="terrain" friction="1.0 0.02 0.001"/>
+%s
+  </worldbody>
+  <actuator>%s</actuator>
+</mujoco>
+""" % (SIM_DT, dflt, png_abs.replace("\\", "/"), hfield_size / 2, hfield_size / 2,
+       max(terrain_h, 0.01), body, act)
     s = open(GO2_SCENE, encoding="utf-8").read()
     # go2_scene 的 <mesh file="meshes/x.obj"> 是相对它自己目录的；从字符串加载时
     # 找不到，改成绝对路径（MuJoCo 接受带盘符的路径）
@@ -110,13 +140,68 @@ def make_xml(png_abs, hfield_size=10.0, terrain_h=0.1):
 class Go2Env:
     def __init__(self, seed=0, terrain_h=0.10, size=10.0):
         os.makedirs(TMP, exist_ok=True)
-        png = os.path.join(TMP, "t_%02d_%03d.png" % (seed, int(terrain_h * 1000)))
-        terrain_png(png, terrain_h, seed=seed)
+        self.real = bool(REAL_PNG)
+        self.rng = np.random.default_rng(seed + 9999)
+        if self.real:
+            png = REAL_PNG
+            size = REAL_HALF
+            terrain_h = max(REAL_RELIEF * REAL_SCALE, 0.05)
+            if REAL_NPZ:
+                d = np.load(REAL_NPZ)
+                zf = d["z"].astype(np.float64)
+                ext = float(d["extent"])
+                Hf, Wf = zf.shape
+                cellf = ext / Wf
+                xs_f = (np.arange(Wf) + 0.5) * cellf - ext / 2
+                ys_f = ext / 2 - (np.arange(Hf) + 0.5) * cellf
+                n = 129
+                gx_f = np.linspace(-size, size, n)
+                gy_f = np.linspace(size, -size, n)
+                GX, GY = np.meshgrid(gx_f, gy_f)
+                ix = np.interp(GX.ravel(), xs_f, np.arange(Wf))
+                iy = np.interp(GY.ravel(), ys_f[::-1], np.arange(Hf))
+                zz = zf[np.clip(iy.round().astype(int), 0, Hf - 1),
+                        np.clip(ix.round().astype(int), 0, Wf - 1)].reshape(n, n)
+                zz -= zz.mean()
+                self.zgrid = zz - zz.min() + 0.0        # 贴到 0 起
+                self.zgrid *= (terrain_h / max(self.zgrid.max(), 1e-6))
+                self.half = size
+                self._npz_ok = True
+            else:
+                self._npz_ok = False
+            if not self._npz_ok:
+                # 兜底：解析 8 位灰度 PNG（仅支持我们自己写的无滤波 PNG）
+                import struct as _st
+                import zlib as _zl
+                raw = open(png, "rb").read()
+                pos, w, h, idat = 8, 0, 0, b""
+                while pos < len(raw):
+                    ln = _st.unpack(">I", raw[pos:pos + 4])[0]
+                    tag = raw[pos + 4:pos + 8]
+                    data = raw[pos + 8:pos + 8 + ln]
+                    if tag == b"IHDR":
+                        w, h = _st.unpack(">II", data[:8])
+                    elif tag == b"IDAT":
+                        idat += data
+                    pos += 12 + ln
+                dec = _zl.decompress(idat)
+                self.zgrid = (np.frombuffer(dec, dtype=np.uint8).reshape(h, w + 1)[:, 1:]
+                              .astype(np.float64) / 255.0 * terrain_h)
+                self.half = size
+        else:
+            png = os.path.join(TMP, "t_%02d_%03d.png" % (seed, int(terrain_h * 1000)))
+            terrain_png(png, terrain_h, seed=seed)
+            self.zgrid = None
         self.m = mujoco.MjModel.from_xml_string(make_xml(png, size, terrain_h))
         self.d = mujoco.MjData(self.m)
         self.bid = mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_BODY, "base")
-        self.aid = np.array([mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_ACTUATOR,
-                                               j + "_joint_pos") for j in JOINTS])
+        acts = []
+        for j in JOINTS:
+            i = mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_ACTUATOR, j + "_joint_pos")
+            if i < 0:
+                i = mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_ACTUATOR, j)
+            acts.append(i)
+        self.aid = np.array(acts)
         self.qadr = np.array([self.m.jnt_qposadr[
             mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_JOINT, j + "_joint")] for j in JOINTS])
         self.dadr = np.array([self.m.jnt_dofadr[
@@ -125,10 +210,33 @@ class Go2Env:
         self.steps = 0
         self.reset()
 
+    def _ground(self, x, y):
+        """当前 (x,y) 处的地面高度（真实地形用 zgrid 双线性，合成地形按 0）。"""
+        if not self.real:
+            return 0.0
+        H, W = self.zgrid.shape
+        u = np.clip((x / (2 * self.half)) + 0.5, 0, 1) * (W - 1)
+        v = np.clip(0.5 - (y / (2 * self.half)), 0, 1) * (H - 1)
+        i0, j0 = int(v), int(u)
+        i1, j1 = min(i0 + 1, H - 1), min(j0 + 1, W - 1)
+        fu, fv = u - j0, v - i0
+        z = (self.zgrid[i0, j0] * (1 - fu) * (1 - fv) + self.zgrid[i0, j1] * fu * (1 - fv)
+             + self.zgrid[i1, j0] * (1 - fu) * fv + self.zgrid[i1, j1] * fu * fv)
+        return float(z)
+
     def reset(self):
         d, m = self.d, self.m
         mujoco.mj_resetData(m, d)
-        d.qpos[0:3] = [0.0, 0.0, 0.34]
+        if self.real:
+            H, W = self.zgrid.shape
+            u = self.rng.uniform(0.25, 0.75)
+            v = self.rng.uniform(0.25, 0.75)
+            x = (u - 0.5) * 2 * self.half
+            y = (0.5 - v) * 2 * self.half
+            gz = float(self.zgrid[int(v * (H - 1)), int(u * (W - 1))])
+            d.qpos[0:3] = [x, y, gz + 0.45]
+        else:
+            d.qpos[0:3] = [0.0, 0.0, 0.34]
         d.qpos[3:7] = [1.0, 0.0, 0.0, 0.0]
         d.qpos[self.qadr] = DEFAULT
         mujoco.mj_forward(m, d)
@@ -168,6 +276,8 @@ class Go2Env:
         self.prev_action = action
 
         z = float(self.d.qpos[2])
+        gz = self._ground(float(self.d.qpos[0]), float(self.d.qpos[1]))
+        dz = z - gz                      # 离地高度（关键：不能再用绝对世界高度）
         v = self.d.qvel[0:3]
         up = float(self.d.xmat[self.bid].reshape(3, 3)[2, 2])   # cos(机身倾角)
         tau = float(np.abs(self.d.actuator_force[self.aid]).sum())
@@ -175,22 +285,36 @@ class Go2Env:
         # 速度跟踪用更窄的核 + 原地不动直接罚：否则"站着不动"是局部最优
         r = 2.5 * math.exp(-((v[0] - CMD[0]) ** 2) / 0.05)
         r += 0.3 * up
-        r += 0.2 * math.exp(-((z - 0.30) ** 2) / 0.01)
+        r += 0.4 * math.exp(-((dz - 0.30) ** 2) / 0.01)
         if self.steps > 20 and abs(v[0]) < 0.15:
             r -= 0.6
         r -= 0.0005 * tau
         r -= 0.02 * float(np.abs(self.d.qvel[self.dadr]).sum())
-        fell = z < 0.16 or up < 0.6
+        fell = dz < 0.14 or up < 0.6
         if fell:
             r -= 5.0
         done = fell or self.steps >= EPISODE_STEPS
-        return self._obs(), float(r), done, {"fell": fell, "z": z, "vx": float(v[0])}
+        return self._obs(), float(r), done, {"fell": fell, "z": dz, "vx": float(v[0])}
 
 
 class VecEnv:
     def __init__(self, n=16, terrain_h=0.10):
         self.envs = [Go2Env(seed=i, terrain_h=terrain_h) for i in range(n)]
         self.n = n
+
+    def _ground(self, x, y):
+        """当前 (x,y) 处的地面高度（真实地形用 zgrid 双线性，合成地形按 0）。"""
+        if not self.real:
+            return 0.0
+        H, W = self.zgrid.shape
+        u = np.clip((x / (2 * self.half)) + 0.5, 0, 1) * (W - 1)
+        v = np.clip(0.5 - (y / (2 * self.half)), 0, 1) * (H - 1)
+        i0, j0 = int(v), int(u)
+        i1, j1 = min(i0 + 1, H - 1), min(j0 + 1, W - 1)
+        fu, fv = u - j0, v - i0
+        z = (self.zgrid[i0, j0] * (1 - fu) * (1 - fv) + self.zgrid[i0, j1] * fu * (1 - fv)
+             + self.zgrid[i1, j0] * (1 - fu) * fv + self.zgrid[i1, j1] * fu * fv)
+        return float(z)
 
     def reset(self):
         return np.stack([e.reset() for e in self.envs])
