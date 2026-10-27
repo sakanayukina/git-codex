@@ -639,7 +639,7 @@ cd assets/train
 `village_walk4.xml` 单独用 viewer 打开同样不会走——XML 只描述物理，**动起来靠的是策略闭环脚本**
 每 0.02 s 计算力矩写入 `d.ctrl`。
 
-**看机器人真的走起来，用这两个入口**：
+**看机器人真的走起来，默认入口已经切到行走模式**：
 
 ```powershell
 cd C:\Users\18967\Desktop\git\assets\train
@@ -657,8 +657,9 @@ cd C:\Users\18967\Desktop\git\assets\train
 
 ```powershell
 cd C:\Users\18967\Desktop\git
-& $mjpy run_scene.py --walk            # 打开村子展示场景，机器狗在里面走
-& $mjpy run_scene.py --walk --follow   # 相机跟随机器狗
+& $mjpy run_scene.py                   # 默认打开村子展示场景，机器狗在里面走，相机跟随
+& $mjpy run_scene.py --static          # 只看原来的静态展示场景
+& $mjpy run_scene.py --walk --no-follow # 相机固定视角
 & $mjpy run_scene.py --walk --headless 5   # 不开窗口，报位移
 & $mjpy run_scene.py --walk --shot 4       # 第 4 秒存图
 ```
@@ -674,6 +675,8 @@ cd C:\Users\18967\Desktop\git
 `--shot 4` 出图 `shots/scene_walk_t4.0.png`（能看到机器狗在废墟之间迈步，G1 站在旁边）。
 
 **局限**：目前只驱动机器狗；G1 在 `demo_v32` 里仍是静态的（要动需要同样的孪生 + G1 策略）。
+
+**入口调整（2026-10-27）**：`run_scene.py` 无参数时现在默认进入上述行走模式；原静态展示必须显式加 `--static`。
 
 ## 历史
 

@@ -10,9 +10,11 @@ XML = os.path.join(BASE_DIR, "assets", "demo_v32.xml")
 
 
 def run(headless=False):
-    # --walk：在同一个村子展示场景里看机器狗走路（物理在轻量场景算，位姿镜像过来）
-    if "--walk" in sys.argv:
-        sys.argv = [x for x in sys.argv if x != "--walk"]
+    # 默认直接进入行走演示；--static 保留原来的静态展示场景。
+    use_walk = "--walk" in sys.argv or "--static" not in sys.argv
+    if use_walk and not headless:
+        sys.argv = [x for x in sys.argv if x not in ("--walk", "--static")]
+        print("Loading walking scene and Go2 policy, please wait...", flush=True)
         sys.path.insert(0, os.path.join(BASE_DIR, "assets", "train"))
         import run_scene_walk
         run_scene_walk.main()

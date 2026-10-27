@@ -38,7 +38,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--headless", type=float, default=0.0)
     ap.add_argument("--cli", type=float, default=8.0, help="可走距离（米）")
-    ap.add_argument("--follow", action="store_true")
+    ap.add_argument("--follow", action=argparse.BooleanOptionalAction, default=True)
     ap.add_argument("--shot", default="", help="在指定秒数存一张图，如 3")
     a = ap.parse_args()
 
@@ -132,14 +132,12 @@ def main():
 
     with mujoco.viewer.launch_passive(dm, dd) as v:
         v.cam.type = mujoco.mjtCamera.mjCAMERA_FREE
-        v.cam.distance = 8.0
+        v.cam.distance = 6.0
         v.cam.azimuth = 135
         v.cam.elevation = -18
         v.cam.lookat[:] = dd.xpos[gid_body]
         t_next = time.perf_counter()
-        for _ in range(int(a.cli / 0.5) * 1000):
-            if not v.is_running():
-                break
+        while v.is_running():
             step_all()
             if a.follow:
                 v.cam.lookat[:] = dd.xpos[gid_body]

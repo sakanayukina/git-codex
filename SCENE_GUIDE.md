@@ -6,14 +6,14 @@
 
 - 场景文件：`assets/demo_v32.xml`（v28 环境 + H1 门前的 Go2 与 G1，固定基座展示；相机 `cam_robots` / `cam_hero` / `cam_hero2`）
 - 规模：670 body / 1154 geom / 15 相机 / 10 site，约 4.62 M 三角面
-- 入口：`run_scene.py`（交互窗口）、`outdoor_scene.py`（优先加载 v29，缺失时回退程序化场景）
+- 入口：`run_scene.py`（默认在完整村子里演示 Go2 行走，`--static` 查看静态展示场景）、`outdoor_scene.py`（优先加载 v29，缺失时回退程序化场景）
 - 解释器：`C:/Users/18967/anaconda3/envs/mujoco/python.exe`（MuJoCo 3.3.2）
 
 ## 2. 文件地图
 
 | 路径 | 作用 |
 |---|---|
-| `run_scene.py` | 加载 `demo_v32.xml`，预跑 2500 步让瓦砾落定，再打开 MuJoCo viewer |
+| `run_scene.py` | 默认启动 Go2 行走演示；`--static` 加载 `demo_v32.xml` 静态展示，`--headless` 做静态自检 |
 | `outdoor_scene.py` | 场景启动入口；v27 不存在时回退到程序化户外场景 |
 | `assets/demo_v32.xml` | 最终 MJCF 场景（地形 + 道路 + 建筑 + 植被 + 道具 + 机器人 + 相机 + site） |
 | `assets/buildings.json` | 村落布局配置：7 栋房、主路折线、封路点、堆积锥 |
@@ -102,13 +102,13 @@ convert_multi.py（glTF/GLB 按材质拆分、减面、过滤材质）
 
 ## 6. 怎么运行
 
-村子（交互窗口，默认 `demo_v32.xml`）：
+村子（交互窗口，默认看 Go2 走路）：
 
 ```powershell
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py
 ```
 
-无窗口自检：加上 `--headless`。
+只看静态场景：加 `--static`。无窗口静态自检：加 `--headless`。
 
 机器狗 Go2（独立场景，home 姿态起步）：
 
