@@ -4,8 +4,8 @@
 
 ## 1. 当前场景
 
-- 场景文件：`assets/demo_v29.xml`（v28 环境 + P0 上的 Go2 与 G1，固定基座展示）
-- 规模：670 body / 1154 geom / 13 相机 / 10 site，约 4.62 M 三角面
+- 场景文件：`assets/demo_v32.xml`（v28 环境 + H1 门前的 Go2 与 G1，固定基座展示；相机 `cam_robots` / `cam_hero` / `cam_hero2`）
+- 规模：670 body / 1154 geom / 15 相机 / 10 site，约 4.62 M 三角面
 - 入口：`run_scene.py`（交互窗口）、`outdoor_scene.py`（优先加载 v29，缺失时回退程序化场景）
 - 解释器：`C:/Users/18967/anaconda3/envs/mujoco/python.exe`（MuJoCo 3.3.2）
 
@@ -91,7 +91,7 @@ convert_multi.py（glTF/GLB 按材质拆分、减面、过滤材质）
 
 ## 5. XML 是怎么组织的
 
-`demo_v29.xml` 是标准 MJCF：
+`demo_v32.xml` 是标准 MJCF：
 
 - `<asset>`：hfield 地形、texture 贴图、material 材质、mesh 模型（每栋真实房子的分件都在这里）
 - `<worldbody>`：地面、太阳光、房子 body、道具 body、植被 body、camera、site
@@ -102,7 +102,7 @@ convert_multi.py（glTF/GLB 按材质拆分、减面、过滤材质）
 
 ## 6. 怎么运行
 
-村子（交互窗口，默认 `demo_v29.xml`）：
+村子（交互窗口，默认 `demo_v32.xml`）：
 
 ```powershell
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py
@@ -124,7 +124,7 @@ Go2 爬行步态：`assets/_tools/run_walk.py`（约 6 s 走 2.58 m）。G1：`r
 
 ### 6.1 验证场景（yard，机器人专用）
 
-**纪律：机器人站立/运动验证只用 yard，不要把 `demo_v29` 当运动场地。** `demo_v29` 是 200 m 真实山地展示场景，不是训练/验证地形。
+**纪律：机器人站立/运动验证只用 yard，不要把 `demo_v32` 当运动场地。** `demo_v32` 是 200 m 真实山地展示场景，不是训练/验证地形。
 
 **机器人结论纪律**：`demo_v2x` 只用于展示，任何通过性/步态结论都只用 `yard_*.xml` / `train/`。
 

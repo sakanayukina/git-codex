@@ -10,7 +10,7 @@ import numpy as np
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TERRAIN_PNG = os.path.join(BASE_DIR, "terrain.png").replace("\\", "/")
-SCENE_XML = os.path.join(BASE_DIR, "assets", "demo_v29.xml")
+SCENE_XML = os.path.join(BASE_DIR, "assets", "demo_v32.xml")
 H_MAX = 1.8
 N_GRID = 120
 

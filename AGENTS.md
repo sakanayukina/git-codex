@@ -28,7 +28,7 @@
 $py     = "C:/Users/18967/anaconda3/python.exe"          # PIL/requests
 $mjpy   = "C:/Users/18967/anaconda3/envs/mujoco/python.exe"   # 仿真/渲染
 
-# 村子（交互窗口，默认 demo_v28.xml）
+# 村子（交互窗口，默认 demo_v32.xml）
 cd C:\Users\18967\Desktop\git
 & $mjpy run_scene.py                 # 打开被动窗口
 & $mjpy run_scene.py --headless      # 只加载自检
@@ -48,11 +48,11 @@ cd C:\Users\18967\Desktop\git
 
 # 验证场景 yard（30 m 小院：0.15 m 台阶 / 碎石阵 / Perlin 起伏 / H1 房子 / Go2）
 & $py  assets/_tools/yard.py         # 重新生成（**必须 base python**）
-& $mjpy -m mujoco.viewer --mjcf=assets/yard_v1.xml
+& $mjpy -m mujoco.viewer --mjcf=assets/yard_flat.xml
 & $mjpy assets/_tools/render_yard.py # 出图（自由相机取景）
 
 # 出图（不弹窗）
-& $mjpy assets/_tools/render_scene.py assets/demo_v28.xml out.png 1100 650 2500 2
+& $mjpy assets/_tools/render_scene.py assets/demo_v32.xml out.png 1100 650 2500 2
 ```
 
 > `run_go2.py` 会先 `mj_resetDataKeyframe(..., 0)` 用 home 姿态起步；
@@ -62,7 +62,7 @@ cd C:\Users\18967\Desktop\git
 
 ## 现在有什么
 
-**场景**（`assets/demo_v27.xml`，band 11 + H2 地形整平版；`demo_v7.xml` 为原版对照）
+**场景**（`assets/demo_v32.xml`，670 body / 1154 geom / 15 相机；含 H1 门前 Go2 + G1；`demo_v28.xml` 为纯环境对照）
 - 地形：汶川真实 DEM，200 m²，落差 66.5 m，`hfield` + 烘焙地面贴图（路长在地形上）
 - 道路：主路 4.2 m + 7 条入户支路 3.0 m + 岔口补丁，全部烘进 2048² 地面贴图
 - 建筑/废墟 7 个可搜索点：
@@ -72,10 +72,11 @@ cd C:\Users\18967\Desktop\git
   | H6 | 混凝土塌楼 `ruin2`（含瓦砾场） | 3,407 | ✅ 楼体 9.0×6.5×3.2 + 1.6 m 门洞（瓦砾不挡） |
   | H7 | 塌墙扫描件 `ruin_wall` | 90,817 | ✅ 12.2×0.9×2.2 实墙（无门） |
   | H2 | 木屋 `house2`（真实模型 + 1.4 m 门洞碰撞） | — | ✅ |
-  | H3–H5 | 程序化占位房 | 各 ~200 | ❌ |
+  | H5 | 木屋 `h5a`（真实模型 + 1.3 m 门洞碰撞） | — | ✅ |
+  | H3–H4 | 程序化占位房 | 各 ~200 | ❌ |
 - 植被：30 棵真实枫树（CC-BY，双面）、118 棵程序化针叶树（本轮重建未跑 optimize_trees，仍为 118）、45 簇真实草、24 块岩石
 - 道具：报废盖布车、水泥隔离墩、旧轮胎、树桩、枯枝
-- 相机：`wide` / `close`(H1) / `village` / `top`(俯视) / `cam_H1`…`cam_H5`
+- 相机：`wide` / `close`(H1) / `village` / `top`(俯视) / `cam_H1`…`cam_H7` / `cam_robots` / `cam_hero` / `cam_hero2`
 - 标记：`<site name="site_H1">`…`site_H7`、`site_P0`（`group=3`，不渲染但坐标有效）
 
 **工具链**：下载→转换→减面→入户→烘焙地面→渲染→瘦身→清理，全流程可一条命令重跑。
