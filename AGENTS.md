@@ -631,6 +631,26 @@ cd assets/train
 
 
 
+### 为什么 run_scene.py 里机器人不动（DSH 2026-10-27）
+
+**结论：`run_scene.py` 打开的是 `demo_v32.xml`（展示场景），那里的机器人是固定基座 + 没有任何控制器，
+它只做“被动播放物理”，所以永远不动（只会看到废墟落定）。**
+
+`village_walk4.xml` 单独用 viewer 打开同样不会走——XML 只描述物理，**动起来靠的是策略闭环脚本**
+每 0.02 s 计算力矩写入 `d.ctrl`。
+
+**看机器人真的走起来，用这两个入口**：
+
+```powershell
+cd C:\Users\18967\Desktop\git\assets\train
+& $mjpy watch_village_walk.py --follow          # Go2 在村子地形上走（交互窗口，相机跟随）
+& $mjpy ../_tools/g1_policy.py --xml ../g1_terrain_plain.xml --vx 0.5 --seconds 8 --at 15 -14
+# 无窗口自检：
+& $mjpy watch_village_walk.py --headless --seconds 10   # 实测位移 3.97 m / 10 s
+```
+
+`watch_village_walk.py` 与 `run_scene.py` 的区别：前者每 0.02 s 调一次策略并写力矩，后者只 `mj_step`。
+
 ## 历史
 
 - 2026-10-20 分工确立
