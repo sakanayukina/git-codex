@@ -26,6 +26,7 @@ def main():
     ap.add_argument("--shots", default="")
     ap.add_argument("--n", type=int, default=1)
     ap.add_argument("--at", nargs=2, type=float, default=None, help="出生 x y")
+    ap.add_argument("--village-physics", action="store_true", help="保留村子原始接触设置")
     a = ap.parse_args()
 
     dev = "cuda" if torch.cuda.is_available() else "cpu"
@@ -36,6 +37,13 @@ def main():
 
     m = mujoco.MjModel.from_xml_path(a.xml)
     m.opt.timestep = 0.005
+    # 与训练环境对齐接触/求解设置（村子场景默认是 elliptic cone + impratio 10）
+    if not a.village_physics:
+        m.opt.cone = mujoco.mjtCone.mjCONE_PYRAMIDAL
+        m.opt.impratio = 1.0
+        m.opt.solver = mujoco.mjtSolver.mjSOL_NEWTON
+        m.opt.iterations = 100
+        m.opt.ls_iterations = 50
     d = mujoco.MjData(m)
     qadr, dadr, aid = [], [], []
     for jn in JOINTS:
@@ -52,15 +60,23 @@ def main():
     gx, gy = (a.at if a.at else [12.0, -18.0])
     d.qpos[bq:bq + 3] = [gx, gy, 60.0]
     mujoco.mj_forward(m, d)
-    import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "_tools"))
-    try:
-        from polish import terrain_fn
-        tk = terrain_fn(os.path.abspath(a.xml))
-        gz = float(tk(gx, gy))
-    except Exception as e:
-        print("  (terrain_fn 不可用，退回 5.0)", e)
-        gz = 5.0
+    # 用射线取地形高度：只认 hfield geom（避免打到房顶/道具）
+    hf = next(i for i in range(m.ngeom) if m.geom_type[i] == mujoco.mjtGeom.mjGEOM_HFIELD)
+    d.qpos[bq:bq + 3] = [gx + 500.0, gy + 500.0, -800.0]
+    mujoco.mj_forward(m, d)
+    gid = np.array([-1], dtype=np.int32)
+    grp = np.ones(6, dtype=np.uint8)
+
+    def ground(x, y):
+        for dx, dy in [(0, 0), (2, 0), (-2, 0), (0, 2), (0, -2), (4, 0), (-4, 0), (0, 4), (0, -4)]:
+            dist = mujoco.mj_ray(m, d, np.array([x + dx, y + dy, 300.0]),
+                                 np.array([0.0, 0.0, -1.0]), grp, 1, -1, gid)
+            if dist > 0 and int(gid[0]) == hf:
+                return 300.0 - dist
+        return 5.0
+
+    gz = ground(gx, gy)
+    print("出生 (%.1f, %.1f) 地形高 %.2f" % (gx, gy, gz))
     d.qpos[bq:bq + 3] = [gx, gy, gz + 0.45]
     print("出生 (%.1f, %.1f) 地面 %.2f" % (gx, gy, gz))
     d.qpos[bq + 3:bq + 7] = [1, 0, 0, 0]
