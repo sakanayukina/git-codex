@@ -4,7 +4,7 @@
 
 ## 工作区地图
 
-- **展示场景**：`assets/demo_v29.xml`（**670 body / 1154 geom / 13 相机 / 10 site / 4.62 M 三角面**）= `demo_v28`（598 body / 3.81 M，纯环境）+ 集结点 P0 上的 **Go2 + G1**（两台都焊死基座，只为静态出图；相机 `cam_robots`）。生成：`add_robots.py` → `fix_robot_z.py` → `set_standing.py`
+- **展示场景**：`assets/demo_v32.xml`（**670 body / 1154 geom / 15 相机 / 10 site / 4.62 M 三角面**）= `demo_v28`（598 body / 3.81 M，纯环境）+ H1 门前的 **Go2 + G1**（固定基座出图；相机 `cam_robots` / `cam_hero` / `cam_hero2`）；v30 移机器人到 H1 门前、v31 校正道具比例、v32 最新。
 - **验证场景（新）**：`assets/yard_{flat,stairs,full}.xml`（三档难度：纯平地 / 台阶 / 台阶+碎石+Perlin；每份都含 H1 房子 + Go2；`full` 是 45 body / 143 geom）；生成器 `_tools/yard.py --tier`，自检 `_tools/check_yard.py`，出图 `_tools/render_yard.py`
 - **场景结构说明**：根目录 `SCENE_GUIDE.md`（文件地图、生成链、每步作用、修改方法、已知问题）
 - **生成链**：`build_scene.py`(地形+道具) → `tune.py`(材质曝光) → `scatter.py`(植被/废墟) → `village.py`(村落，base = `demo_v5.xml`) → `slim_rocks.py`(石头瘦身)
@@ -113,10 +113,12 @@ cd C:\Users\18967\Desktop\git
 
 ## 下一步（按优先级）
 
-1. ~~H6/H7 补碰撞~~ ✅ 已完成（`add_collision.py`，H6 楼体+门洞、H7 实墙，射线验证通过）
-2. ~~树叶翻面~~ ✅ 已完成（`double_side.py`，枫叶 6,488→12,976 面，场景 2.78 M）
+1. ~~H6/H7 补碰撞~~ ✅ 已完成
+2. ~~树叶翻面~~ ✅ 已完成
 3. **H3/H4 换真房子**（等用户素材；H2/H5 已完成）
-4. **二次坍塌 + 机器人**（Codex 主责，DSH 复查）
+4. **二次坍塌触发**（Codex 主责；DSH 出 `collapse_*` 结构，放 `yard_full.xml`）
+5. **机器人策略落地**：BC/DAgger 学生已在真实坡度走 5.4–6.1 m/10 s（超过老师 2.82 m）；下一步把 `train/ckpt/bc.pt` 接到 `yard_*` / 村子，做地形泛化
+6. **视觉收尾**：H2 墙面裂缝、地面 2048→4096
 
 > 生成顺序：`village.py` → `slim_rocks.py --keep 24 --drop-grass --apply --in-place`
 > → `optimize_trees.py`（Codex 的树优化）→ 如需碰撞：`add_collision.py --xml demo_v7.xml --apply`
@@ -440,6 +442,35 @@ $env:DSH_HFIELD_HALF="40"; $env:DSH_RELIEF="23.64"; $env:DSH_RELIEF_SCALE="1.0"
 产物：`train/dagger.py`、`train/ckpt/bc.pt`（当前最佳）、`train/ckpt/bc_before_dagger.pt`（DAgger 前）。
 
 **结论：步态不是 RL 从零练出来的，是"蒸馏 + DAgger"学出来的；PPO 微调必须在奖励调好之后再做。**
+
+
+
+### 村子落地测试：训练后的策略在村口站住不动（DSH 2026-10-27）
+
+把 `train/ckpt/bc.pt`（在 80 m 真实 DEM 上走 5.4–6.1 m 的那个学生）放进 `assets/village_walk.xml`：
+
+| 出生点 | 地面高 | 位移 | vx | 结果 |
+|---|---|---|---|---|
+| (12, −18) H1 门前 | 5.49 | 0.21 m | 0.00 | 站住（不摔，倾角 cos 0.87） |
+| (15, −14) H1 台地 | 5.49 | 0.04 m | −0.01 | 站住（cos 1.00） |
+| (10, −12) | — | 0.19 m | −0.02 | 站住 |
+| (18, −12) | — | 0.09 m | 0.01 | 站住 |
+
+**结论：村子地形仍在策略分布之外。** 与老师（开源策略）在村子里的表现一致（也是站住），
+说明不是我们蒸馏/DAgger 的问题，而是**村子这一份 hfield 的难度更高**：
+
+| | 训练地形 | 村子地形 |
+|---|---|---|
+| 覆盖 / 分辨率 | 80 m / 128²（0.62 m/格） | 200 m / 128²（1.56 m/格） |
+| 量化造成的假坡度 | **8.4°** | **9.5°** |
+| 真实坡度 | 中位 9.5° / p95 25.6° | 中位 10.6° / p95 31.3° |
+| 训练时见过 | ✅ | ❌ |
+
+**两个可选方向**：
+1. **把训练地形改成 200 m / 256²**（量化 0.09 m → 假坡 3.3°），更接近村子实际，再重训一轮 BC+DAgger（约 10 分钟）；
+2. 或接受现状：策略用于「和训练同分布的地形」，村子只做静态展示。
+
+**工具**：`train/village_walk_test.py --at X Y [--shots 2,5]`，用 `polish.terrain_fn` 取地面高度避免射线打到机器人。
 
 
 
