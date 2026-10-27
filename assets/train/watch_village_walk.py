@@ -31,6 +31,7 @@ def main():
     ap.add_argument("--headless", action="store_true")
     ap.add_argument("--seconds", type=float, default=10.0)
     ap.add_argument("--follow", action="store_true", help="相机跟随机器人")
+    ap.add_argument("--noprop", action="store_true", help="关掉村子道具/植被的碰撞（只留地形与建筑）")
     a = ap.parse_args()
 
     m = mujoco.MjModel.from_xml_path(a.xml)
@@ -38,6 +39,23 @@ def main():
     m.opt.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
     m.opt.cone = mujoco.mjtCone.mjCONE_PYRAMIDAL
     m.opt.impratio = 1.0
+    if a.noprop:
+        hf0 = next(g for g in range(m.ngeom) if m.geom_type[g] == mujoco.mjtGeom.mjGEOM_HFIELD)
+        bb0 = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "base")
+        kids = {}
+        for i in range(m.nbody):
+            kids.setdefault(int(m.body_parentid[i]), []).append(i)
+        robot0, stack = set(), [bb0]
+        while stack:
+            b = stack.pop(); robot0.add(b); stack.extend(kids.get(b, []))
+        n_off = 0
+        for g in range(m.ngeom):
+            if g == hf0 or int(m.geom_bodyid[g]) in robot0:
+                continue
+            m.geom_contype[g] = 0
+            m.geom_conaffinity[g] = 0
+            n_off += 1
+        print("关掉 %d 个非机器人几何的碰撞" % n_off)
     d = mujoco.MjData(m)
 
     bb = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "base")

@@ -651,6 +651,30 @@ cd C:\Users\18967\Desktop\git\assets\train
 
 `watch_village_walk.py` 与 `run_scene.py` 的区别：前者每 0.02 s 调一次策略并写力矩，后者只 `mj_step`。
 
+### run_scene.py 也能看机器人走了（`--walk`，DSH 2026-10-27）
+
+**用法**：
+
+```powershell
+cd C:\Users\18967\Desktop\git
+& $mjpy run_scene.py --walk            # 打开村子展示场景，机器狗在里面走
+& $mjpy run_scene.py --walk --follow   # 相机跟随机器狗
+& $mjpy run_scene.py --walk --headless 5   # 不开窗口，报位移
+& $mjpy run_scene.py --walk --shot 4       # 第 4 秒存图
+```
+
+**原理（重要）**：`demo_v32` 那 598 个道具 body 会让策略闭环失效（第 2/3 轮已二分，机制未定位），
+所以采用“孪生场景 + 位姿镜像”：
+
+1. 物理在 `assets/village_walk4.xml`（同款地形 + 同一台 Go2）里跑策略闭环；
+2. 每帧把 `base` 位置/姿态（`q0 ⊗ q_phys`）和 12 个关节角写到 `demo_v32` 的 `go2_base` 与关节上，再 `mj_forward`；
+3. viewer 渲染的始终是 `demo_v32`（完整村子外观）。
+
+**实测**：`run_scene.py --walk --headless 5` → 展示模型里 `go2_base` 位移 **2.30 m**；
+`--shot 4` 出图 `shots/scene_walk_t4.0.png`（能看到机器狗在废墟之间迈步，G1 站在旁边）。
+
+**局限**：目前只驱动机器狗；G1 在 `demo_v32` 里仍是静态的（要动需要同样的孪生 + G1 策略）。
+
 ## 历史
 
 - 2026-10-20 分工确立

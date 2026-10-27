@@ -10,6 +10,14 @@ XML = os.path.join(BASE_DIR, "assets", "demo_v32.xml")
 
 
 def run(headless=False):
+    # --walk：在同一个村子展示场景里看机器狗走路（物理在轻量场景算，位姿镜像过来）
+    if "--walk" in sys.argv:
+        sys.argv = [x for x in sys.argv if x != "--walk"]
+        sys.path.insert(0, os.path.join(BASE_DIR, "assets", "train"))
+        import run_scene_walk
+        run_scene_walk.main()
+        return
+
     model = mujoco.MjModel.from_xml_path(XML)
     data = mujoco.MjData(model)
     mujoco.mj_forward(model, data)
@@ -36,4 +44,4 @@ def run(headless=False):
 
 
 if __name__ == "__main__":
-    run(headless="--headless" in sys.argv)
+    run(headless=("--headless" in sys.argv and "--walk" not in sys.argv))
