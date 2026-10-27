@@ -69,6 +69,8 @@ def main():
     ap.add_argument("--vx", type=float, default=0.5)
     ap.add_argument("--render")
     ap.add_argument("--viewer", action="store_true", help="打开交互窗口实时看它走")
+    ap.add_argument("--at", nargs=2, type=float, default=None,
+                    help="在地形场景里按地形贴地出生（x y）；不填则用 (0,0)")
     ap.add_argument("--swap-roll-yaw", action="store_true",
                     help="若策略的关节顺序是 (pitch, yaw, roll)，用它换回来")
     a = ap.parse_args()
@@ -78,7 +80,24 @@ def main():
     d = mujoco.MjData(m)
     if m.nkey > 0:
         mujoco.mj_resetDataKeyframe(m, d, 0)
-    d.qpos[0:3] = [0.0, 0.0, 0.8]
+    gx, gy = (a.at if a.at else [0.0, 0.0])
+    hf = [i for i in range(m.ngeom) if m.geom_type[i] == mujoco.mjtGeom.mjGEOM_HFIELD]
+    if hf:
+        d.qpos[0:3] = [gx + 500.0, gy + 500.0, -800.0]
+        mujoco.mj_forward(m, d)
+        gid = np.array([-1], dtype=np.int32)
+        grp = np.ones(6, dtype=np.uint8)
+        gz = None
+        for dx, dy in [(0, 0), (2, 0), (-2, 0), (0, 2), (0, -2)]:
+            dist = mujoco.mj_ray(m, d, np.array([gx + dx, gy + dy, 300.0]),
+                                 np.array([0.0, 0.0, -1.0]), grp, 1, -1, gid)
+            if dist > 0 and int(gid[0]) == hf[0]:
+                gz = 300.0 - dist
+                break
+        gz = 0.8 if gz is None else gz
+        d.qpos[0:3] = [gx, gy, gz + 0.78]
+    else:
+        d.qpos[0:3] = [gx, gy, 0.8]
     d.qpos[3:7] = [1.0, 0.0, 0.0, 0.0]
     d.qpos[7:19] = DEFAULT
     mujoco.mj_forward(m, d)
