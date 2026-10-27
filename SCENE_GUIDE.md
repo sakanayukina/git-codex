@@ -124,7 +124,7 @@ Go2 爬行步态：`assets/_tools/run_walk.py`（约 6 s 走 2.58 m）。G1：`r
 
 ### 6.1 验证场景（yard，机器人专用）
 
-**纪律：机器人站立/运动验证只用 yard，不要把 `demo_v32` 当运动场地。** `demo_v32` 是 200 m 真实山地展示场景，不是训练/验证地形。
+**纪律：机器人站立/运动验证用 yard / `village_walk4` / `train/`，不要把 `demo_v32` 当运动场地。** `demo_v32` 是 200 m 真实山地展示场景，不是训练/验证地形。
 
 **机器人结论纪律**：`demo_v2x` 只用于展示，任何通过性/步态结论都只用 `yard_*.xml` / `train/`。
 
@@ -143,6 +143,19 @@ C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\yard.py --tier ful
 - `yard_full.xml`：完整小院（房子 + 地形）；后续可塌结构和机器人联动放这里
 
 自检用 `assets/_tools/check_yard.py`。`go2_robot.xml` 由 `yard.py` 每次自动生成，**不要手动修改**。
+
+**可走村子场景（2026-10-27 锁定）**：
+
+- `assets/village_walk4.xml`：真实村子 hfield + Go2，**3.89 m / 10 s 不摔**
+- `assets/village_go2_plain.xml`：纯地形 + Go2
+- `assets/g1_terrain_plain.xml`：G1 在 H1 台地平整区，**3.64 m / 8 s**
+
+```powershell
+C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\run_walk.py --xml assets\village_walk4.xml
+C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\g1_policy.py --xml assets\g1_terrain_plain.xml --vx 0.5 --seconds 8
+```
+
+**重要限制**：把 `demo_v32` 的 600 个可视 body 整批合进可走场景，会让机器人站住不走（已二分验证：空 body 无影响，带 geom 的 body 有影响）。往 `village_walk4` 加回可视道具时必须按类别逐个加，每加一类都复测。
 
 ## 7. 怎么改
 
