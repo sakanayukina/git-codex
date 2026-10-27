@@ -86,7 +86,7 @@ cd C:\Users\18967\Desktop\git
 | 缺 | 影响 | 谁来补 |
 |---|---|---|
 | **H3/H4 的民房废墟模型** | 现在还是方盒占位房，论文图里一眼假 | 用户找素材（6–10 m 宽、有门窗、≤25 万面、glTF） |
-| **机器人本体** | ✅ Go2：`props/robots/go2_urdf/go2_scene.xml`（URDF 导入，nq=19 / 12 电机 / 16.28 kg / 20.8 万面）。✅ G1：`props/robots/g1/g1_scene.xml`（官方 MJCF+STL，nq=29 / 29 电机 / 35.1 kg / 59.8 万面 / 脚底 z=0.0004 m） | ✅ 已放进 demo_v29（P0，固定基座）；行走验证用 yard |
+| **机器人本体** | ✅ Go2：`props/robots/go2_urdf/go2_scene.xml`（URDF 导入，nq=19 / 12 电机 / 16.28 kg / 20.8 万面）。✅ G1：`props/robots/g1/g1_scene.xml`（官方 MJCF+STL，nq=29 / 29 电机 / 35.1 kg / 59.8 万面 / 脚底 z=0.0004 m） | ✅ 已放进 demo_v32（H1 门前，固定基座）；行走验证用 yard |
 | **二次坍塌触发** | 场景是静态的，没有动态事件 | Codex 主责（DSH 出可塌结构）；触发器框架 `_tools/collapse_trigger.py` 已就绪，等 v8 的 `collapse_*` 结构接入 |
 | **地面细节** | 2048² 覆盖 200 m，草偏糊 | 升 4096 可解（25 MB） |
 | **动态物体物理** | 废墟块是静态的，不会二次塌落 | 需把部分块改成 free joint |
@@ -107,7 +107,7 @@ cd C:\Users\18967\Desktop\git
 11. **GBK 控制台**：脚本里写 `²` 会抛 UnicodeEncodeError，被 try/except 吞掉后静默失败。
 12. **贴地道路网格会抖/锯齿** → 改烘进地面贴图；但别忘了删旧网格，否则它盖在上面。
 13. **DEM hfield 有 0.26 m 的隐形台阶**：66.5 m 落差 ÷ 8 位灰度 255 级 = 0.26 m/级，且沿网格正交排列。
-    用 demo_v27 测机器人通过性会被这个量化伪影污染 → 机器人验证一律用 `yard_v1.xml`（0.15 m 显式台阶）。
+    用 demo_v32 测机器人通过性会被这个量化伪影污染 → 机器人验证一律用 `yard_flat.xml`（0.15 m 显式台阶）。
 14. **H1 之前一直是灰模**：`ruin_uk` 的 15 个 material 只有 `rgba`（没接图集），因为老资产没有
     `manifest.json`。已在 `village.py` 加"共享 `<name>_atlas_N.png` 兜底"，`yard.py` 里已验证有效；
     **demo_v27 要重跑生成链才会变**。
@@ -135,7 +135,7 @@ cd C:\Users\18967\Desktop\git
 2. 跑完 `flatten_sites.py` 之后，`seam_ring.py` 的 `--band` 要和它保持一致，
    否则接缝碎石会压错位置（碎石环半径 = footprint + band ± 1.5 m）。
 3. **`SCENE_GUIDE.md` 请补一行入口**（✅ Codex 已补，见 §6）：机器狗用 `run_go2.py`（不是 `run_scene.py`），
-   场景是 `assets/props/robots/go2_urdf/go2_scene.xml`，独立于 `demo_v27.xml`。
+   场景是 `assets/props/robots/go2_urdf/go2_scene.xml`，独立于 `demo_v32.xml`。
    目前狗还没并进村子，等合并后入口再统一。
 
 ### 2026-10-24 新增请求（yard 那一轮之后）
@@ -318,7 +318,7 @@ cd C:\Users\18967\Desktop\git
 
 ### DEM float 真值与 trimesh 训练分支（DSH 已完成本轮交付）
 
-按商定方案执行：**展示场景 demo_v29 保留 hfield 碰撞不动**，float / trimesh 只服务训练与实验分支。
+按商定方案执行：**展示场景 demo_v32 保留 hfield 碰撞不动**，float / trimesh 只服务训练与实验分支。
 
 1. **float 高度场真值**：`terrain/dem_float.npz`
    - 由 `_tools/export_dem_float.py` 重新从 Terrarium（16 位编码）取源，**不是** 8-bit PNG 转 float
@@ -335,7 +335,7 @@ cd C:\Users\18967\Desktop\git
 3. **采样脚本**（`flatten_sites` / `reground_props` / `fix_grounding` / `seam_ring` / `polish`）：
    等 Codex 的 `terrain.py` 统一 API 落地后再切到 npz；DSH 侧已给出 npz 字段约定。
 
-**风险提示**：trimesh 未接入任何展示场景；`demo_v29` 的 hfield 碰撞保持原样，村子不受影响。
+**风险提示**：trimesh 未接入任何展示场景；`demo_v32` 的 hfield 碰撞保持原样，村子不受影响。
 
 ### 重要更正：hfield 不是"竖直台阶"，是"假斜坡"（DSH 实测 2026-10-26）
 

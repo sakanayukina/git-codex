@@ -13,9 +13,9 @@
 
 | 路径 | 作用 |
 |---|---|
-| `run_scene.py` | 加载 `demo_v27.xml`，预跑 2500 步让瓦砾落定，再打开 MuJoCo viewer |
+| `run_scene.py` | 加载 `demo_v32.xml`，预跑 2500 步让瓦砾落定，再打开 MuJoCo viewer |
 | `outdoor_scene.py` | 场景启动入口；v27 不存在时回退到程序化户外场景 |
-| `assets/demo_v27.xml` | 最终 MJCF 场景（地形 + 道路 + 建筑 + 植被 + 道具 + 相机 + site） |
+| `assets/demo_v32.xml` | 最终 MJCF 场景（地形 + 道路 + 建筑 + 植被 + 道具 + 机器人 + 相机 + site） |
 | `assets/buildings.json` | 村落布局配置：7 栋房、主路折线、封路点、堆积锥 |
 | `assets/_tools/` | 全部生成、导入、后处理工具（下节逐个说明） |
 | `assets/_tools/terrain.py` | 统一地形采样：`HfieldSampler`（demo，row 0=-Y）与 `FloatDEMSampler`（`terrain/dem_float.npz`，row 0=+Y） |
