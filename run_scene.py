@@ -14,7 +14,7 @@ def run(headless=False):
     use_walk = "--walk" in sys.argv or "--static" not in sys.argv
     if use_walk and not headless:
         sys.argv = [x for x in sys.argv if x not in ("--walk", "--static")]
-        print("Loading walking scene and Go2 policy, please wait...", flush=True)
+        print("Loading walking scene and robot policies, please wait...", flush=True)
         sys.path.insert(0, os.path.join(BASE_DIR, "assets", "train"))
         import run_scene_walk
         run_scene_walk.main()

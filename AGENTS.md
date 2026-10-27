@@ -657,7 +657,7 @@ cd C:\Users\18967\Desktop\git\assets\train
 
 ```powershell
 cd C:\Users\18967\Desktop\git
-& $mjpy run_scene.py                   # 默认打开村子展示场景，机器狗在里面走，相机跟随
+& $mjpy run_scene.py                   # 默认打开村子展示场景，Go2 + G1 行走，相机跟随
 & $mjpy run_scene.py --static          # 只看原来的静态展示场景
 & $mjpy run_scene.py --walk --no-follow # 相机固定视角
 & $mjpy run_scene.py --walk --headless 5   # 不开窗口，报位移
@@ -667,16 +667,17 @@ cd C:\Users\18967\Desktop\git
 **原理（重要）**：`demo_v32` 那 598 个道具 body 会让策略闭环失效（第 2/3 轮已二分，机制未定位），
 所以采用“孪生场景 + 位姿镜像”：
 
-1. 物理在 `assets/village_walk4.xml`（同款地形 + 同一台 Go2）里跑策略闭环；
-2. 每帧把 `base` 位置/姿态（`q0 ⊗ q_phys`）和 12 个关节角写到 `demo_v32` 的 `go2_base` 与关节上，再 `mj_forward`；
-3. viewer 渲染的始终是 `demo_v32`（完整村子外观）。
+1. Go2 物理在 `assets/village_walk4.xml` 跑 BC/DAgger 策略；
+2. G1 物理在 `assets/g1_terrain_plain.xml` 跑官方 `motion.pt` 平地策略；
+3. 每帧把两台机器人的根部位置/姿态和 12 个腿部关节角写到 `demo_v32` 的 Go2/G1 展示模型，再 `mj_forward`；
+4. viewer 渲染的始终是 `demo_v32`（完整村子外观）。
 
-**实测**：`run_scene.py --walk --headless 5` → 展示模型里 `go2_base` 位移 **2.30 m**；
-`--shot 4` 出图 `shots/scene_walk_t4.0.png`（能看到机器狗在废墟之间迈步，G1 站在旁边）。
+**实测**：`run_scene.py --walk --headless 5` → 展示模型里 Go2 位移 **2.30 m**、G1 位移 **2.22 m**；
+`--shot 4` 出图 `shots/scene_walk_t4.0.png`（能看到 Go2 与 G1 同时在废墟前迈步）。
 
-**局限**：目前只驱动机器狗；G1 在 `demo_v32` 里仍是静态的（要动需要同样的孪生 + G1 策略）。
+**局限**：G1 使用官方平地策略，只适合 H1 前平整区；遇到 2–3 cm 以上台阶仍会摔。
 
-**入口调整（2026-10-27）**：`run_scene.py` 无参数时现在默认进入上述行走模式；原静态展示必须显式加 `--static`。
+**入口调整（2026-10-27）**：`run_scene.py` 无参数时默认进入上述 Go2 + G1 行走模式；原静态展示必须显式加 `--static`。
 
 ## 历史
 
