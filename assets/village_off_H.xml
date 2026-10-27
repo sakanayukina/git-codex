@@ -1,0 +1,194 @@
+<mujoco model="rescue_scene">
+  <default>
+    <joint damping="0.0" armature="0.01" frictionloss="0.01" />
+    <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" />
+    </default>
+  </default>
+
+  <compiler angle="degree" />
+  <visual>
+    <global offwidth="1280" offheight="720" />
+    <quality shadowsize="8192" />
+    <map fogstart="120" fogend="320" />
+    <headlight ambient="0.32 0.34 0.36" diffuse="0.5 0.5 0.5" specular="0.05 0.05 0.05" />
+  </visual>
+  <statistic center="0 0 33.2" extent="110.0" />
+  <option timestep="0.002" gravity="0 0 -9.81" cone="elliptic" impratio="10" />
+  <asset>
+    <texture name="sky" type="skybox" builtin="gradient" rgb1="0.42 0.56 0.72" rgb2="0.80 0.86 0.92" width="512" height="3072" />
+    <texture name="gtex" type="2d" file="tex/ground_baked_hd.png" />
+    <material name="gmat" texture="gtex" rgba="1 1 1 1" texrepeat="0.005000 0.005000" texuniform="true" specular="0.0" shininess="0.0" />
+    <texture name="concrete_tex" type="2d" file="tex/concrete_floor_diffuse.png" /><material name="concrete" texture="concrete_tex" texrepeat="3 3" texuniform="true" rgba="0.78 0.77 0.74 1" specular="0.05" shininess="0.15" />
+    <mesh name="rs0_0" file="props/rocks/boulder_01/boulder_01_1k.obj" scale="0.550 0.550 0.550" /><mesh name="rs0_1" file="props/rocks/boulder_01/boulder_01_1k.obj" scale="1.250 1.250 1.250" /><mesh name="rs1_0" file="props/rocks/rock_moss_set_01/rock_moss_set_01_1k.obj" scale="0.248 0.248 0.248" /><mesh name="rs1_1" file="props/rocks/rock_moss_set_01/rock_moss_set_01_1k.obj" scale="0.562 0.562 0.562" /><mesh name="rs2_0" file="props/rocks/rock_moss_set_01/rock_moss_set_01_1k.obj" scale="0.303 0.303 0.303" /><mesh name="rs2_1" file="props/rocks/rock_moss_set_01/rock_moss_set_01_1k.obj" scale="0.688 0.688 0.688" /><mesh name="rs3_0" file="props/rocks/rock_07/rock_07_1k.obj" scale="3.300 3.300 3.300" /><mesh name="rs3_1" file="props/rocks/rock_07/rock_07_1k.obj" scale="7.500 7.500 7.500" /><texture name="brick_tex" type="2d" file="tex/brick_wall_001_diffuse.png" /><material name="brick" texture="brick_tex" texrepeat="4 2" texuniform="true" rgba="0.72 0.66 0.60 1" specular="0.04" shininess="0.1" />
+    <hfield name="terrain" file="terrain/dem_wenchuan_flat.png" size="100.0 100.0 66.50 0.01" />
+    <mesh name="m0" file="props/vehicles/covered_car/covered_car_1k.obj" /><texture name="t0" type="2d" file="props/vehicles/covered_car/covered_car_1k_diffuse.png" /><material name="t0_mat" texture="t0" /><mesh name="m1" file="props/vehicles/concrete_road_barrier/concrete_road_barrier_1k.obj" /><texture name="t1" type="2d" file="props/vehicles/concrete_road_barrier/concrete_road_barrier_1k_diffuse.png" /><material name="t1_mat" texture="t1" /><texture name="t2" type="2d" file="props/vehicles/concrete_road_barrier/concrete_road_barrier_1k_diffuse.png" /><material name="t2_mat" texture="t2" /><mesh name="m2" file="props/vehicles/old_tyre/old_tyre_1k.obj" /><texture name="t3" type="2d" file="props/vehicles/old_tyre/old_tyre_1k_diffuse.png" /><material name="t3_mat" texture="t3" /><mesh name="m3" file="props/rocks/boulder_01/boulder_01_1k.obj" /><texture name="t4" type="2d" file="props/rocks/boulder_01/boulder_01_1k_diffuse.png" /><material name="t4_mat" texture="t4" /><mesh name="m4" file="props/rocks/rock_moss_set_01/rock_moss_set_01_1k.obj" scale="0.45 0.45 0.45" /><texture name="t5" type="2d" file="props/rocks/rock_moss_set_01/rock_moss_set_01_1k_diffuse.png" /><material name="t5_mat" texture="t5" /><mesh name="m5" file="props/debris/tree_stump_01/tree_stump_01_1k.obj" /><texture name="t6" type="2d" file="props/debris/tree_stump_01/tree_stump_01_1k_diffuse.png" /><material name="t6_mat" texture="t6" /><mesh name="m6" file="props/rocks/rock_moss_set_01/rock_moss_set_01_1k.obj" scale="0.55 0.55 0.55" /><texture name="t7" type="2d" file="props/rocks/rock_moss_set_01/rock_moss_set_01_1k_diffuse.png" /><material name="t7_mat" texture="t7" /><texture name="t8" type="2d" file="props/rocks/boulder_01/boulder_01_1k_diffuse.png" /><material name="t8_mat" texture="t8" /><mesh name="m7" file="props/rocks/rock_07/rock_07_1k.obj" scale="6.0 6.0 6.0" /><texture name="t9" type="2d" file="props/rocks/rock_07/rock_07_1k_diffuse.png" /><material name="t9_mat" texture="t9" /><texture name="t10" type="2d" file="props/debris/tree_stump_01/tree_stump_01_1k_diffuse.png" /><material name="t10_mat" texture="t10" /><mesh name="m8" file="props/debris/bark_debris_01/bark_debris_01_1k.obj" /><texture name="t11" type="2d" file="props/debris/bark_debris_01/bark_debris_01_1k_diffuse.png" /><material name="t11_mat" texture="t11" /><mesh name="m9" file="props/ground/grass_medium_01/grass_medium_01_1k.obj" /><texture name="t12" type="2d" file="props/ground/grass_medium_01/grass_medium_01_1k_diffuse.png" /><material name="t12_mat" texture="t12" /><mesh name="m10" file="props/ground/moss_01/moss_01_1k.obj" /><texture name="t13" type="2d" file="props/ground/moss_01/moss_01_1k_diffuse.png" /><material name="t13_mat" texture="t13" /><texture name="t14" type="2d" file="props/vehicles/covered_car/covered_car_1k_diffuse.png" /><material name="t14_mat" texture="t14" /><texture name="t15" type="2d" file="props/vehicles/concrete_road_barrier/concrete_road_barrier_1k_diffuse.png" /><material name="t15_mat" texture="t15" /><texture name="t16" type="2d" file="props/vehicles/old_tyre/old_tyre_1k_diffuse.png" /><material name="t16_mat" texture="t16" />
+  <texture name="dirt_tex" type="2d" file="tex/forest_floor_diffuse.png" /><material name="dirt" texture="dirt_tex" texrepeat="6 2" texuniform="true" rgba="0.70 0.66 0.58 1" specular="0.02" shininess="0.1" /><mesh name="bld0_0" file="props/imported/ruin_uk/ruin_uk_Black.obj" inertia="shell" /><texture name="bld0_0_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_0_mat" texture="bld0_0_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_1" file="props/imported/ruin_uk/ruin_uk_Brick.obj" inertia="shell" /><texture name="bld0_1_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_1_mat" texture="bld0_1_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_2" file="props/imported/ruin_uk/ruin_uk_Damaged_Bricks.obj" inertia="shell" /><texture name="bld0_2_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_2_mat" texture="bld0_2_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_3" file="props/imported/ruin_uk/ruin_uk_Debris_Bricks_scattered.obj" inertia="shell" /><texture name="bld0_3_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_3_mat" texture="bld0_3_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_4" file="props/imported/ruin_uk/ruin_uk_Debris_Ceiling_scattered.obj" inertia="shell" /><texture name="bld0_4_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_4_mat" texture="bld0_4_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_5" file="props/imported/ruin_uk/ruin_uk_IMG_4599_jpg.obj" inertia="shell" /><texture name="bld0_5_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_5_mat" texture="bld0_5_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_6" file="props/imported/ruin_uk/ruin_uk_IMG_4600_jpg.obj" inertia="shell" /><texture name="bld0_6_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_6_mat" texture="bld0_6_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_7" file="props/imported/ruin_uk/ruin_uk_Main_house_damaged.obj" inertia="shell" /><texture name="bld0_7_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_7_mat" texture="bld0_7_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_8" file="props/imported/ruin_uk/ruin_uk_Material.obj" inertia="shell" /><texture name="bld0_8_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_8_mat" texture="bld0_8_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_9" file="props/imported/ruin_uk/ruin_uk_Material_001.obj" inertia="shell" /><texture name="bld0_9_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_9_mat" texture="bld0_9_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_10" file="props/imported/ruin_uk/ruin_uk_Material_002.obj" inertia="shell" /><texture name="bld0_10_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_10_mat" texture="bld0_10_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_11" file="props/imported/ruin_uk/ruin_uk_Rafters_wood.obj" inertia="shell" /><texture name="bld0_11_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_11_mat" texture="bld0_11_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_12" file="props/imported/ruin_uk/ruin_uk_Rafters_wood_001.obj" inertia="shell" /><texture name="bld0_12_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_12_mat" texture="bld0_12_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_13" file="props/imported/ruin_uk/ruin_uk_Rafters_wood_002.obj" inertia="shell" /><texture name="bld0_13_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_13_mat" texture="bld0_13_tex" specular="0.05" shininess="0.1" /><mesh name="bld0_14" file="props/imported/ruin_uk/ruin_uk_Right_Houses_no_door.obj" inertia="shell" /><texture name="bld0_14_tex" type="2d" file="props/imported/ruin_uk/ruin_uk_atlas_0.png" /><material name="bld0_14_mat" texture="bld0_14_tex" specular="0.05" shininess="0.1" /><mesh name="bld1_0" file="props/imported/house2/house2_material0.obj" inertia="shell" /><texture name="bld1_0_tex" type="2d" file="props/imported/house2/house2_atlas_2.png" /><material name="bld1_0_mat" texture="bld1_0_tex" specular="0.05" shininess="0.1" /><mesh name="bld1_1" file="props/imported/house2/house2_material1.obj" inertia="shell" /><texture name="bld1_1_tex" type="2d" file="props/imported/house2/house2_atlas_0.png" /><material name="bld1_1_mat" texture="bld1_1_tex" specular="0.05" shininess="0.1" /><mesh name="bld1_2" file="props/imported/house2/house2_material2.obj" inertia="shell" /><texture name="bld1_2_tex" type="2d" file="props/imported/house2/house2_atlas_1.png" /><material name="bld1_2_mat" texture="bld1_2_tex" specular="0.05" shininess="0.1" /><mesh name="bld2_0" file="props/imported/h5a/h5a_Arnold_Shader_Network.obj" inertia="shell" /><texture name="bld2_0_tex" type="2d" file="props/imported/h5a/h5a_atlas_0.png" /><material name="bld2_0_mat" texture="bld2_0_tex" specular="0.05" shininess="0.1" /><mesh name="bld2_1" file="props/imported/h5a/h5a_accs.obj" inertia="shell" /><texture name="bld2_1_tex" type="2d" file="props/imported/h5a/h5a_atlas_4.png" /><material name="bld2_1_mat" texture="bld2_1_tex" specular="0.05" shininess="0.1" /><mesh name="bld2_2" file="props/imported/h5a/h5a_door.obj" inertia="shell" /><texture name="bld2_2_tex" type="2d" file="props/imported/h5a/h5a_atlas_1.png" /><material name="bld2_2_mat" texture="bld2_2_tex" specular="0.05" shininess="0.1" /><mesh name="bld2_3" file="props/imported/h5a/h5a_main.obj" inertia="shell" /><texture name="bld2_3_tex" type="2d" file="props/imported/h5a/h5a_atlas_2.png" /><material name="bld2_3_mat" texture="bld2_3_tex" specular="0.05" shininess="0.1" /><mesh name="bld2_4" file="props/imported/h5a/h5a_roof.obj" inertia="shell" /><texture name="bld2_4_tex" type="2d" file="props/imported/h5a/h5a_atlas_0.png" /><material name="bld2_4_mat" texture="bld2_4_tex" specular="0.05" shininess="0.1" /><mesh name="bld2_5" file="props/imported/h5a/h5a_windows.obj" inertia="shell" /><texture name="bld2_5_tex" type="2d" file="props/imported/h5a/h5a_atlas_3.png" /><material name="bld2_5_mat" texture="bld2_5_tex" specular="0.05" shininess="0.1" /><mesh name="bld3_0" file="props/imported/ruin2/ruin2_Ruined.obj" inertia="shell" /><texture name="bld3_0_tex" type="2d" file="props/imported/ruin2/ruin2_atlas_0.png" /><material name="bld3_0_mat" texture="bld3_0_tex" specular="0.05" shininess="0.1" /><mesh name="bld4_0" file="props/imported/ruin_wall/ruin_wall_Ruined_wall.obj" inertia="shell" /><texture name="bld4_0_tex" type="2d" file="props/imported/ruin_wall/ruin_wall_atlas_0.png" /><material name="bld4_0_mat" texture="bld4_0_tex" specular="0.05" shininess="0.1" /><mesh name="gc0" file="props/imported/grass_chunks/grass_chunks_rostlinka_07c.obj" scale="0.4 0.4 0.4" inertia="shell" /><texture name="gc0_tex" type="2d" file="props/imported/grass_chunks/grass_chunks_atlas_0.png" /><material name="gc0_mat" texture="gc0_tex" specular="0.02" shininess="0.1" /><mesh name="gc1" file="props/imported/grass_chunks/grass_chunks_ground_close_04.obj" scale="0.4 0.4 0.4" inertia="shell" /><texture name="gc1_tex" type="2d" file="props/imported/grass_chunks/grass_chunks_atlas_2.png" /><material name="gc1_mat" texture="gc1_tex" specular="0.02" shininess="0.1" /><mesh name="gc2" file="props/imported/grass_chunks/grass_chunks_rostlinka12_2k.obj" scale="0.4 0.4 0.4" inertia="shell" /><texture name="gc2_tex" type="2d" file="props/imported/grass_chunks/grass_chunks_atlas_3.png" /><material name="gc2_mat" texture="gc2_tex" specular="0.02" shininess="0.1" /><mesh name="mp0" file="props/imported/maple/maple_sugar_maple_bark.obj" scale="0.75 0.75 0.75" inertia="shell" /><texture name="mp0_tex" type="2d" file="props/imported/maple/maple_sugar_maple_bark_diffuse.png" /><material name="mp0_mat" texture="mp0_tex" specular="0.02" shininess="0.1" /><mesh name="mp1" file="props/imported/maple/maple_sugar_maple_leaf.obj" scale="0.75 0.75 0.75" inertia="shell" /><texture name="mp1_tex" type="2d" file="props/imported/maple/maple_sugar_maple_leaf_diffuse.png" /><material name="mp1_mat" texture="mp1_tex" specular="0.02" shininess="0.1" /><mesh name="mp2" file="props/imported/maple/maple_sugar_maple_bark.obj" scale="1.0 1.0 1.0" inertia="shell" /><texture name="mp2_tex" type="2d" file="props/imported/maple/maple_sugar_maple_bark_diffuse.png" /><material name="mp2_mat" texture="mp2_tex" specular="0.02" shininess="0.1" /><mesh name="mp3" file="props/imported/maple/maple_sugar_maple_leaf.obj" scale="1.0 1.0 1.0" inertia="shell" /><texture name="mp3_tex" type="2d" file="props/imported/maple/maple_sugar_maple_leaf_diffuse.png" /><material name="mp3_mat" texture="mp3_tex" specular="0.02" shininess="0.1" /><mesh name="mp4" file="props/imported/maple/maple_sugar_maple_bark.obj" scale="1.25 1.25 1.25" inertia="shell" /><texture name="mp4_tex" type="2d" file="props/imported/maple/maple_sugar_maple_bark_diffuse.png" /><material name="mp4_mat" texture="mp4_tex" specular="0.02" shininess="0.1" /><mesh name="mp5" file="props/imported/maple/maple_sugar_maple_leaf.obj" scale="1.25 1.25 1.25" inertia="shell" /><texture name="mp5_tex" type="2d" file="props/imported/maple/maple_sugar_maple_leaf_diffuse.png" /><material name="mp5_mat" texture="mp5_tex" specular="0.02" shininess="0.1" /><mesh name="rb_rock0" file="props/rocks/rock_07/rock_07_low.obj" scale="3.0 3.0 3.0" /><mesh name="rb_rock1" file="props/rocks/rock_07/rock_07_low.obj" scale="6.0 6.0 6.0" /><mesh name="rb_rock2" file="props/rocks/rock_07/rock_07_low.obj" scale="10.0 10.0 10.0" /><texture name="rb_rock_tex" type="2d" file="props/rocks/rock_07/rock_07_1k_diffuse.png" /><material name="rb_rock_mat" texture="rb_rock_tex" specular="0.05" shininess="0.1" />
+    <material name="metal" rgba=".9 .95 .95 1" />
+    <material name="black" rgba="0 0 0 1" />
+    <material name="white" rgba="1 1 1 1" />
+    <material name="gray" rgba="0.671705 0.692426 0.774270 1" />
+
+    <mesh name="base_0" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/base.obj" />
+    <mesh name="base_1" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/base.obj" />
+    <mesh name="base_2" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/base.obj" />
+    <mesh name="base_3" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/base.obj" />
+    <mesh name="base_4" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/base.obj" />
+    <mesh name="hip_0" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/hip.obj" />
+    <mesh name="hip_1" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/hip.obj" />
+    <mesh name="thigh_0" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/thigh.obj" />
+    <mesh name="thigh_1" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/thigh.obj" />
+    <mesh name="thigh_mirror_0" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/thigh_mirror.obj" />
+    <mesh name="thigh_mirror_1" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/thigh_mirror.obj" />
+    <mesh name="calf_0" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/calf.obj" />
+    <mesh name="calf_1" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/calf.obj" />
+    <mesh name="calf_mirror_0" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/calf_mirror.obj" />
+    <mesh name="calf_mirror_1" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/calf_mirror.obj" />
+    <mesh name="foot" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/foot.obj" />
+  
+  </asset>
+  <worldbody>
+    <light name="sun" pos="85 -35 150" dir="-0.5 0.25 -0.82" diffuse="0.88 0.86 0.80" specular="0.12 0.12 0.12" castshadow="true" />
+    <light name="fill" pos="-70 60 90" dir="0.55 -0.35 -0.75" diffuse="0.26 0.30 0.40" specular="0 0 0" castshadow="false" />
+    <light name="rim" pos="-90 -100 120" dir="0.45 0.6 -0.7" diffuse="0.34 0.38 0.46" specular="0.08 0.08 0.08" castshadow="false" />
+    <geom name="ground" type="hfield" hfield="terrain" material="gmat" friction="1.0 0.02 0.001" />
+    <camera name="wide" pos="-32.00 -64.00 40.04" xyaxes="0.80994 -0.58651 0.00000 0.23300 0.32177 0.91770" />
+    <camera name="house" pos="-13.00 -37.00 11.73" xyaxes="0.65493 -0.75569 0.00000 0.23190 0.20098 0.95175" /><body name="H1" pos="15.00 -14.00 5.599" euler="0 0 196"><geom type="mesh" mesh="bld0_0" material="bld0_0_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_1" material="bld0_1_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_2" material="bld0_2_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_3" material="bld0_3_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_4" material="bld0_4_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_5" material="bld0_5_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_6" material="bld0_6_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_7" material="bld0_7_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_8" material="bld0_8_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_9" material="bld0_9_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_10" material="bld0_10_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_11" material="bld0_11_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_12" material="bld0_12_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_13" material="bld0_13_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld0_14" material="bld0_14_mat" contype="0" conaffinity="0" group="1" /></body><site name="site_H1" pos="15.00 -14.00 7.14" size="0.35" rgba="0.95 0.85 0.2 1" group="3" /><body name="H2" pos="-24.00 -8.00 9.384" euler="0 0 -12"><geom type="mesh" mesh="bld1_0" material="bld1_0_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld1_1" material="bld1_1_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld1_2" material="bld1_2_mat" contype="0" conaffinity="0" group="1" /></body><site name="site_H2" pos="-24.00 -8.00 12.41" size="0.35" rgba="0.95 0.85 0.2 1" group="3" /><body name="H3" pos="-26.00 24.00 15.647" euler="0 0 38"><geom contype="0" conaffinity="0" type="box" size="4.30 3.50 0.15" pos="0 0 0.12" material="concrete" /><geom contype="0" conaffinity="0" type="box" size="4.00 0.11 1.55" pos="0.00 3.20 1.70" material="brick" /><geom contype="0" conaffinity="0" type="box" size="4.00 0.11 1.55" pos="0.00 -3.20 1.70" material="brick" /><geom contype="0" conaffinity="0" type="box" size="0.11 3.20 1.55" pos="-4.00 0 1.70" material="brick" /><geom contype="0" conaffinity="0" type="box" size="0.11 3.20 1.55" pos="4.00 0 1.70" material="brick" /><geom contype="0" conaffinity="0" type="box" size="4.40 3.60 0.12" pos="0 0 3.40" euler="0 6 0" material="concrete" /></body><site name="site_H3" pos="-26.00 24.00 17.35" size="0.35" rgba="0.95 0.85 0.2 1" group="3" /><body name="H4" pos="2.00 36.00 14.343" euler="0 0 104"><geom contype="0" conaffinity="0" type="box" size="3.90 3.20 0.15" pos="0 0 0.12" material="concrete" /><geom contype="0" conaffinity="0" type="box" size="3.60 0.11 1.40" pos="0.00 2.90 1.55" material="brick" /><geom contype="0" conaffinity="0" type="box" size="3.60 0.11 1.40" pos="0.00 -2.90 1.55" material="brick" /><geom contype="0" conaffinity="0" type="box" size="0.11 2.90 1.40" pos="-3.60 0 1.55" material="brick" /><geom contype="0" conaffinity="0" type="box" size="0.11 2.90 1.40" pos="3.60 0 1.55" material="brick" /><geom contype="0" conaffinity="0" type="box" size="4.00 3.30 0.12" pos="0 0 3.10" euler="0 6 0" material="concrete" /></body><site name="site_H4" pos="2.00 36.00 15.96" size="0.35" rgba="0.95 0.85 0.2 1" group="3" /><body name="H5" pos="34.00 2.00 5.737" euler="0 0 -28"><geom type="mesh" mesh="bld2_0" material="bld2_0_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld2_1" material="bld2_1_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld2_2" material="bld2_2_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld2_3" material="bld2_3_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld2_4" material="bld2_4_mat" contype="0" conaffinity="0" group="1" /><geom type="mesh" mesh="bld2_5" material="bld2_5_mat" contype="0" conaffinity="0" group="1" /></body><site name="site_H5" pos="34.00 2.00 8.40" size="0.35" rgba="0.95 0.85 0.2 1" group="3" /><body name="H6" pos="-12.00 -26.00 5.225" euler="0 0 42"><geom type="mesh" mesh="bld3_0" material="bld3_0_mat" contype="0" conaffinity="0" group="1" /></body><site name="site_H6" pos="-12.00 -26.00 7.26" size="0.35" rgba="0.95 0.85 0.2 1" group="3" /><body name="H7" pos="-26.00 -44.00 3.591" euler="0 0 20"><geom type="mesh" mesh="bld4_0" material="bld4_0_mat" contype="0" conaffinity="0" group="1" /></body><site name="site_H7" pos="-26.00 -44.00 4.70" size="0.35" rgba="0.95 0.85 0.2 1" group="3" /><site name="site_P0" pos="-2.00 -46.00 1.47" size="1.2" rgba="0.2 0.7 0.95 1" group="3" /><body name="H1_collision" pos="15.00 -14.00 4.871" euler="0 0 196"><geom contype="0" conaffinity="0" type="box" size="1.78 0.18 1.50" pos="-2.43 -3.10 1.50" group="3" /><geom contype="0" conaffinity="0" type="box" size="1.78 0.18 1.50" pos="2.43 -3.10 1.50" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.65 0.18 0.55" pos="0 -3.10 2.45" group="3" /><geom contype="0" conaffinity="0" type="box" size="4.20 0.18 1.50" pos="0 3.10 1.50" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.18 3.10 1.50" pos="-4.20 0 1.50" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.18 3.10 1.50" pos="4.20 0 1.50" group="3" /></body><body name="H2_collision" pos="-24.00 -8.00 5.711" euler="0 0 -12"><geom contype="0" conaffinity="0" type="box" size="3.82 0.18 2.70" pos="-4.52 -4.20 2.70" group="3" /><geom contype="0" conaffinity="0" type="box" size="3.82 0.18 2.70" pos="4.52 -4.20 2.70" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.70 0.18 0.55" pos="0 -4.20 4.85" group="3" /><geom contype="0" conaffinity="0" type="box" size="8.35 0.18 2.70" pos="0 4.20 2.70" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.18 4.20 2.70" pos="-8.35 0 2.70" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.18 4.20 2.70" pos="8.35 0 2.70" group="3" /></body><body name="H5_collision" pos="34.00 2.00 5.226" euler="0 0 -28"><geom contype="0" conaffinity="0" type="box" size="1.68 0.18 2.30" pos="-2.33 -3.40 2.30" group="3" /><geom contype="0" conaffinity="0" type="box" size="1.68 0.18 2.30" pos="2.33 -3.40 2.30" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.65 0.18 0.55" pos="0 -3.40 4.05" group="3" /><geom contype="0" conaffinity="0" type="box" size="4.00 0.18 2.30" pos="0 3.40 2.30" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.18 3.40 2.30" pos="-4.00 0 2.30" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.18 3.40 2.30" pos="4.00 0 2.30" group="3" /></body><body name="H6_collision" pos="-12.00 -26.00 3.303" euler="0 0 42"><geom contype="0" conaffinity="0" type="box" size="1.85 0.18 1.60" pos="-2.65 -3.25 1.60" group="3" /><geom contype="0" conaffinity="0" type="box" size="1.85 0.18 1.60" pos="2.65 -3.25 1.60" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.80 0.18 0.55" pos="0 -3.25 2.65" group="3" /><geom contype="0" conaffinity="0" type="box" size="4.50 0.18 1.60" pos="0 3.25 1.60" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.18 3.25 1.60" pos="-4.50 0 1.60" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.18 3.25 1.60" pos="4.50 0 1.60" group="3" /></body><body name="H7_collision" pos="-26.00 -44.00 1.610" euler="0 0 20"><geom contype="0" conaffinity="0" type="box" size="6.10 0.18 1.10" pos="0 -0.45 1.10" group="3" /><geom contype="0" conaffinity="0" type="box" size="6.10 0.18 1.10" pos="0 0.45 1.10" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.18 0.45 1.10" pos="-6.10 0 1.10" group="3" /><geom contype="0" conaffinity="0" type="box" size="0.18 0.45 1.10" pos="6.10 0 1.10" group="3" /></body><camera name="village" pos="-18.00 -62.00 31.14" xyaxes="0.94299 -0.33282 0.00000 0.11289 0.31985 0.94072" /><camera name="top" pos="2 2 320" xyaxes="1 0 0 0 1 0" /><camera name="cam_H1" pos="5.00 -27.00 10.73" xyaxes="0.79262 -0.60971 0.00000 0.12027 0.15635 0.98035" /><camera name="cam_H2" pos="-34.00 -21.00 12.63" xyaxes="0.79262 -0.60971 0.00000 0.12027 0.15635 0.98035" /><camera name="cam_H3" pos="-36.00 11.00 19.20" xyaxes="0.79262 -0.60971 0.00000 0.12027 0.15635 0.98035" /><camera name="cam_H4" pos="-8.00 23.00 19.19" xyaxes="0.79262 -0.60971 0.00000 0.12027 0.15635 0.98035" /><camera name="cam_H5" pos="24.00 -11.00 10.99" xyaxes="0.79262 -0.60971 0.00000 0.12027 0.15635 0.98035" /><camera name="cam_H6" pos="-22.00 -39.00 9.16" xyaxes="0.79262 -0.60971 0.00000 0.12027 0.15635 0.98035" /><camera name="cam_H7" pos="-36.00 -57.00 7.74" xyaxes="0.79262 -0.60971 0.00000 0.12027 0.15635 0.98035" /><camera name="close" pos="4.00 -28.00 10.23" xyaxes="0.78632 -0.61782 0.00000 0.10265 0.13065 0.98610" /><body name="base" pos="12.00 -18.00 5.40">
+    
+    
+    
+    
+    
+      <inertial pos="0.021112 0 -0.005366" mass="6.921" diaginertia="0.02448 0.098077 0.107" />
+      <freejoint name="root" />
+      <geom mesh="base_0" material="black" class="visual" />
+      <geom mesh="base_1" material="black" class="visual" />
+      <geom mesh="base_2" material="black" class="visual" />
+      <geom mesh="base_3" material="white" class="visual" />
+      <geom mesh="base_4" material="gray" class="visual" />
+
+      <geom name="base_box" type="box" size="0.1881 0.04675 0.057" />
+      <geom name="base_cyl1" type="cylinder" size="0.05 0.045" pos="0.285 0 0.01" />
+      <geom name="base_sphere1" type="sphere" size="0.047" pos="0.293 0 -0.06" />
+
+      <body name="FL_hip" pos="0.1934 0.0465 0">
+        <inertial pos="-0.0054 0.00194 -0.000105" quat="0.497014 0.499245 0.505462 0.498237" mass="0.678" diaginertia="0.00088403 0.000596003 0.000479967" />
+        <joint name="FL_hip_joint" pos="0 0 0" axis="1 0 0" range="-1.0472 1.0472" actuatorfrcrange="-23.7 23.7" />
+        <geom mesh="hip_0" material="metal" class="visual" />
+        <geom mesh="hip_1" material="gray" class="visual" />
+        <geom size="0.046 0.02" pos="0 0.08 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 1 1 1" />
+
+        <body name="FL_thigh" pos="0 0.0955 0">
+        <inertial pos="-0.00374 -0.0223 -0.0327" quat="0.829533 0.0847635 -0.0200632 0.551623" mass="1.152" diaginertia="0.00594973 0.00584149 0.000878787" />
+        <joint name="FL_thigh_joint" pos="0 0 0" axis="0 1 0" range="-1.5708 3.4907" actuatorfrcrange="-23.7 23.7" />
+        <geom mesh="thigh_0" material="metal" class="visual" />
+        <geom mesh="thigh_1" material="gray" class="visual" />
+        <geom size="0.055 0.01225 0.017" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="1 1 1 1" />
+        <body name="FL_calf" pos="0 0 -0.213">
+        <inertial pos="0.00629595 -0.000622121 -0.141417" quat="0.710672 0.00154099 -0.00450087 0.703508" mass="0.241352" diaginertia="0.0014901 0.00146356 5.31397e-05" />
+        <joint name="FL_calf_joint" pos="0 0 0" axis="0 1 0" range="-2.7227 -0.83776" actuatorfrcrange="-35.55 35.55" />
+        <geom mesh="calf_0" material="gray" class="visual" />
+        <geom mesh="calf_1" material="black" class="visual" />
+        <geom size="0.012 0.06" pos="0.008 0 -0.06" quat="0.994493 0 -0.104807 0" type="cylinder" rgba="1 1 1 1" />
+        <geom size="0.011 0.0325" pos="0.02 0 -0.148" quat="0.999688 0 0.0249974 0" type="cylinder" />
+        <geom size="0.0155 0.015" pos="0.00801333 0 -0.18745" quat="0.965093 0 0.261909 0" type="cylinder" />
+        <geom pos="0 0 -0.213" mesh="foot" class="visual" material="black" />
+        <geom size="0.022" pos="-0.002 0 -0.213" rgba="1 1 1 1" />
+        </body>
+        </body>
+      </body>
+      <body name="FR_hip" pos="0.1934 -0.0465 0">
+        <inertial pos="-0.0054 -0.00194 -0.000105" quat="0.498237 0.505462 0.499245 0.497014" mass="0.678" diaginertia="0.00088403 0.000596003 0.000479967" />
+        <joint name="FR_hip_joint" pos="0 0 0" axis="1 0 0" range="-1.0472 1.0472" actuatorfrcrange="-23.7 23.7" />
+        <geom mesh="hip_0" material="metal" class="visual" quat="4.63268e-05 1 0 0" />
+        <geom mesh="hip_1" material="gray" class="visual" quat="4.63268e-05 1 0 0" />
+        <geom size="0.046 0.02" pos="0 -0.08 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 1 1 1" />
+        <body name="FR_thigh" pos="0 -0.0955 0">
+        <inertial pos="-0.00374 0.0223 -0.0327" quat="0.551623 -0.0200632 0.0847635 0.829533" mass="1.152" diaginertia="0.00594973 0.00584149 0.000878787" />
+        <joint name="FR_thigh_joint" pos="0 0 0" axis="0 1 0" range="-1.5708 3.4907" actuatorfrcrange="-23.7 23.7" />
+        <geom mesh="thigh_mirror_0" material="metal" class="visual" />
+        <geom mesh="thigh_mirror_1" material="gray" class="visual" />
+        <geom size="0.055 0.01225 0.017" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="1 1 1 1" />
+        <body name="FR_calf" pos="0 0 -0.213">
+        <inertial pos="0.00629595 0.000622121 -0.141417" quat="0.703508 -0.00450087 0.00154099 0.710672" mass="0.241352" diaginertia="0.0014901 0.00146356 5.31397e-05" />
+        <joint name="FR_calf_joint" pos="0 0 0" axis="0 1 0" range="-2.7227 -0.83776" actuatorfrcrange="-35.55 35.55" />
+        <geom mesh="calf_mirror_0" material="gray" class="visual" />
+        <geom mesh="calf_mirror_1" material="black" class="visual" />
+        <geom size="0.013 0.06" pos="0.01 0 -0.06" quat="0.995004 0 -0.0998334 0" type="cylinder" rgba="1 1 1 1" />
+        <geom size="0.011 0.0325" pos="0.02 0 -0.148" quat="0.999688 0 0.0249974 0" type="cylinder" />
+        <geom size="0.0155 0.015" pos="0.00801333 0 -0.18745" quat="0.965093 0 0.261909 0" type="cylinder" />
+        <geom pos="0 0 -0.213" mesh="foot" class="visual" material="black" />
+        <geom size="0.022" pos="-0.002 0 -0.213" rgba="1 1 1 1" />
+        </body>
+        </body>
+      </body>
+      <body name="RL_hip" pos="-0.1934 0.0465 0">
+        <inertial pos="0.0054 0.00194 -0.000105" quat="0.505462 0.498237 0.497014 0.499245" mass="0.678" diaginertia="0.00088403 0.000596003 0.000479967" />
+        <joint name="RL_hip_joint" pos="0 0 0" axis="1 0 0" range="-1.0472 1.0472" actuatorfrcrange="-23.7 23.7" />
+        <geom mesh="hip_0" material="metal" class="visual" quat="4.63268e-05 0 1 0" />
+        <geom mesh="hip_1" material="gray" class="visual" quat="4.63268e-05 0 1 0" />
+        <geom size="0.046 0.02" pos="0 0.08 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 1 1 1" />
+        <body name="RL_thigh" pos="0 0.0955 0">
+        <inertial pos="-0.00374 -0.0223 -0.0327" quat="0.829533 0.0847635 -0.0200632 0.551623" mass="1.152" diaginertia="0.00594973 0.00584149 0.000878787" />
+        <joint name="RL_thigh_joint" pos="0 0 0" axis="0 1 0" range="-0.5236 4.5379" actuatorfrcrange="-23.7 23.7" />
+        <geom mesh="thigh_0" material="metal" class="visual" />
+        <geom mesh="thigh_1" material="gray" class="visual" />
+        <geom size="0.055 0.01225 0.017" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="1 1 1 1" />
+        <body name="RL_calf" pos="0 0 -0.213">
+        <inertial pos="0.00629595 -0.000622121 -0.141417" quat="0.710672 0.00154099 -0.00450087 0.703508" mass="0.241352" diaginertia="0.0014901 0.00146356 5.31397e-05" />
+        <joint name="RL_calf_joint" pos="0 0 0" axis="0 1 0" range="-2.7227 -0.83776" actuatorfrcrange="-35.55 35.55" />
+        <geom mesh="calf_0" material="gray" class="visual" />
+        <geom mesh="calf_1" material="black" class="visual" />
+        <geom size="0.013 0.06" pos="0.01 0 -0.06" quat="0.995004 0 -0.0998334 0" type="cylinder" rgba="1 1 1 1" />
+        <geom size="0.011 0.0325" pos="0.02 0 -0.148" quat="0.999688 0 0.0249974 0" type="cylinder" />
+        <geom size="0.0155 0.015" pos="0.00801333 0 -0.18745" quat="0.965093 0 0.261909 0" type="cylinder" />
+        <geom pos="0 0 -0.213" mesh="foot" class="visual" material="black" />
+        <geom size="0.022" pos="-0.002 0 -0.213" rgba="1 1 1 1" />
+        </body>
+        </body>
+      </body>
+
+      <body name="RR_hip" pos="-0.1934 -0.0465 0">
+        <inertial pos="0.0054 -0.00194 -0.000105" quat="0.499245 0.497014 0.498237 0.505462" mass="0.678" diaginertia="0.00088403 0.000596003 0.000479967" />
+        <joint name="RR_hip_joint" pos="0 0 0" axis="1 0 0" range="-1.0472 1.0472" actuatorfrcrange="-23.7 23.7" />
+        <geom mesh="hip_0" material="metal" class="visual" quat="2.14617e-09 4.63268e-05 4.63268e-05 -1" />
+        <geom mesh="hip_1" material="gray" class="visual" quat="2.14617e-09 4.63268e-05 4.63268e-05 -1" />
+        <geom size="0.046 0.02" pos="0 -0.08 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 1 1 1" />
+        <body name="RR_thigh" pos="0 -0.0955 0">
+        <inertial pos="-0.00374 0.0223 -0.0327" quat="0.551623 -0.0200632 0.0847635 0.829533" mass="1.152" diaginertia="0.00594973 0.00584149 0.000878787" />
+        <joint name="RR_thigh_joint" pos="0 0 0" axis="0 1 0" range="-0.5236 4.5379" actuatorfrcrange="-23.7 23.7" />
+        <geom mesh="thigh_mirror_0" material="metal" class="visual" />
+        <geom mesh="thigh_mirror_1" material="gray" class="visual" />
+        <geom size="0.055 0.01225 0.017" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="1 1 1 1" />
+        <body name="RR_calf" pos="0 0 -0.213">
+        <inertial pos="0.00629595 0.000622121 -0.141417" quat="0.703508 -0.00450087 0.00154099 0.710672" mass="0.241352" diaginertia="0.0014901 0.00146356 5.31397e-05" />
+        <joint name="RR_calf_joint" pos="0 0 0" axis="0 1 0" range="-2.7227 -0.83776" actuatorfrcrange="-35.55 35.55" />
+        <geom mesh="calf_mirror_0" material="gray" class="visual" />
+        <geom mesh="calf_mirror_1" material="black" class="visual" />
+        <geom size="0.013 0.06" pos="0.01 0 -0.06" quat="0.995004 0 -0.0998334 0" type="cylinder" rgba="1 1 1 1" />
+        <geom size="0.011 0.0325" pos="0.02 0 -0.148" quat="0.999688 0 0.0249974 0" type="cylinder" />
+        <geom size="0.0155 0.015" pos="0.00801333 0 -0.18745" quat="0.965093 0 0.261909 0" type="cylinder" />
+        <geom pos="0 0 -0.213" mesh="foot" class="visual" material="black" />
+        <geom size="0.022" pos="-0.002 0 -0.213" rgba="1 1 1 1" />
+        </body>
+        </body>
+      </body>
+
+    </body>
+  
+  </worldbody>
+  <actuator>
+    <motor name="FL_hip" joint="FL_hip_joint" />
+    <motor name="FL_thigh" joint="FL_thigh_joint" />
+    <motor name="FL_calf" joint="FL_calf_joint" />
+    <motor name="FR_hip" joint="FR_hip_joint" />
+    <motor name="FR_thigh" joint="FR_thigh_joint" />
+    <motor name="FR_calf" joint="FR_calf_joint" />
+    <motor name="RL_hip" joint="RL_hip_joint" />
+    <motor name="RL_thigh" joint="RL_thigh_joint" />
+    <motor name="RL_calf" joint="RL_calf_joint" />
+    <motor name="RR_hip" joint="RR_hip_joint" />
+    <motor name="RR_thigh" joint="RR_thigh_joint" />
+    <motor name="RR_calf" joint="RR_calf_joint" />
+  </actuator>
+</mujoco>
