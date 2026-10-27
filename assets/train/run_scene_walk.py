@@ -23,7 +23,7 @@ JOINTS = ["FL_hip", "FL_thigh", "FL_calf", "FR_hip", "FR_thigh", "FR_calf",
           "RL_hip", "RL_thigh", "RL_calf", "RR_hip", "RR_thigh", "RR_calf"]
 BASE = os.path.dirname(os.path.abspath(__file__))
 DEMO = os.path.join(BASE, "..", "demo_v32.xml")
-PHYS = os.path.join(BASE, "..", "village_walk4.xml")
+PHYS = os.path.join(BASE, "..", "village_walk4_patch.xml")
 G1_PHYS = os.path.join(BASE, "..", "g1_terrain_plain.xml")
 G1_POLICY = os.path.join(BASE, "..", "props", "robots", "g1", "motion.pt")
 G1_JOINTS = [
@@ -51,6 +51,8 @@ def main():
     ap.add_argument("--headless", type=float, default=0.0)
     ap.add_argument("--follow", action=argparse.BooleanOptionalAction, default=True)
     ap.add_argument("--shot", default="", help="在指定秒数存一张图，如 3")
+    ap.add_argument("--check", type=float, default=0.0, help="跑 N 秒后测量身高/穿透")
+    ap.add_argument("--g1", action="store_true", help="同时驱动 G1（实验性，控制器尚未完全对齐）")
     a = ap.parse_args()
 
     # 展示模型（只用来看）
@@ -79,7 +81,7 @@ def main():
 
     hf = next(g for g in range(m.ngeom) if m.geom_type[g] == mujoco.mjtGeom.mjGEOM_HFIELD)
     gid = np.array([-1], dtype=np.int32); grp = np.ones(6, dtype=np.uint8)
-    x, y = 12.0, -18.0
+    x, y = 0.0, -20.0          # 空地起步（不在 H1 碰撞盒内，避免穿墙）
     d.qpos[bq:bq+3] = [x + 500, y + 500, -800]
     mujoco.mj_forward(m, d)
     gz = 5.0
@@ -102,7 +104,7 @@ def main():
     gd = mujoco.MjData(gm)
     if gm.nkey > 0:
         mujoco.mj_resetDataKeyframe(gm, gd, 0)
-    g1x, g1y = 15.0, -14.0
+    g1x, g1y = 15.0, -2.0     # H1 台地南侧平地（实测 pelvis 稳定 6.5~6.8）
     ghf = next(g for g in range(gm.ngeom) if gm.geom_type[g] == mujoco.mjtGeom.mjGEOM_HFIELD)
     gd.qpos[0:3] = [g1x + 500.0, g1y + 500.0, -800.0]
     mujoco.mj_forward(gm, gd)
@@ -151,6 +153,7 @@ def main():
 
     def step_all():
         nonlocal obs, action, target, g1_action, g1_target, g1_obs, g1_step_i
+        # ---- Go2：4 × 5 ms = 20 ms ----
         for _ in range(4):
             q, qd = d.qpos[qadr], d.qvel[dadr]
             d.ctrl[aid] = clip_torque_speed(KP*(target-q) - KD*qd, qd)
@@ -163,44 +166,82 @@ def main():
         obs[33:45] = action
         with torch.inference_mode():
             mu, _ = net(torch.as_tensor(obs).unsqueeze(0))
-        action = mu.numpy()[0]; target = DEFAULT + 0.25*action
+        action = mu.numpy()[0]
+        target = DEFAULT + 0.25*action
 
-        # G1: 10 x 2 ms = 0.02 s；每 10 个子步执行一次 50 Hz 策略。
-        for _ in range(10):
-            g1_q = gd.qpos[g1_qadr]
-            g1_dq = gd.qvel[g1_dadr]
-            gd.ctrl[:] = np.clip(
-                g1_kp * (g1_target - g1_q) - g1_kd * g1_dq, -200, 200)
-            mujoco.mj_step(gm, gd)
-            g1_step_i += 1
-        with torch.inference_mode():
-            t = g1_step_i * gm.opt.timestep
-            ph = (t % g1p.PERIOD) / g1p.PERIOD
-            g1_obs[0:3] = gd.qvel[3:6] * g1p.SCALE["ang_vel"]
-            g1_obs[3:6] = g1p.gravity_orientation(gd.qpos[3:7])
-            g1_obs[6:9] = g1_cmd * g1p.CMD_SCALE
-            g1_obs[9:21] = (
-                gd.qpos[g1_qadr] - g1_default) * g1p.SCALE["dof_pos"]
-            g1_obs[21:33] = (
-                gd.qvel[g1_dadr] * g1p.SCALE["dof_vel"])
-            g1_obs[33:45] = g1_action
-            g1_obs[45:47] = [
-                np.sin(2 * np.pi * ph), np.cos(2 * np.pi * ph)]
-            g1_action = g1_net(
-                torch.from_numpy(g1_obs).unsqueeze(0)
-            ).numpy().flatten()[:g1p.NUM_ACT]
-            g1_target = g1_default + g1p.SCALE["action"] * g1_action
+        # ---- G1（可选，实验性）----
+        if a.g1:
+            with torch.inference_mode():
+                ph = (g1_step_i * gm.opt.timestep % g1p.PERIOD) / g1p.PERIOD
+                g1_obs[0:3] = gd.qvel[3:6] * g1p.SCALE["ang_vel"]
+                g1_obs[3:6] = g1p.gravity_orientation(gd.qpos[3:7])
+                g1_obs[6:9] = g1_cmd * g1p.CMD_SCALE
+                g1_obs[9:21] = (gd.qpos[g1_qadr] - g1_default) * g1p.SCALE["dof_pos"]
+                g1_obs[21:33] = gd.qvel[g1_dadr] * g1p.SCALE["dof_vel"]
+                g1_obs[33:45] = g1_action
+                g1_obs[45:47] = [np.sin(2*np.pi*ph), np.cos(2*np.pi*ph)]
+                g1_action = g1_net(torch.from_numpy(g1_obs).unsqueeze(0)).numpy().flatten()[:g1p.NUM_ACT]
+                g1_target = g1_default + g1p.SCALE["action"] * g1_action
+            for _ in range(10):
+                g1_q = gd.qpos[g1_qadr]
+                g1_dq = gd.qvel[g1_dadr]
+                gd.ctrl[:] = np.clip(g1_kp*(g1_target-g1_q) - g1_kd*g1_dq, -200, 200)
+                mujoco.mj_step(gm, gd)
+                g1_step_i += 1
 
-        # 镜像到展示模型
+        # ---- 镜像到展示模型 ----
         dm.body_pos[gid_body] = d.qpos[bq:bq+3]
         dm.body_quat[gid_body] = quat_mul(q0, d.qpos[bq+3:bq+7])
         for k, adr in enumerate(demo_jadr):
             dd.qpos[adr] = d.qpos[qadr[k]]
-        dm.body_pos[g1_demo_body] = gd.qpos[0:3]
-        dm.body_quat[g1_demo_body] = quat_mul(g1_demo_q0, gd.qpos[3:7])
-        for k, adr in enumerate(g1_demo_jadr):
-            dd.qpos[adr] = gd.qpos[g1_qadr[k]]
+        if a.g1:
+            dm.body_pos[g1_demo_body] = gd.qpos[0:3]
+            dm.body_quat[g1_demo_body] = quat_mul(g1_demo_q0, gd.qpos[3:7])
+            for k, adr in enumerate(g1_demo_jadr):
+                dd.qpos[adr] = gd.qpos[g1_qadr[k]]
         mujoco.mj_forward(dm, dd)
+
+    if a.check > 0:
+        for _ in range(int(a.check / 0.02)):
+            step_all()
+        from collections import Counter
+        # 展示模型里机器人足端球
+        kids = {}
+        for i in range(dm.nbody):
+            kids.setdefault(int(dm.body_parentid[i]), []).append(i)
+        def feet(mdl, dat, root):
+            sub, st = set(), [root]
+            while st:
+                b = st.pop(); sub.add(b); st.extend(kids.get(b, []))
+            out = []
+            for g in range(mdl.ngeom):
+                if int(mdl.geom_bodyid[g]) in sub and mdl.geom_type[g] == mujoco.mjtGeom.mjGEOM_SPHERE                         and float(mdl.geom_size[g][0]) < 0.05:
+                    out.append((g, float(dat.geom_xpos[g][0]), float(dat.geom_xpos[g][1]),
+                                float(dat.geom_xpos[g][2]), float(mdl.geom_size[g][0])))
+            return out
+        gid2 = np.array([-1], dtype=np.int32); grp2 = np.ones(6, dtype=np.uint8)
+        hfd = next(g for g in range(dm.ngeom) if dm.geom_type[g] == mujoco.mjtGeom.mjGEOM_HFIELD)
+        def ground_at(x, y):
+            dist = mujoco.mj_ray(dm, dd, np.array([x, y, 300.0]), np.array([0.0, 0.0, -1.0]),
+                                 grp2, 1, -1, gid2)
+            if dist > 0 and int(gid2[0]) == hfd:
+                return 300.0 - dist
+            return None
+        print("DEBUG twin: g1 地面 %.2f pelvis %.2f | demo: pelvis %.2f"
+              % (g1gz, float(gd.qpos[2]), float(dd.xpos[g1_demo_body][2])))
+        for name, root, want in ((("Go2", gid_body, 0.32),) if not a.g1 else
+                                 (("Go2", gid_body, 0.32), ("G1", g1_demo_body, 0.77))):
+            gr0 = ground_at(float(dd.xpos[root][0]), float(dd.xpos[root][1]))
+            if gr0 is not None:
+                print("%s 根部离地 %.3f m（正常约 %.2f）" % (name, float(dd.xpos[root][2]) - gr0, want))
+            gr0 = ground_at(float(dd.xpos[root][0]), float(dd.xpos[root][1]))
+            if gr0 is not None:
+                print("%s 根部离地 %.3f m（正常约 %.2f）" % (name, float(dd.xpos[root][2]) - gr0, want))
+
+        print("Go2 位移 %.2f m，G1 位移 %.2f m"
+              % (float(np.hypot(dd.xpos[gid_body][0]-x0, dd.xpos[gid_body][1]-y0)),
+                 float(np.hypot(dd.xpos[g1_demo_body][0]-g1x, dd.xpos[g1_demo_body][1]-g1y))))
+        return
 
     if a.shot:
         sec = float(a.shot)

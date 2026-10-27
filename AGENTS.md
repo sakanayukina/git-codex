@@ -679,6 +679,30 @@ cd C:\Users\18967\Desktop\git
 
 **入口调整（2026-10-27）**：`run_scene.py` 无参数时默认进入上述 Go2 + G1 行走模式；原静态展示必须显式加 `--static`。
 
+### 穿模（穿地/穿墙）根因与修复（DSH 2026-10-27）
+
+用户反馈“会走路但穿模”，定位到 3 个原因：
+
+| # | 原因 | 证据 | 修复 |
+|---|---|---|---|
+| 1 | **孪生场景与展示场景用的不是同一张地形** | `demo_v32.xml` 的 hfield 是 `terrain/height_field_patch.png`，而物理孪生是 `terrain/dem_wenchuan_flat.png`；两者 hfield 数据最大差 **0.0392 → 2.608 m** | 新建 `assets/village_walk4_patch.xml`（改用 patch 地形），数据差 **0.000000**；`run_scene_walk.py` 的 PHYS 指向它 |
+| 2 | **出生点落在 H1 废墟碰撞盒内** | H1 碰撞盒约 x 8.2–21.8 / y −20.3–−7.7；原出生 (12,−18) 在盒内，狗直接从墙里穿出去 | Go2 出生点改 **(0, −20)**（空地，走 3.58 m/8 s） |
+| 3 | **G1 的镜像循环未对齐，会塌** | 在孪生里 G1 pelvis 只有 0.3–0.4 m 高（正常 0.77），腿插进地面 | G1 动画默认**关闭**，需显式 `--g1` 开启（仍实验性） |
+
+**使用方法**：
+
+```powershell
+cd C:\Users\18967\Desktop\git
+& $mjpy run_scene.py                  # 村子场景 + Go2 行走（默认）
+& $mjpy run_scene.py --g1             # 额外驱动 G1（实验性，可能塌）
+& $mjpy run_scene.py --static         # 原静态展示
+& $mjpy run_scene.py --walk --check 4 # 4 秒后报身高
+& $mjpy run_scene.py --walk --shot 3  # 近景存图
+```
+
+**仍然存在（镜像方案的固有限制）**：展示场景里的机器人不参与碰撞，所以**走向石头/房子时会穿过去**。
+要彻底解决，需要给物理孪生加“粗碰撞代理”（H1 墙盒 + 大石头），或解决 demo_v32 内直接跑策略的问题。
+
 ## 历史
 
 - 2026-10-20 分工确立
