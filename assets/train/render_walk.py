@@ -13,8 +13,12 @@ E.SIM_DT, E.DECIM = 0.005, 4
 
 
 def main():
-    png = os.environ["DSH_TERRAIN_PNG"]
-    m = mujoco.MjModel.from_xml_string(E.make_xml(png, 100.0, 66.5))
+    png = os.environ.get("DSH_TERRAIN_PNG", "")
+    xml = os.environ.get("DSH_SCENE", "")
+    if xml:
+        m = mujoco.MjModel.from_xml_path(xml)
+    else:
+        m = mujoco.MjModel.from_xml_string(E.make_xml(png, 100.0, 66.5))
     d = mujoco.MjData(m)
     qadr, dadr, aid = [], [], []
     for jn in E.JOINTS:
@@ -26,12 +30,19 @@ def main():
     gid = np.array([-1], dtype=np.int32)
     grp = np.array([0, 1, 0, 0, 0, 0], dtype=np.uint8)
 
-    def ground(x, y):
-        dist = mujoco.mj_ray(m, d, np.array([x, y, 300.0]), np.array([0.0, 0.0, -1.0]), grp, 1, -1, gid)
-        return 300.0 - dist if dist > 0 else 0.0
+    hf = next(i for i in range(m.ngeom) if m.geom_type[i] == mujoco.mjtGeom.mjGEOM_HFIELD)
+    grp = np.ones(6, dtype=np.uint8)
 
-    x, y = 10.0, -14.0
-    d.qpos[0:3] = [x, y, 60.0]
+    def ground(x, y):
+        for dx, dy in [(0, 0), (2, 0), (-2, 0), (0, 2), (0, -2)]:
+            dist = mujoco.mj_ray(m, d, np.array([x + dx, y + dy, 300.0]),
+                                 np.array([0.0, 0.0, -1.0]), grp, 1, -1, gid)
+            if dist > 0 and int(gid[0]) == hf:
+                return 300.0 - dist
+        return 5.0
+
+    x, y = 12.0, -18.0
+    d.qpos[0:3] = [x + 500.0, y + 500.0, -800.0]
     mujoco.mj_forward(m, d)
     gz = ground(x, y)
     d.qpos[0:3] = [x, y, gz + 0.45]
