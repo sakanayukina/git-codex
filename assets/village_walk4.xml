@@ -8,6 +8,9 @@
     </default>
   </default>
   <asset>
+    <texture name="gtex" type="2d" file="tex/ground_baked_hd.png"/>
+    <material name="gmat" texture="gtex" rgba="1 1 1 1" texrepeat="0.005 0.005" texuniform="true"/>
+
     <hfield name="terrain" file="terrain/dem_wenchuan_flat.png"
             size="100.0 100.0 66.50 0.01"/>
     
@@ -36,7 +39,7 @@
   </asset>
   <worldbody>
     <light pos="0 0 20" dir="0 0 -1" directional="true"/>
-    <geom name="ground" type="hfield" hfield="terrain" friction="1.0 0.02 0.001"/>
+    <geom name="ground" type="hfield" hfield="terrain" material="gmat" friction="1.0 0.02 0.001"/>
     <body name="base" pos="12.00 -18.00 5.40">
     <!-- <body name="base" pos="-5 2 0.445"> -->
     <!-- <body name="base" pos="-5 2 0.30" quat="0 0 0.706 0.706"> -->

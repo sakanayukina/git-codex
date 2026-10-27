@@ -607,6 +607,30 @@ BC(100 epoch) + DAgger(2 轮) 重训后评估：
 
 
 
+### 第 3 轮收尾：两台机器人都在「真实村子地形」上动起来了（DSH 2026-10-27）
+
+**交付物**：`assets/village_walk4.xml`（真实村子 hfield + **村子烘焙地面贴图 `tex/ground_baked_hd.png`** + Go2）
+与 `assets/g1_terrain_plain.xml`（同一份地形 + G1）。
+
+| 机器人 | 场景 | 结果 | 证据 |
+|---|---|---|---|
+| **Go2** | `village_walk4.xml`（带地面贴图） | **3.89 m / 10 s，0.25 m/s，不摔** | `train/shots/village_t05.0.png`（能看到草地/土路） |
+| **G1** | `g1_terrain_plain.xml` @ (15,−14) | **3.64 m / 8 s，骨盆 0.77 m，航向 −0.10 rad** | 控制台输出 |
+
+复现：
+
+```powershell
+cd assets/train
+& $mjpy village_walk_test.py --xml ../village_walk4.xml --seconds 10 --at 12 -18 --shots "2,5,8.5"
+& $mjpy ../_tools/g1_policy.py --xml ../g1_terrain_plain.xml --vx 0.5 --seconds 8 --at 15 -14
+```
+
+**已知边界**：带 598 个道具 body 的完整 `demo_v32` 场景仍不能跑机器人（第 2/3 轮已二分，
+现象与“带 geom 的 body 即使用一类、碰撞全关也让机器人不动”一致，机制未定位）。
+展示用 `demo_v32`（静态出图），行走演示用 `village_walk4` / `g1_terrain_plain`（同一份地形）。
+
+
+
 ## 历史
 
 - 2026-10-20 分工确立

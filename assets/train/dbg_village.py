@@ -7,7 +7,7 @@ J = ["FL_hip","FL_thigh","FL_calf","FR_hip","FR_thigh","FR_calf",
      "RL_hip","RL_thigh","RL_calf","RR_hip","RR_thigh","RR_calf"]
 
 
-def run(xml, zero_mass=False, seconds=8):
+def run(xml, zero_mass=False, seconds=8, at=(12.0, -18.0)):
     m = mujoco.MjModel.from_xml_path(xml)
     m.opt.timestep = 0.005
     m.opt.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
@@ -41,10 +41,10 @@ def run(xml, zero_mass=False, seconds=8):
     gid = np.array([-1], dtype=np.int32); grp = np.ones(6, dtype=np.uint8)
     gz = 5.0
     for dx, dy in [(0,0),(2,0),(-2,0),(0,2),(0,-2)]:
-        dist = mujoco.mj_ray(m, d, np.array([12.0+dx, -18.0+dy, 300.0]), np.array([0,0,-1.0]), grp, 1, -1, gid)
+        dist = mujoco.mj_ray(m, d, np.array([at[0]+dx, at[1]+dy, 300.0]), np.array([0,0,-1.0]), grp, 1, -1, gid)
         if dist > 0 and int(gid[0]) == hf:
             gz = 300.0 - dist; break
-    d.qpos[bq:bq+3] = [12.0, -18.0, gz + 0.45]
+    d.qpos[bq:bq+3] = [at[0], at[1], gz + 0.45]
     d.qpos[bq+3:bq+7] = [1,0,0,0]
     d.qpos[qadr] = DEFAULT
     mujoco.mj_forward(m, d)
