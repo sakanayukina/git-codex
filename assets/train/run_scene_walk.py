@@ -203,8 +203,22 @@ def main():
         mujoco.mj_forward(dm, dd)
 
     if a.check > 0:
+        trace = {}
         for _ in range(int(a.check / 0.02)):
             step_all()
+            q = d.qpos[bq + 3:bq + 7]
+            up = float(1.0 - 2.0 * (q[1] ** 2 + q[2] ** 2))
+            for threshold in (0.9, 0.5, 0.0):
+                if up < threshold and threshold not in trace:
+                    contacts = []
+                    for i in range(d.ncon):
+                        con = d.contact[i]
+                        b1 = m.body(int(m.geom_bodyid[con.geom1])).name or "<world>"
+                        b2 = m.body(int(m.geom_bodyid[con.geom2])).name or "<world>"
+                        contacts.append("%s<->%s(d=%.3f)" % (b1, b2, -float(con.dist)))
+                    trace[threshold] = (
+                        (_ + 1) * 0.02, float(d.qpos[bq]), float(d.qpos[bq + 1]),
+                        float(d.qpos[bq + 2]), up, contacts[:6])
         from collections import Counter
         # 展示模型里机器人足端球
         kids = {}
@@ -230,6 +244,27 @@ def main():
             return None
         print("DEBUG twin: g1 地面 %.2f pelvis %.2f | demo: pelvis %.2f"
               % (g1gz, float(gd.qpos[2]), float(dd.xpos[g1_demo_body][2])))
+        root_q = d.qpos[bq + 3:bq + 7]
+        root_up = float(1.0 - 2.0 * (root_q[1] ** 2 + root_q[2] ** 2))
+        for threshold, event in sorted(trace.items(), reverse=True):
+            print("Go2 first up_z<%.1f at t=%.2f x=%.2f y=%.2f z=%.2f up_z=%.3f "
+                  "contacts=%s" % ((threshold,) + event))
+        print("Go2 root x=%.3f y=%.3f z=%.3f up_z=%.3f qpos=[%.3f %.3f %.3f %.3f]"
+              % (float(d.qpos[bq]), float(d.qpos[bq + 1]),
+                 float(d.qpos[bq + 2]), root_up,
+                 float(root_q[0]), float(root_q[1]),
+                 float(root_q[2]), float(root_q[3])))
+        if root_up < 0.5:
+            print("Go2 TIPOVER detected (up_z < 0.5)")
+        if d.ncon:
+            contacts = sorted(
+                range(d.ncon), key=lambda i: float(d.contact[i].dist))[:8]
+            for i in contacts:
+                con = d.contact[i]
+                b1 = m.body(int(m.geom_bodyid[con.geom1])).name or "<world>"
+                b2 = m.body(int(m.geom_bodyid[con.geom2])).name or "<world>"
+                print("contact %-24s <-> %-24s depth=%.4f"
+                      % (b1, b2, -float(con.dist)))
         for name, root, want in ((("Go2", gid_body, 0.32),) if not a.g1 else
                                  (("Go2", gid_body, 0.32), ("G1", g1_demo_body, 0.77))):
             gr0 = ground_at(float(dd.xpos[root][0]), float(dd.xpos[root][1]))
