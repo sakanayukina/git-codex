@@ -23,7 +23,7 @@ JOINTS = ["FL_hip", "FL_thigh", "FL_calf", "FR_hip", "FR_thigh", "FR_calf",
           "RL_hip", "RL_thigh", "RL_calf", "RR_hip", "RR_thigh", "RR_calf"]
 BASE = os.path.dirname(os.path.abspath(__file__))
 DEMO = os.path.join(BASE, "..", "demo_v32.xml")
-PHYS = os.path.join(BASE, "..", "village_walk_props_all.xml")
+PHYS = os.path.join(BASE, "..", "village_walk_final.xml")
 G1_PHYS = os.path.join(BASE, "..", "g1_terrain_plain.xml")
 G1_POLICY = os.path.join(BASE, "..", "props", "robots", "g1", "motion.pt")
 G1_JOINTS = [
@@ -82,7 +82,7 @@ def main():
 
     hf = next(g for g in range(m.ngeom) if m.geom_type[g] == mujoco.mjtGeom.mjGEOM_HFIELD)
     gid = np.array([-1], dtype=np.int32); grp = np.ones(6, dtype=np.uint8)
-    x, y = 0.0, -20.0          # 空地起步（有代理碰撞后，撞墙/石头会停）
+    x, y = 0.0, -20.0          # 空地起步（撞墙/石头会被代理挡住）
     d.qpos[bq:bq+3] = [x + 500, y + 500, -800]
     mujoco.mj_forward(m, d)
     gz = 5.0
