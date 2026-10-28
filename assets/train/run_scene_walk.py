@@ -23,7 +23,7 @@ JOINTS = ["FL_hip", "FL_thigh", "FL_calf", "FR_hip", "FR_thigh", "FR_calf",
           "RL_hip", "RL_thigh", "RL_calf", "RR_hip", "RR_thigh", "RR_calf"]
 BASE = os.path.dirname(os.path.abspath(__file__))
 DEMO = os.path.join(BASE, "..", "demo_v32.xml")
-PHYS = os.path.join(BASE, "..", "village_walk_props.xml")
+PHYS = os.path.join(BASE, "..", "village_walk_props_all.xml")
 G1_PHYS = os.path.join(BASE, "..", "g1_terrain_plain.xml")
 G1_POLICY = os.path.join(BASE, "..", "props", "robots", "g1", "motion.pt")
 G1_JOINTS = [
@@ -52,6 +52,7 @@ def main():
     ap.add_argument("--follow", action=argparse.BooleanOptionalAction, default=True)
     ap.add_argument("--shot", default="", help="在指定秒数存一张图，如 3")
     ap.add_argument("--check", type=float, default=0.0, help="跑 N 秒后测量身高/穿透")
+    ap.add_argument("--dist", type=float, default=3.6, help="存图相机距离（米）")
     ap.add_argument("--g1", action="store_true", help="同时驱动 G1（实验性，控制器尚未完全对齐）")
     a = ap.parse_args()
 
@@ -250,7 +251,7 @@ def main():
         ren = mujoco.Renderer(dm, 360, 640)
         cam = mujoco.MjvCamera(); mujoco.mjv_defaultFreeCamera(dm, cam)
         cam.lookat[:] = (0.5 * (dd.xpos[gid_body] + dd.xpos[g1_demo_body])) if a.g1 else dd.xpos[gid_body].copy()
-        cam.distance, cam.azimuth, cam.elevation = 8.0, 0, -30
+        cam.distance, cam.azimuth, cam.elevation = a.dist, 135, -10
         ren.update_scene(dd, camera=cam)
         from pngutil import save_rgb
         os.makedirs("shots", exist_ok=True)
