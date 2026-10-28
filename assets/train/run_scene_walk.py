@@ -52,7 +52,8 @@ def main():
     ap.add_argument("--follow", action=argparse.BooleanOptionalAction, default=True)
     ap.add_argument("--shot", default="", help="在指定秒数存一张图，如 3")
     ap.add_argument("--check", type=float, default=0.0, help="跑 N 秒后测量身高/穿透")
-    ap.add_argument("--dist", type=float, default=3.6, help="存图相机距离（米）")
+    ap.add_argument("--dist", type=float, default=0.0,
+                    help="存图相机距离（米）；0 表示按机器人间距自动计算")
     ap.add_argument("--g1", action=argparse.BooleanOptionalAction, default=True,
                     help="同时驱动 G1（默认开启）")
     ap.add_argument("--demo-reset", action=argparse.BooleanOptionalAction, default=True,
@@ -61,6 +62,12 @@ def main():
                     help="展示模式自动复位周期，单位秒；0 表示关闭")
     ap.add_argument("--settle-steps", type=int, default=2500,
                     help="启动前让楼板/瓦砾落地稳定的物理步数；0 表示关闭")
+    ap.add_argument("--go2-start", nargs=2, type=float, default=[-12.0, -17.0],
+                    metavar=("X", "Y"), help="Go2 出生坐标")
+    ap.add_argument("--g1-start", nargs=2, type=float, default=[0.0, -17.5],
+                    metavar=("X", "Y"), help="G1 出生坐标")
+    ap.add_argument("--min-separation", type=float, default=1.5,
+                    help="两台机器人小于该距离时立即复位")
     a = ap.parse_args()
 
     # 展示模型（只用来看）
@@ -90,7 +97,7 @@ def main():
 
     hf = next(g for g in range(m.ngeom) if m.geom_type[g] == mujoco.mjtGeom.mjGEOM_HFIELD)
     gid = np.array([-1], dtype=np.int32); grp = np.ones(6, dtype=np.uint8)
-    x, y = 1.0, -20.0          # 避开接缝小石头后的空地起步
+    x, y = a.go2_start          # Go2 独立西侧通道
     d.qpos[bq:bq+3] = [x + 500, y + 500, -800]
     mujoco.mj_forward(m, d)
     gz = 5.0
@@ -113,7 +120,7 @@ def main():
     gd = mujoco.MjData(gm)
     if gm.nkey > 0:
         mujoco.mj_resetDataKeyframe(gm, gd, 0)
-    g1x, g1y = 0.0, -17.5      # 与 Go2 同区并排，实测 8 s 稳定
+    g1x, g1y = a.g1_start       # G1 已测稳定车道
     ghf = next(g for g in range(gm.ngeom) if gm.geom_type[g] == mujoco.mjtGeom.mjGEOM_HFIELD)
     gd.qpos[0:3] = [g1x + 500.0, g1y + 500.0, -800.0]
     mujoco.mj_forward(gm, gd)
@@ -198,6 +205,15 @@ def main():
     sim_age = 0.0
     reset_count = 0
 
+    def robot_center():
+        if a.g1:
+            return 0.5 * (dd.xpos[gid_body] + dd.xpos[g1_demo_body])
+        return dd.xpos[gid_body].copy()
+
+    def robot_separation():
+        return float(np.linalg.norm(
+            dd.xpos[gid_body] - dd.xpos[g1_demo_body]))
+
     def step_all():
         nonlocal obs, action, target, g1_action, g1_target, g1_obs, g1_step_i
         nonlocal sim_age, reset_count
@@ -209,7 +225,9 @@ def main():
         should_reset = (
             a.demo_reset and a.reset_after > 0 and a.check <= 0 and not a.shot
             and (sim_age >= a.reset_after or go2_up < 0.5
-                 or (a.g1 and g1_up < 0.5)))
+                 or (a.g1 and g1_up < 0.5)
+                 or (a.g1 and a.min_separation > 0
+                     and robot_separation() < a.min_separation)))
         if should_reset:
             reset_go2()
             if a.g1:
@@ -338,9 +356,10 @@ def main():
             if gr0 is not None:
                 print("%s 根部离地 %.3f m（正常约 %.2f）" % (name, float(dd.xpos[root][2]) - gr0, want))
 
-        print("Go2 位移 %.2f m，G1 位移 %.2f m"
+        print("Go2 位移 %.2f m，G1 位移 %.2f m，两机间距 %.2f m"
               % (float(np.hypot(dd.xpos[gid_body][0]-x0, dd.xpos[gid_body][1]-y0)),
-                 float(np.hypot(dd.xpos[g1_demo_body][0]-g1x, dd.xpos[g1_demo_body][1]-g1y))))
+                 float(np.hypot(dd.xpos[g1_demo_body][0]-g1x, dd.xpos[g1_demo_body][1]-g1y)),
+                 robot_separation()))
         return
 
     if a.shot:
@@ -349,8 +368,9 @@ def main():
             step_all()
         ren = mujoco.Renderer(dm, 360, 640)
         cam = mujoco.MjvCamera(); mujoco.mjv_defaultFreeCamera(dm, cam)
-        cam.lookat[:] = (0.5 * (dd.xpos[gid_body] + dd.xpos[g1_demo_body])) if a.g1 else dd.xpos[gid_body].copy()
-        cam.distance, cam.azimuth, cam.elevation = a.dist, 135, -10
+        cam.lookat[:] = robot_center()
+        distance = a.dist if a.dist > 0 else max(10.0, 1.2 * robot_separation())
+        cam.distance, cam.azimuth, cam.elevation = distance, 135, -10
         ren.update_scene(dd, camera=cam)
         from pngutil import save_rgb
         os.makedirs("shots", exist_ok=True)
@@ -376,12 +396,12 @@ def main():
             f"display distance Go2={go2_dist:.2f} m "
             f"(z={dd.xpos[gid_body][2]:.2f}), "
             f"G1={g1_dist:.2f} m (z={dd.xpos[g1_demo_body][2]:.2f}), "
-            f"resets={reset_count}")
+            f"separation={robot_separation():.2f} m, resets={reset_count}")
         return
 
     with mujoco.viewer.launch_passive(dm, dd) as v:
         v.cam.type = mujoco.mjtCamera.mjCAMERA_FREE
-        v.cam.distance = 8.0
+        v.cam.distance = max(10.0, 1.2 * robot_separation())
         v.cam.azimuth = 0
         v.cam.elevation = -30
         v.cam.lookat[:] = (0.5 * (
@@ -391,9 +411,7 @@ def main():
         while v.is_running():
             step_all()
             if a.follow:
-                v.cam.lookat[:] = (0.5 * (
-                    dd.xpos[gid_body] + dd.xpos[g1_demo_body])
-                    if a.g1 else dd.xpos[gid_body].copy())
+                v.cam.lookat[:] = robot_center()
             v.sync()
             t_next += 0.02
             dt = t_next - time.perf_counter()

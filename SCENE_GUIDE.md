@@ -115,6 +115,7 @@ C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_s
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --no-demo-reset
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --walk --headless 18
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --settle-steps 0
+C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --min-separation 1.5
 ```
 
 机器狗 Go2（独立场景，home 姿态起步）：
