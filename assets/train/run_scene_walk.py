@@ -59,12 +59,15 @@ def main():
                     help="展示模式按固定周期自动复位（默认开启）")
     ap.add_argument("--reset-after", type=float, default=8.0,
                     help="展示模式自动复位周期，单位秒；0 表示关闭")
+    ap.add_argument("--settle-steps", type=int, default=2500,
+                    help="启动前让楼板/瓦砾落地稳定的物理步数；0 表示关闭")
     a = ap.parse_args()
 
     # 展示模型（只用来看）
     dm = mujoco.MjModel.from_xml_path(DEMO)
     dd = mujoco.MjData(dm)
     mujoco.mj_forward(dm, dd)
+    demo_qpos0 = dd.qpos.copy()
     gid_body = mujoco.mj_name2id(dm, mujoco.mjtObj.mjOBJ_BODY, "go2_base")
     q0 = dm.body_quat[gid_body].copy()
     demo_jadr = [int(dm.jnt_qposadr[mujoco.mj_name2id(dm, mujoco.mjtObj.mjOBJ_JOINT, j + "_joint")])
@@ -87,7 +90,7 @@ def main():
 
     hf = next(g for g in range(m.ngeom) if m.geom_type[g] == mujoco.mjtGeom.mjGEOM_HFIELD)
     gid = np.array([-1], dtype=np.int32); grp = np.ones(6, dtype=np.uint8)
-    x, y = 0.0, -20.0          # 空地起步（撞墙/石头会被代理挡住）
+    x, y = 1.0, -20.0          # 避开接缝小石头后的空地起步
     d.qpos[bq:bq+3] = [x + 500, y + 500, -800]
     mujoco.mj_forward(m, d)
     gz = 5.0
@@ -156,6 +159,15 @@ def main():
     g1_obs = np.zeros(g1p.NUM_OBS, dtype=np.float32)
     g1_step_i = 0
     g1x0 = float(gd.qpos[0]); g1y0 = float(gd.qpos[1])
+
+    if a.settle_steps > 0:
+        for _ in range(a.settle_steps):
+            mujoco.mj_step(dm, dd)
+        # 只恢复展示机器人的关节；动态瓦砾保留落地后的姿态。
+        dd.qpos[demo_jadr] = demo_qpos0[demo_jadr]
+        if a.g1:
+            dd.qpos[g1_demo_jadr] = demo_qpos0[g1_demo_jadr]
+        mujoco.mj_forward(dm, dd)
 
     def reset_go2():
         d.qpos[bq:bq + 3] = [x, y, gz + 0.45]

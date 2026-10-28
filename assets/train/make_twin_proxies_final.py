@@ -38,6 +38,8 @@ def main():
                     help="被追加代理的轻量物理场景")
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--rock-scale", type=float, default=0.9)
+    ap.add_argument("--seam-min-r", type=float, default=0.15,
+                    help="接缝小石头的碰撞代理最小半径")
     ap.add_argument("--prop-scale", type=float, default=0.5)
     ap.add_argument("--prop-min-r", type=float, default=0.35)
     a = ap.parse_args()
@@ -57,7 +59,7 @@ def main():
                 robot.add(x)
                 stack.extend(j for j in range(m.nbody) if int(m.body_parentid[j]) == x)
 
-    parts, n_box, n_rock, n_prop = [], 0, 0, 0
+    parts, n_box, n_rock, n_small, n_prop = [], 0, 0, 0, 0
     for g in range(m.ngeom):
         bid = int(m.geom_bodyid[g])
         bn = names[bid]
@@ -83,12 +85,15 @@ def main():
         r = float(m.geom_rbound[g])
 
         # 2) 石头（贴合一点）
-        if any(k in low for k in ROCK_KEYS) and r >= 0.4:
+        is_rock = any(k in low for k in ROCK_KEYS) and r >= 0.4
+        is_seam_stone = low.startswith("seam_") and r >= a.seam_min_r
+        if is_rock or is_seam_stone:
             parts.append(
                 '    <geom name="rk_%d" type="sphere" pos="%.3f %.3f %.3f" size="%.3f" '
                 'rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>'
                 % (n_rock, p[0], p[1], p[2], r * a.rock_scale))
             n_rock += 1
+            n_small += int(is_seam_stone and not is_rock)
             continue
 
         # 3) 其它道具
@@ -102,7 +107,8 @@ def main():
     s = open(a.base, encoding="utf-8").read()
     s = s.replace("</worldbody>", "\n".join(parts) + "\n  </worldbody>", 1)
     open(a.out, "w", encoding="utf-8").write(s)
-    print("生成 %s：建筑 %d / 石头 %d / 其它道具 %d" % (a.out, n_box, n_rock, n_prop), flush=True)
+    print("生成 %s：建筑 %d / 石头 %d（其中接缝小石头 %d）/ 其它道具 %d"
+          % (a.out, n_box, n_rock, n_small, n_prop), flush=True)
 
 
 if __name__ == "__main__":
