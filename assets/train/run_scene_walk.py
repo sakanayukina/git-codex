@@ -23,7 +23,7 @@ JOINTS = ["FL_hip", "FL_thigh", "FL_calf", "FR_hip", "FR_thigh", "FR_calf",
           "RL_hip", "RL_thigh", "RL_calf", "RR_hip", "RR_thigh", "RR_calf"]
 BASE = os.path.dirname(os.path.abspath(__file__))
 DEMO = os.path.join(BASE, "..", "demo_v32.xml")
-PHYS = os.path.join(BASE, "..", "village_walk4_patch.xml")
+PHYS = os.path.join(BASE, "..", "village_walk_props.xml")
 G1_PHYS = os.path.join(BASE, "..", "g1_terrain_plain.xml")
 G1_POLICY = os.path.join(BASE, "..", "props", "robots", "g1", "motion.pt")
 G1_JOINTS = [
@@ -81,7 +81,7 @@ def main():
 
     hf = next(g for g in range(m.ngeom) if m.geom_type[g] == mujoco.mjtGeom.mjGEOM_HFIELD)
     gid = np.array([-1], dtype=np.int32); grp = np.ones(6, dtype=np.uint8)
-    x, y = 0.0, -20.0          # 空地起步（不在 H1 碰撞盒内，避免穿墙）
+    x, y = 0.0, -20.0          # 空地起步（有代理碰撞后，撞墙/石头会停）
     d.qpos[bq:bq+3] = [x + 500, y + 500, -800]
     mujoco.mj_forward(m, d)
     gz = 5.0
@@ -249,7 +249,7 @@ def main():
             step_all()
         ren = mujoco.Renderer(dm, 360, 640)
         cam = mujoco.MjvCamera(); mujoco.mjv_defaultFreeCamera(dm, cam)
-        cam.lookat[:] = 0.5 * (dd.xpos[gid_body] + dd.xpos[g1_demo_body])
+        cam.lookat[:] = (0.5 * (dd.xpos[gid_body] + dd.xpos[g1_demo_body])) if a.g1 else dd.xpos[gid_body].copy()
         cam.distance, cam.azimuth, cam.elevation = 8.0, 0, -30
         ren.update_scene(dd, camera=cam)
         from pngutil import save_rgb
@@ -283,7 +283,7 @@ def main():
         v.cam.distance = 8.0
         v.cam.azimuth = 0
         v.cam.elevation = -30
-        v.cam.lookat[:] = 0.5 * (dd.xpos[gid_body] + dd.xpos[g1_demo_body])
+        v.cam.lookat[:] = (0.5 * (dd.xpos[gid_body] + dd.xpos[g1_demo_body])) if a.g1 else dd.xpos[gid_body].copy()
         t_next = time.perf_counter()
         while v.is_running():
             step_all()

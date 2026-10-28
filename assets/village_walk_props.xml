@@ -1,0 +1,243 @@
+<mujoco model="village hfield + robot only">
+  <compiler angle="radian"/>
+  <option timestep="0.005" integrator="implicitfast" solver="Newton" iterations="100" ls_iterations="50"/>
+  <default>
+    <joint damping="0.0" armature="0.01" frictionloss="0.01"/>
+    <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+    </default>
+  </default>
+  <asset>
+    <texture name="gtex" type="2d" file="tex/ground_baked_hd.png"/>
+    <material name="gmat" texture="gtex" rgba="1 1 1 1" texrepeat="0.005 0.005" texuniform="true"/>
+
+    <hfield name="terrain" file="terrain/height_field_patch.png"
+            size="100.0 100.0 66.50 0.01"/>
+    
+    <material name="metal" rgba=".9 .95 .95 1" />
+    <material name="black" rgba="0 0 0 1" />
+    <material name="white" rgba="1 1 1 1" />
+    <material name="gray" rgba="0.671705 0.692426 0.774270 1" />
+
+    <mesh name="base_0" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/base.obj"/>
+    <mesh name="base_1" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/base.obj"/>
+    <mesh name="base_2" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/base.obj"/>
+    <mesh name="base_3" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/base.obj"/>
+    <mesh name="base_4" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/base.obj"/>
+    <mesh name="hip_0" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/hip.obj"/>
+    <mesh name="hip_1" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/hip.obj"/>
+    <mesh name="thigh_0" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/thigh.obj"/>
+    <mesh name="thigh_1" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/thigh.obj"/>
+    <mesh name="thigh_mirror_0" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/thigh_mirror.obj"/>
+    <mesh name="thigh_mirror_1" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/thigh_mirror.obj"/>
+    <mesh name="calf_0" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/calf.obj"/>
+    <mesh name="calf_1" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/calf.obj"/>
+    <mesh name="calf_mirror_0" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/calf_mirror.obj"/>
+    <mesh name="calf_mirror_1" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/calf_mirror.obj"/>
+    <mesh name="foot" file="C:/Users/18967/Desktop/git/assets/props/robots/go2_urdf/meshes/foot.obj"/>
+  
+  </asset>
+  <worldbody>
+    <light pos="0 0 20" dir="0 0 -1" directional="true"/>
+    <geom name="ground" type="hfield" hfield="terrain" material="gmat" friction="1.0 0.02 0.001"/>
+    <body name="base" pos="12.00 -18.00 5.40">
+    <!-- <body name="base" pos="-5 2 0.445"> -->
+    <!-- <body name="base" pos="-5 2 0.30" quat="0 0 0.706 0.706"> -->
+    <!-- <body name="base" pos="-5 2 0.445" quat="0 0 1 0"> -->
+    <!-- <body name="base" pos="0 0 0.16" quat="0 0 0.706 0.706"> -->
+    <!-- <body name="base" pos="0 0 0.1" quat="0 0 1 0"> -->
+      <inertial pos="0.021112 0 -0.005366"
+                mass="6.921"
+                diaginertia="0.02448 0.098077 0.107" />
+      <freejoint name="root"/>
+      <geom mesh="base_0" material="black" class="visual" />
+      <geom mesh="base_1" material="black" class="visual" />
+      <geom mesh="base_2" material="black" class="visual" />
+      <geom mesh="base_3" material="white" class="visual" />
+      <geom mesh="base_4" material="gray" class="visual" />
+
+      <geom name="base_box"      type="box"      size="0.1881 0.04675 0.057"/>
+      <geom name="base_cyl1"     type="cylinder" size="0.05 0.045"   pos="0.285 0 0.01"/>
+      <geom name="base_sphere1"  type="sphere"   size="0.047"        pos="0.293 0 -0.06"/>
+
+      <body name="FL_hip" pos="0.1934 0.0465 0">
+        <inertial pos="-0.0054 0.00194 -0.000105" quat="0.497014 0.499245 0.505462 0.498237" mass="0.678" diaginertia="0.00088403 0.000596003 0.000479967"/>
+        <joint name="FL_hip_joint" pos="0 0 0" axis="1 0 0" range="-1.0472 1.0472" actuatorfrcrange="-23.7 23.7"/>
+        <geom mesh="hip_0" material="metal" class="visual" />
+        <geom mesh="hip_1" material="gray" class="visual" />
+        <geom size="0.046 0.02" pos="0 0.08 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 1 1 1"/>
+
+        <body name="FL_thigh" pos="0 0.0955 0">
+        <inertial pos="-0.00374 -0.0223 -0.0327" quat="0.829533 0.0847635 -0.0200632 0.551623" mass="1.152" diaginertia="0.00594973 0.00584149 0.000878787"/>
+        <joint name="FL_thigh_joint" pos="0 0 0" axis="0 1 0" range="-1.5708 3.4907" actuatorfrcrange="-23.7 23.7"/>
+        <geom mesh="thigh_0" material="metal" class="visual" />
+        <geom mesh="thigh_1" material="gray" class="visual" />
+        <geom size="0.055 0.01225 0.017" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="1 1 1 1"/>
+        <body name="FL_calf" pos="0 0 -0.213">
+        <inertial pos="0.00629595 -0.000622121 -0.141417" quat="0.710672 0.00154099 -0.00450087 0.703508" mass="0.241352" diaginertia="0.0014901 0.00146356 5.31397e-05"/>
+        <joint name="FL_calf_joint" pos="0 0 0" axis="0 1 0" range="-2.7227 -0.83776" actuatorfrcrange="-35.55 35.55"/>
+        <geom mesh="calf_0" material="gray" class="visual" />
+        <geom mesh="calf_1" material="black" class="visual" />
+        <geom size="0.012 0.06" pos="0.008 0 -0.06" quat="0.994493 0 -0.104807 0" type="cylinder" rgba="1 1 1 1"/>
+        <geom size="0.011 0.0325" pos="0.02 0 -0.148" quat="0.999688 0 0.0249974 0" type="cylinder"/>
+        <geom size="0.0155 0.015" pos="0.00801333 0 -0.18745" quat="0.965093 0 0.261909 0" type="cylinder"/>
+        <geom pos="0 0 -0.213" mesh="foot" class="visual" material="black" />
+        <geom size="0.022" pos="-0.002 0 -0.213" rgba="1 1 1 1"/>
+        </body>
+        </body>
+      </body>
+      <body name="FR_hip" pos="0.1934 -0.0465 0">
+        <inertial pos="-0.0054 -0.00194 -0.000105" quat="0.498237 0.505462 0.499245 0.497014" mass="0.678" diaginertia="0.00088403 0.000596003 0.000479967"/>
+        <joint name="FR_hip_joint" pos="0 0 0" axis="1 0 0" range="-1.0472 1.0472" actuatorfrcrange="-23.7 23.7"/>
+        <geom mesh="hip_0" material="metal" class="visual" quat="4.63268e-05 1 0 0" />
+        <geom mesh="hip_1" material="gray" class="visual" quat="4.63268e-05 1 0 0" />
+        <geom size="0.046 0.02" pos="0 -0.08 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 1 1 1"/>
+        <body name="FR_thigh" pos="0 -0.0955 0">
+        <inertial pos="-0.00374 0.0223 -0.0327" quat="0.551623 -0.0200632 0.0847635 0.829533" mass="1.152" diaginertia="0.00594973 0.00584149 0.000878787"/>
+        <joint name="FR_thigh_joint" pos="0 0 0" axis="0 1 0" range="-1.5708 3.4907" actuatorfrcrange="-23.7 23.7"/>
+        <geom mesh="thigh_mirror_0" material="metal" class="visual" />
+        <geom mesh="thigh_mirror_1" material="gray" class="visual" />
+        <geom size="0.055 0.01225 0.017" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="1 1 1 1"/>
+        <body name="FR_calf" pos="0 0 -0.213">
+        <inertial pos="0.00629595 0.000622121 -0.141417" quat="0.703508 -0.00450087 0.00154099 0.710672" mass="0.241352" diaginertia="0.0014901 0.00146356 5.31397e-05"/>
+        <joint name="FR_calf_joint" pos="0 0 0" axis="0 1 0" range="-2.7227 -0.83776" actuatorfrcrange="-35.55 35.55"/>
+        <geom mesh="calf_mirror_0" material="gray" class="visual" />
+        <geom mesh="calf_mirror_1" material="black" class="visual" />
+        <geom size="0.013 0.06" pos="0.01 0 -0.06" quat="0.995004 0 -0.0998334 0" type="cylinder" rgba="1 1 1 1"/>
+        <geom size="0.011 0.0325" pos="0.02 0 -0.148" quat="0.999688 0 0.0249974 0" type="cylinder"/>
+        <geom size="0.0155 0.015" pos="0.00801333 0 -0.18745" quat="0.965093 0 0.261909 0" type="cylinder"/>
+        <geom pos="0 0 -0.213" mesh="foot" class="visual" material="black" />
+        <geom size="0.022" pos="-0.002 0 -0.213" rgba="1 1 1 1"/>
+        </body>
+        </body>
+      </body>
+      <body name="RL_hip" pos="-0.1934 0.0465 0">
+        <inertial pos="0.0054 0.00194 -0.000105" quat="0.505462 0.498237 0.497014 0.499245" mass="0.678" diaginertia="0.00088403 0.000596003 0.000479967"/>
+        <joint name="RL_hip_joint" pos="0 0 0" axis="1 0 0" range="-1.0472 1.0472" actuatorfrcrange="-23.7 23.7"/>
+        <geom mesh="hip_0" material="metal" class="visual" quat="4.63268e-05 0 1 0" />
+        <geom mesh="hip_1" material="gray" class="visual" quat="4.63268e-05 0 1 0" />
+        <geom size="0.046 0.02" pos="0 0.08 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 1 1 1"/>
+        <body name="RL_thigh" pos="0 0.0955 0">
+        <inertial pos="-0.00374 -0.0223 -0.0327" quat="0.829533 0.0847635 -0.0200632 0.551623" mass="1.152" diaginertia="0.00594973 0.00584149 0.000878787"/>
+        <joint name="RL_thigh_joint" pos="0 0 0" axis="0 1 0" range="-0.5236 4.5379" actuatorfrcrange="-23.7 23.7"/>
+        <geom mesh="thigh_0" material="metal" class="visual" />
+        <geom mesh="thigh_1" material="gray" class="visual" />
+        <geom size="0.055 0.01225 0.017" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="1 1 1 1"/>
+        <body name="RL_calf" pos="0 0 -0.213">
+        <inertial pos="0.00629595 -0.000622121 -0.141417" quat="0.710672 0.00154099 -0.00450087 0.703508" mass="0.241352" diaginertia="0.0014901 0.00146356 5.31397e-05"/>
+        <joint name="RL_calf_joint" pos="0 0 0" axis="0 1 0" range="-2.7227 -0.83776" actuatorfrcrange="-35.55 35.55"/>
+        <geom mesh="calf_0" material="gray" class="visual" />
+        <geom mesh="calf_1" material="black" class="visual" />
+        <geom size="0.013 0.06" pos="0.01 0 -0.06" quat="0.995004 0 -0.0998334 0" type="cylinder" rgba="1 1 1 1"/>
+        <geom size="0.011 0.0325" pos="0.02 0 -0.148" quat="0.999688 0 0.0249974 0" type="cylinder"/>
+        <geom size="0.0155 0.015" pos="0.00801333 0 -0.18745" quat="0.965093 0 0.261909 0" type="cylinder"/>
+        <geom pos="0 0 -0.213" mesh="foot" class="visual" material="black" />
+        <geom size="0.022" pos="-0.002 0 -0.213" rgba="1 1 1 1"/>
+        </body>
+        </body>
+      </body>
+
+      <body name="RR_hip" pos="-0.1934 -0.0465 0">
+        <inertial pos="0.0054 -0.00194 -0.000105" quat="0.499245 0.497014 0.498237 0.505462" mass="0.678" diaginertia="0.00088403 0.000596003 0.000479967"/>
+        <joint name="RR_hip_joint" pos="0 0 0" axis="1 0 0" range="-1.0472 1.0472" actuatorfrcrange="-23.7 23.7"/>
+        <geom mesh="hip_0" material="metal" class="visual"
+          quat="2.14617e-09 4.63268e-05 4.63268e-05 -1" />
+        <geom mesh="hip_1" material="gray" class="visual"
+          quat="2.14617e-09 4.63268e-05 4.63268e-05 -1" />
+        <geom size="0.046 0.02" pos="0 -0.08 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 1 1 1"/>
+        <body name="RR_thigh" pos="0 -0.0955 0">
+        <inertial pos="-0.00374 0.0223 -0.0327" quat="0.551623 -0.0200632 0.0847635 0.829533" mass="1.152" diaginertia="0.00594973 0.00584149 0.000878787"/>
+        <joint name="RR_thigh_joint" pos="0 0 0" axis="0 1 0" range="-0.5236 4.5379" actuatorfrcrange="-23.7 23.7"/>
+        <geom mesh="thigh_mirror_0" material="metal" class="visual" />
+        <geom mesh="thigh_mirror_1" material="gray" class="visual" />
+        <geom size="0.055 0.01225 0.017" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="1 1 1 1"/>
+        <body name="RR_calf" pos="0 0 -0.213">
+        <inertial pos="0.00629595 0.000622121 -0.141417" quat="0.703508 -0.00450087 0.00154099 0.710672" mass="0.241352" diaginertia="0.0014901 0.00146356 5.31397e-05"/>
+        <joint name="RR_calf_joint" pos="0 0 0" axis="0 1 0" range="-2.7227 -0.83776" actuatorfrcrange="-35.55 35.55"/>
+        <geom mesh="calf_mirror_0" material="gray" class="visual" />
+        <geom mesh="calf_mirror_1" material="black" class="visual" />
+        <geom size="0.013 0.06" pos="0.01 0 -0.06" quat="0.995004 0 -0.0998334 0" type="cylinder" rgba="1 1 1 1"/>
+        <geom size="0.011 0.0325" pos="0.02 0 -0.148" quat="0.999688 0 0.0249974 0" type="cylinder"/>
+        <geom size="0.0155 0.015" pos="0.00801333 0 -0.18745" quat="0.965093 0 0.261909 0" type="cylinder"/>
+        <geom pos="0 0 -0.213" mesh="foot" class="visual" material="black" />
+        <geom size="0.022" pos="-0.002 0 -0.213" rgba="1 1 1 1"/>
+        </body>
+        </body>
+      </body>
+
+    </body>
+  
+  
+      <geom name="proxy_0" type="box" pos="16.481 -10.350 6.371" quat="-0.13917 0.00000 0.00000 0.99027" size="1.780 0.180 1.500" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_1" type="box" pos="11.810 -11.690 6.371" quat="-0.13917 0.00000 0.00000 0.99027" size="1.780 0.180 1.500" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_2" type="box" pos="14.146 -11.020 7.321" quat="-0.13917 0.00000 0.00000 0.99027" size="0.650 0.180 0.550" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_3" type="box" pos="15.854 -16.980 6.371" quat="-0.13917 0.00000 0.00000 0.99027" size="4.200 0.180 1.500" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_4" type="box" pos="19.037 -12.842 6.371" quat="-0.13917 0.00000 0.00000 0.99027" size="0.180 3.100 1.500" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_5" type="box" pos="10.963 -15.158 6.371" quat="-0.13917 0.00000 0.00000 0.99027" size="0.180 3.100 1.500" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_6" type="box" pos="-29.294 -11.168 8.411" quat="0.99452 0.00000 0.00000 -0.10453" size="3.820 0.180 2.700" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_7" type="box" pos="-20.452 -13.048 8.411" quat="0.99452 0.00000 0.00000 -0.10453" size="3.820 0.180 2.700" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_8" type="box" pos="-24.873 -12.108 10.561" quat="0.99452 0.00000 0.00000 -0.10453" size="0.700 0.180 0.550" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_9" type="box" pos="-23.127 -3.892 8.411" quat="0.99452 0.00000 0.00000 -0.10453" size="8.350 0.180 2.700" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_10" type="box" pos="-32.168 -6.264 8.411" quat="0.99452 0.00000 0.00000 -0.10453" size="0.180 4.200 2.700" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_11" type="box" pos="-15.832 -9.736 8.411" quat="0.99452 0.00000 0.00000 -0.10453" size="0.180 4.200 2.700" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_12" type="box" pos="30.347 0.092 7.526" quat="0.97030 0.00000 0.00000 -0.24192" size="1.680 0.180 2.300" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_13" type="box" pos="34.461 -2.096 7.526" quat="0.97030 0.00000 0.00000 -0.24192" size="1.680 0.180 2.300" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_14" type="box" pos="32.404 -1.002 9.276" quat="0.97030 0.00000 0.00000 -0.24192" size="0.650 0.180 0.550" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_15" type="box" pos="35.596 5.002 7.526" quat="0.97030 0.00000 0.00000 -0.24192" size="4.000 0.180 2.300" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_16" type="box" pos="30.468 3.878 7.526" quat="0.97030 0.00000 0.00000 -0.24192" size="0.180 3.400 2.300" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_17" type="box" pos="37.532 0.122 7.526" quat="0.97030 0.00000 0.00000 -0.24192" size="0.180 3.400 2.300" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_18" type="box" pos="-11.795 -30.188 4.903" quat="0.93358 0.00000 0.00000 0.35837" size="1.850 0.180 1.600" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_19" type="box" pos="-7.856 -26.642 4.903" quat="0.93358 0.00000 0.00000 0.35837" size="1.850 0.180 1.600" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_20" type="box" pos="-9.825 -28.415 5.953" quat="0.93358 0.00000 0.00000 0.35837" size="0.800 0.180 0.550" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_21" type="box" pos="-14.175 -23.585 4.903" quat="0.93358 0.00000 0.00000 0.35837" size="4.500 0.180 1.600" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_22" type="box" pos="-15.344 -29.011 4.903" quat="0.93358 0.00000 0.00000 0.35837" size="0.180 3.250 1.600" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_23" type="box" pos="-8.656 -22.989 4.903" quat="0.93358 0.00000 0.00000 0.35837" size="0.180 3.250 1.600" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_24" type="box" pos="-25.846 -44.423 2.710" quat="0.98481 0.00000 0.00000 0.17365" size="6.100 0.180 1.100" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_25" type="box" pos="-26.154 -43.577 2.710" quat="0.98481 0.00000 0.00000 0.17365" size="6.100 0.180 1.100" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_26" type="box" pos="-31.732 -46.086 2.710" quat="0.98481 0.00000 0.00000 0.17365" size="0.180 0.450 1.100" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_27" type="box" pos="-20.268 -41.914 2.710" quat="0.98481 0.00000 0.00000 0.17365" size="0.180 0.450 1.100" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_28" type="sphere" pos="3.087 -0.093 7.149" size="1.167" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_29" type="sphere" pos="18.859 0.701 6.253" size="2.124" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_30" type="sphere" pos="12.963 24.433 10.932" size="2.596" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_31" type="sphere" pos="28.204 23.205 7.875" size="2.596" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_32" type="sphere" pos="-7.576 27.583 12.996" size="1.167" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_33" type="sphere" pos="-22.475 6.855 9.488" size="1.167" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_34" type="sphere" pos="-29.897 -7.525 8.633" size="1.167" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_35" type="sphere" pos="30.771 -22.895 4.020" size="1.065" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_36" type="sphere" pos="10.000 -6.000 7.135" size="4.389" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_37" type="sphere" pos="6.800 -4.600 6.935" size="3.640" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_38" type="sphere" pos="12.900 -4.200 7.035" size="3.164" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_39" type="sphere" pos="23.266 -8.558 6.077" size="1.767" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_40" type="sphere" pos="11.323 -5.933 5.790" size="1.060" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_41" type="sphere" pos="10.864 -8.670 6.033" size="1.767" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_42" type="sphere" pos="21.032 -9.862 5.790" size="1.060" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_43" type="sphere" pos="14.691 -24.995 4.866" size="1.767" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_44" type="sphere" pos="9.485 -13.845 5.790" size="1.060" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_45" type="sphere" pos="7.681 -14.878 6.033" size="1.767" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_46" type="sphere" pos="15.700 -7.509 6.033" size="1.767" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_47" type="sphere" pos="20.288 -13.950 6.033" size="1.767" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_48" type="sphere" pos="16.766 -21.064 5.828" size="1.767" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_49" type="sphere" pos="23.571 -20.388 5.595" size="1.060" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_50" type="sphere" pos="9.084 -12.768 5.790" size="1.060" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_51" type="sphere" pos="-3.943 -16.165 5.736" size="1.767" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_52" type="sphere" pos="-1.292 -21.679 5.570" size="1.767" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_53" type="sphere" pos="3.587 -22.084 5.388" size="1.767" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_54" type="sphere" pos="-11.063 -12.614 6.598" size="1.767" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_55" type="sphere" pos="-27.317 -17.002 7.614" size="1.767" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="proxy_56" type="sphere" pos="-3.042 -33.064 5.773" size="1.767" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+  </worldbody>
+  <actuator>
+    <motor name="FL_hip"   joint="FL_hip_joint"/>
+    <motor name="FL_thigh" joint="FL_thigh_joint"/>
+    <motor name="FL_calf"  joint="FL_calf_joint"/>
+    <motor name="FR_hip"   joint="FR_hip_joint"/>
+    <motor name="FR_thigh" joint="FR_thigh_joint"/>
+    <motor name="FR_calf"  joint="FR_calf_joint"/>
+    <motor name="RL_hip"   joint="RL_hip_joint"/>
+    <motor name="RL_thigh" joint="RL_thigh_joint"/>
+    <motor name="RL_calf"  joint="RL_calf_joint"/>
+    <motor name="RR_hip"   joint="RR_hip_joint"/>
+    <motor name="RR_thigh" joint="RR_thigh_joint"/>
+    <motor name="RR_calf"  joint="RR_calf_joint"/>
+  </actuator>
+</mujoco>
