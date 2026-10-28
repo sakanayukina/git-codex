@@ -155,10 +155,11 @@ C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\yard.py --tier ful
 - `assets/village_walk4.xml`：真实村子 hfield + Go2，**3.89 m / 10 s 不摔**
 - `assets/village_go2_plain.xml`：纯地形 + Go2
 - `assets/g1_terrain_plain.xml`：G1 在 H1 台地平整区，**3.64 m / 8 s**
+- `assets/g1_village_final.xml`：G1 + 640 个村庄障碍代理，`(0,-17.5)` 起步 **2.59 m / 8 s**
 
 ```powershell
 C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\run_walk.py --xml assets\village_walk4.xml
-C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\g1_policy.py --xml assets\g1_terrain_plain.xml --vx 0.5 --seconds 8
+C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\g1_policy.py --xml assets\g1_village_final.xml --vx 0.4 --seconds 8 --at 0 -17.5
 ```
 
 **重要限制**：把 `demo_v32` 的 600 个可视 body 整批合进可走场景，会让机器人站住不走（已二分验证：空 body 无影响，带 geom 的 body 有影响）。往 `village_walk4` 加回可视道具时必须按类别逐个加，每加一类都复测。

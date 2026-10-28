@@ -5,6 +5,8 @@
 - 其它道具（木板/箱体/轮胎等）：半径 0.5 × rbound 的球，仅 r ≥ 0.35
 
     python make_twin_proxies_final.py
+    python make_twin_proxies_final.py --base ../g1_terrain_plain.xml \
+        --out ../g1_village_final.xml
 """
 import argparse
 import os
@@ -31,13 +33,16 @@ def quat_rot(q):
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--demo", default=DEMO)
+    ap.add_argument("--base", default=TWIN,
+                    help="被追加代理的轻量物理场景")
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--rock-scale", type=float, default=0.9)
     ap.add_argument("--prop-scale", type=float, default=0.5)
     ap.add_argument("--prop-min-r", type=float, default=0.35)
     a = ap.parse_args()
 
-    m = mujoco.MjModel.from_xml_path(DEMO)
+    m = mujoco.MjModel.from_xml_path(a.demo)
     d = mujoco.MjData(m)
     mujoco.mj_forward(m, d)
     names = [mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, i) or "" for i in range(m.nbody)]
@@ -94,7 +99,7 @@ def main():
                 % (n_prop, p[0], p[1], p[2], r * a.prop_scale))
             n_prop += 1
 
-    s = open(TWIN, encoding="utf-8").read()
+    s = open(a.base, encoding="utf-8").read()
     s = s.replace("</worldbody>", "\n".join(parts) + "\n  </worldbody>", 1)
     open(a.out, "w", encoding="utf-8").write(s)
     print("生成 %s：建筑 %d / 石头 %d / 其它道具 %d" % (a.out, n_box, n_rock, n_prop), flush=True)

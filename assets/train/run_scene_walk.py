@@ -24,7 +24,7 @@ JOINTS = ["FL_hip", "FL_thigh", "FL_calf", "FR_hip", "FR_thigh", "FR_calf",
 BASE = os.path.dirname(os.path.abspath(__file__))
 DEMO = os.path.join(BASE, "..", "demo_v32.xml")
 PHYS = os.path.join(BASE, "..", "village_walk_final.xml")
-G1_PHYS = os.path.join(BASE, "..", "g1_terrain_plain.xml")
+G1_PHYS = os.path.join(BASE, "..", "g1_village_final.xml")
 G1_POLICY = os.path.join(BASE, "..", "props", "robots", "g1", "motion.pt")
 G1_JOINTS = [
     "left_hip_pitch_joint", "left_hip_roll_joint", "left_hip_yaw_joint",
