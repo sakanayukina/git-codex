@@ -108,7 +108,13 @@ convert_multi.py（glTF/GLB 按材质拆分、减面、过滤材质）
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py
 ```
 
-只看静态场景：加 `--static`。无窗口静态自检：加 `--headless`。
+默认同时驱动 Go2 和 G1，并在 8 秒时自动复位。只看静态场景加 `--static`；无窗口静态自检加 `--headless`。
+
+```powershell
+C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --no-g1
+C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --no-demo-reset
+C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --walk --headless 18
+```
 
 机器狗 Go2（独立场景，home 姿态起步）：
 
@@ -176,7 +182,7 @@ C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\g1_policy.py --xml
 | H2 墙面绿色裂缝 | 扫描件本身的洞，减面后变大，能看穿到草地 | 提高减面上限重导，或 `fix_obj_faces.py` 补洞 |
 | 地面 2048² 覆盖 200 m | 草和土近看偏糊 | 可升 4096（约 25 MB），加载会慢一些 |
 | H3/H4 还是占位房 | 论文图里一眼假 | 等真实 6–10 m 宽、≤25 万面的 glTF |
-| 机器人仅静态展示 | v29 中 Go2/G1 焊死基座，不能行走；Go2 爬行步态可用 `run_walk.py`，G1 官方策略仅 12dof 平地 | 需要真机策略/训练再接 |
+| 展示已可双机器人行走 | 默认 Go2 + G1，8 秒自动复位；Go2 约 12 秒会翻，G1 仍是平地策略 | 展示完成；长时自主仍需长 episode 训练、感知和跌倒恢复 |
 | 二次坍塌未接 | 场景是静态的 | 等 DSH 的 `collapse_*` 结构，触发器已就绪 |
 | 官方策略限制 | 官方只提供 G1 平地策略，不能预期它在崎岖地形上能跑 | 需要训练则走 unitree_rl_gym 流程 |
 

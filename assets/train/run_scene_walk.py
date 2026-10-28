@@ -1,10 +1,10 @@
-"""在 demo_v32（完整村子展示场景）里看 Go2 和 G1 走路。
+"""在 demo_v32（完整村子展示场景）里看 Go2 和 G1 持续走路。
 
 做法：物理分别在 `village_walk4.xml`（Go2）和 `g1_terrain_plain.xml`（G1）里闭环，
 每一帧把两台机器人的位姿/关节角“镜像”到 demo_v32 的展示机器人上。
 原因：demo_v32 里道具 body 数量太多，直接在那里跑策略机器人走不动（已在 AGENTS 记录）。
 
-    python run_scene_walk.py                 # 开窗口看
+    python run_scene_walk.py                 # 开窗口看，默认两台机器人循环演示
     python run_scene_walk.py --headless 5    # 不开窗口，报位移
 """
 import argparse
@@ -53,7 +53,12 @@ def main():
     ap.add_argument("--shot", default="", help="在指定秒数存一张图，如 3")
     ap.add_argument("--check", type=float, default=0.0, help="跑 N 秒后测量身高/穿透")
     ap.add_argument("--dist", type=float, default=3.6, help="存图相机距离（米）")
-    ap.add_argument("--g1", action="store_true", help="同时驱动 G1（实验性，控制器尚未完全对齐）")
+    ap.add_argument("--g1", action=argparse.BooleanOptionalAction, default=True,
+                    help="同时驱动 G1（默认开启）")
+    ap.add_argument("--demo-reset", action=argparse.BooleanOptionalAction, default=True,
+                    help="展示模式按固定周期自动复位（默认开启）")
+    ap.add_argument("--reset-after", type=float, default=8.0,
+                    help="展示模式自动复位周期，单位秒；0 表示关闭")
     a = ap.parse_args()
 
     # 展示模型（只用来看）
@@ -105,7 +110,7 @@ def main():
     gd = mujoco.MjData(gm)
     if gm.nkey > 0:
         mujoco.mj_resetDataKeyframe(gm, gd, 0)
-    g1x, g1y = 15.0, -2.0     # H1 台地南侧平地（实测 pelvis 稳定 6.5~6.8）
+    g1x, g1y = 0.0, -17.5      # 与 Go2 同区并排，实测 8 s 稳定
     ghf = next(g for g in range(gm.ngeom) if gm.geom_type[g] == mujoco.mjtGeom.mjGEOM_HFIELD)
     gd.qpos[0:3] = [g1x + 500.0, g1y + 500.0, -800.0]
     mujoco.mj_forward(gm, gd)
@@ -152,8 +157,55 @@ def main():
     g1_step_i = 0
     g1x0 = float(gd.qpos[0]); g1y0 = float(gd.qpos[1])
 
+    def reset_go2():
+        d.qpos[bq:bq + 3] = [x, y, gz + 0.45]
+        d.qpos[bq + 3:bq + 7] = [1.0, 0.0, 0.0, 0.0]
+        d.qpos[qadr] = DEFAULT
+        d.qvel[:] = 0.0
+        d.ctrl[:] = 0.0
+        obs[:] = 0.0
+        action[:] = 0.0
+        target[:] = DEFAULT
+        mujoco.mj_forward(m, d)
+
+    def reset_g1():
+        nonlocal g1_action, g1_target, g1_obs, g1_step_i
+        gd.qpos[0:3] = [g1x, g1y, g1gz + 0.78]
+        gd.qpos[3:7] = [1.0, 0.0, 0.0, 0.0]
+        gd.qpos[7:19] = g1p.DEFAULT
+        gd.qvel[:] = 0.0
+        gd.ctrl[:] = 0.0
+        g1_action[:] = 0.0
+        g1_target[:] = g1_default
+        g1_obs[:] = 0.0
+        g1_step_i = 0
+        if hasattr(g1_net, "reset_memory"):
+            g1_net.reset_memory()
+        mujoco.mj_forward(gm, gd)
+
+    sim_age = 0.0
+    reset_count = 0
+
     def step_all():
         nonlocal obs, action, target, g1_action, g1_target, g1_obs, g1_step_i
+        nonlocal sim_age, reset_count
+        sim_age += 0.02
+        go2_up = float(1.0 - 2.0 * (
+            d.qpos[bq + 4] ** 2 + d.qpos[bq + 5] ** 2))
+        g1_up = float(1.0 - 2.0 * (
+            gd.qpos[4] ** 2 + gd.qpos[5] ** 2))
+        should_reset = (
+            a.demo_reset and a.reset_after > 0 and a.check <= 0 and not a.shot
+            and (sim_age >= a.reset_after or go2_up < 0.5
+                 or (a.g1 and g1_up < 0.5)))
+        if should_reset:
+            reset_go2()
+            if a.g1:
+                reset_g1()
+            sim_age = 0.0
+            reset_count += 1
+            print("[showcase] reset #%d: Go2/G1 respawn" % reset_count, flush=True)
+
         # ---- Go2：4 × 5 ms = 20 ms ----
         for _ in range(4):
             q, qd = d.qpos[qadr], d.qvel[dadr]
@@ -311,7 +363,8 @@ def main():
         print(
             f"display distance Go2={go2_dist:.2f} m "
             f"(z={dd.xpos[gid_body][2]:.2f}), "
-            f"G1={g1_dist:.2f} m (z={dd.xpos[g1_demo_body][2]:.2f})")
+            f"G1={g1_dist:.2f} m (z={dd.xpos[g1_demo_body][2]:.2f}), "
+            f"resets={reset_count}")
         return
 
     with mujoco.viewer.launch_passive(dm, dd) as v:
@@ -319,13 +372,16 @@ def main():
         v.cam.distance = 8.0
         v.cam.azimuth = 0
         v.cam.elevation = -30
-        v.cam.lookat[:] = (0.5 * (dd.xpos[gid_body] + dd.xpos[g1_demo_body])) if a.g1 else dd.xpos[gid_body].copy()
+        v.cam.lookat[:] = (0.5 * (
+            dd.xpos[gid_body] + dd.xpos[g1_demo_body])
+            if a.g1 else dd.xpos[gid_body].copy())
         t_next = time.perf_counter()
         while v.is_running():
             step_all()
             if a.follow:
-                v.cam.lookat[:] = 0.5 * (
+                v.cam.lookat[:] = (0.5 * (
                     dd.xpos[gid_body] + dd.xpos[g1_demo_body])
+                    if a.g1 else dd.xpos[gid_body].copy())
             v.sync()
             t_next += 0.02
             dt = t_next - time.perf_counter()
