@@ -235,6 +235,9 @@ class NavGrid:
             path.append(came[path[-1]])
         path.reverse()
         xy = [self.to_xy(c) for c in path]
+        raw_length = sum(
+            math.hypot(xy[k + 1][0] - xy[k][0], xy[k + 1][1] - xy[k][1])
+            for k in range(len(xy) - 1))
         raw_cells = len(xy)
         xy = self.simplify(xy, max_slope)
         length = sum(math.hypot(xy[k + 1][0] - xy[k][0], xy[k + 1][1] - xy[k][1])
@@ -247,7 +250,8 @@ class NavGrid:
                    for k in range(max(1, len(slopes) - win + 1)))
         gx, gy = self.to_xy(g)
         park = math.hypot(gx - goal_xy[0], gy - goal_xy[1])
-        return dict(points=xy, length=length, max_slope=maxs, sustained=sust, park=park,
+        return dict(points=xy, length=length, raw_length=raw_length,
+                    max_slope=maxs, sustained=sust, park=park,
                     cells=len(xy), raw_cells=raw_cells, cost=gcost[g]), "ok"
 
 
@@ -288,8 +292,9 @@ def main():
         print("起点", a.start, "→ 目标", goal, "：", msg)
         return
     print("起点 %s → 目标 %s" % (a.start, goal))
-    print("路径长 %.1f m，%d 个航点（原始 %d 格），最大坡度 %.1f°"
-          % (r["length"], r["cells"], r["raw_cells"], r["max_slope"]))
+    print("可执行路径 %.1f m（原始 %.1f m），%d 个航点（原始 %d 格），最大坡度 %.1f°"
+          % (r["length"], r["raw_length"], r["cells"],
+             r["raw_cells"], r["max_slope"]))
     print("前 8 个航点:", [tuple(round(v, 1) for v in p) for p in r["points"][:8]])
 
 

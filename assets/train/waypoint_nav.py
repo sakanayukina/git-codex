@@ -116,6 +116,8 @@ def main():
     best = 0.0
     reached_at = None
     fell_at = None
+    travelled = 0.0
+    previous_pos = start.copy()
 
     n = int(a.seconds / 0.02)
     for k in range(n):
@@ -142,6 +144,9 @@ def main():
         for _ in range(4):
             d.ctrl[act] = clip_torque_speed(KP * (tgt - d.qpos[q]) - KD * d.qvel[dof], d.qvel[dof])
             mujoco.mj_step(m, d)
+        current_pos = np.array([d.qpos[bq], d.qpos[bq + 1]])
+        travelled += float(np.linalg.norm(current_pos - previous_pos))
+        previous_pos = current_pos
 
         up = float(d.xmat[bb].reshape(3, 3)[2, 2])
         if up < 0.5:
@@ -167,9 +172,10 @@ def main():
         ("摔倒 @ %.1f s" % fell_at) if fell_at else "超时未到达")
     print("起点 (%.1f, %.1f) → 目标 (%.1f, %.1f)"
           % (a.at[0], a.at[1], goal[0], goal[1]))
-    print("结果: %s | 里程 %.2f m | 航点 %d/%d | 距场地目标 %.2f m | 平均 %.2f m/s"
-          % (status, final_dist, min(waypoint, len(path)), len(path), remain,
-             final_dist / max((reached_at or a.seconds), 1e-6)))
+    print("结果: %s | 实走里程 %.2f m | 净位移 %.2f m | 航点 %d/%d | "
+          "距场地目标 %.2f m | 平均 %.2f m/s"
+          % (status, travelled, final_dist, min(waypoint, len(path)), len(path), remain,
+             travelled / max((reached_at or a.seconds), 1e-6)))
 
 
 if __name__ == "__main__":
