@@ -177,14 +177,18 @@ class NavGrid:
         return result
 
     def plan(self, start_xy, goal_xy, max_slope=15.0, slope_soft=8.0):
-        s = self.nearest_free(start_xy, 4.0, max_slope)
+        s = None
+        for rad in (4.0, 8.0, 15.0, 25.0):
+            s = self.nearest_free(start_xy, rad, max_slope)
+            if s is not None:
+                break
         g = None
         for rad in (4.0, 8.0, 15.0, 25.0):
             g = self.nearest_free(goal_xy, rad, max_slope)
             if g is not None:
                 break
         if s is None:
-            return None, "起点附近 4 m 内无可通行格"
+            return None, "起点附近 25 m 内无可通行格"
         if g is None:
             return None, "目标附近 25 m 内无可通行格"
 
