@@ -23,6 +23,7 @@
 | `assets/buildings.json` | 村落布局配置：7 栋房、主路折线、封路点、堆积锥 |
 | `assets/_tools/` | 全部生成、导入、后处理工具（下节逐个说明） |
 | `assets/_tools/terrain.py` | 统一地形采样：`HfieldSampler`（demo，row 0=-Y）与 `FloatDEMSampler`（`terrain/dem_float.npz`，row 0=+Y） |
+| `assets/_tools/fix_visual_grounding.py` | 用世界 AABB + hfield 精确修正指定建筑/石头的 z 位置 |
 | `assets/props/imported/` | 真实扫描模型：H1/H2/H5/H6/H7、枫树、草块等 |
 | `assets/props/` | Poly Haven 道具：岩石、树桩、枯枝、报废车、隔离墩、轮胎 |
 | `assets/terrain/` | 汶川 DEM 高度图和平滑/整平后的 PNG |
@@ -129,6 +130,12 @@ cd C:\Users\18967\Desktop\git\assets\train
 C:\Users\18967\anaconda3\envs\mujoco\python.exe run_duo.py --seconds 12
 C:\Users\18967\anaconda3\envs\mujoco\python.exe longrun_test.py --robot go2 --policy teacher --xml ../village_walk_final.xml --seconds 60
 C:\Users\18967\anaconda3\envs\mujoco\python.exe waypoint_nav.py --xml ../village_walk_final.xml --at 1 -20 --goal 14 -20 --seconds 45
+```
+
+重新贴合指定的建筑/石头：
+
+```powershell
+C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\fix_visual_grounding.py --xml assets\demo_v32.xml
 ```
 
 机器狗 Go2（独立场景，home 姿态起步）：
