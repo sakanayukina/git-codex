@@ -131,6 +131,7 @@ cd C:\Users\18967\Desktop\git\assets\train
 C:\Users\18967\anaconda3\envs\mujoco\python.exe run_duo.py --seconds 12
 C:\Users\18967\anaconda3\envs\mujoco\python.exe longrun_test.py --robot go2 --policy teacher --xml ../village_walk_final.xml --seconds 60
 C:\Users\18967\anaconda3\envs\mujoco\python.exe waypoint_nav.py --xml ../village_walk_final.xml --at 1 -20 --goal 14 -20 --seconds 45
+C:\Users\18967\anaconda3\envs\mujoco\python.exe waypoint_nav.py --xml ../village_walk_final.xml --at 1 -20 --goal 15 -14 --seconds 120 --astar --max-slope 10
 ```
 
 重新贴合指定的建筑/石头：

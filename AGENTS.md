@@ -116,11 +116,12 @@ cd C:\Users\18967\Desktop\git
 
 **论文核心（最优先，尚未开始）**
 
-1. **任务分配 / 分工算法层**：任务定义（H1–H7）、异构能力约束（可达性矩阵）、
-   分配器接口 + 基线（贪心/最近邻）、评价指标（完成时间 / 完成率 / 里程 / 负载均衡）。
-2. **A\* 绕障 → 实走**：栅格地图与 A* 已可用（`train/nav_grid.py`，7/7 站点可规划）；
-   还差最后一步——把 A* 路径喂给 `waypoint_nav.py` 真正走过去（多航点串联）。
-3. **G1 航点导航**：`train/waypoint_nav.py` 目前只硬编码了 Go2 的关节布局，需补 G1。
+1. **任务分配层**：`Dispatcher` 接口 + 贪心/最近邻基线，输入统一为 A* 代价矩阵。
+2. **指标层**：完成时间 / 完成率 / 里程 / 负载均衡，供所有分配算法共用。
+3. **G1 航点导航**：`waypoint_nav.py` 目前仍是 Go2 关节布局，需补 G1。
+
+`A* 路径 → 多航点实走` 已打通：Go2 从 `(1,-20)` 到 H1 的 A* 路径
+16.0 m / 5 航点 / 41 s 到达路径终点；详细记录见历史文档。
 
 **平台补完（次优先）**
 
@@ -181,7 +182,8 @@ cd C:\Users\18967\Desktop\git
 | Go2 学生 `bc.pt` 连续爬坡 | 边界 **5–10°**（10° 翻倒） | DSH |
 | G1 连续爬坡 | 未测（官方策略预期 2–3°） | — |
 | **A\* 绕障规划**（`train/nav_grid.py`） | **7/7 站点可规划**，路径 15–93 m，持续坡度 5.9–21.4° | DSH |
-| 任务分配 / 规划算法层 | ❌ **尚未开始（论文核心）** | — |
+| **A\* 路径实走**（Go2 → H1） | 规划 16.0 m / 5 航点，**41 s 到达**，距 H1 参考中心 7.0 m | Codex |
+| 任务分配 / 指标层 | ❌ **尚未开始（下一项）** | — |
 
 **关键口径**：长时「不摔」已解决；卡点是**被障碍挡住**，属规划层职责，不是运动层。
 
@@ -193,24 +195,7 @@ cd C:\Users\18967\Desktop\git
 > 本文件只更新「现在有什么 / 下一步 / 当前能力」的摘要。
 > 主文件超过 15 KB 会被系统截断，接手方会看不到最新内容。
 
-## 废弃场景归档（2026-10-29 已执行）
+## 废弃场景
 
-**已移到 `assets/_archive/`（保留可复现，不要再用）**：
-
-| 归档文件 | 被谁取代 |
-|---|---|
-| `village_walk_props.xml`、`village_walk_props_all.xml`、`village_walk_rocks.xml` | `village_walk_final.xml` |
-| `village_walk4.xml` | `village_walk_final.xml` |
-| `village_walk.xml` | `village_walk_final.xml` |
-| `village_go2_plain.xml` | `village_walk_final.xml` |
-
-**故意保留在主目录的（仍是生成器输入或工具默认值，不要归档）**：
-
-| 文件 | 为什么留 |
-|---|---|
-| `village_walk4_patch.xml` | `make_twin_proxies_final.py` 的 `TWIN` 基准场景（生成 610 代理场景的输入） |
-| `g1_terrain_plain.xml` | 生成 `g1_village_final.xml` 的 `--base` 输入 |
-| `demo_v7.xml` / `demo_v28.xml` | Codex `_tools/*` 的默认 `--xml` 用例 |
-
-相关脚本默认值已同步：`watch_village_walk.py`、`village_walk_test.py`、`dbg_village.py`
-都改指向 `village_walk_final.xml`；两个旧代理生成器的输出改到 `_archive/`。
+旧 `village_walk*` 已移到 `assets/_archive/`；当前入口用 `village_walk_final.xml`，
+归档明细见历史文档。

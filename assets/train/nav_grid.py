@@ -148,6 +148,34 @@ class NavGrid:
                 self.slope[i, j] = math.degrees(math.atan(math.hypot(gx, gy)))
 
     # ---------- A* ----------
+    def segment_clear(self, p0, p1, max_slope):
+        """Sample a straight segment and verify every touched cell is passable."""
+        distance = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
+        steps = max(2, int(math.ceil(distance / (self.res * 0.5))))
+        for k in range(steps + 1):
+            t = k / steps
+            x = p0[0] + (p1[0] - p0[0]) * t
+            y = p0[1] + (p1[1] - p0[1]) * t
+            cell = self.to_cell(x, y)
+            if self.blocked[cell] or self.slope[cell] > max_slope:
+                return False
+        return True
+
+    def simplify(self, points, max_slope):
+        """Line-of-sight shortcutting: fewer turns without leaving free cells."""
+        if len(points) <= 2:
+            return list(points)
+        result = [points[0]]
+        current = 0
+        while current < len(points) - 1:
+            nxt = len(points) - 1
+            while nxt > current + 1 and not self.segment_clear(
+                    points[current], points[nxt], max_slope):
+                nxt -= 1
+            result.append(points[nxt])
+            current = nxt
+        return result
+
     def plan(self, start_xy, goal_xy, max_slope=15.0, slope_soft=8.0):
         s = self.nearest_free(start_xy, 4.0, max_slope)
         g = None
@@ -207,6 +235,8 @@ class NavGrid:
             path.append(came[path[-1]])
         path.reverse()
         xy = [self.to_xy(c) for c in path]
+        raw_cells = len(xy)
+        xy = self.simplify(xy, max_slope)
         length = sum(math.hypot(xy[k + 1][0] - xy[k][0], xy[k + 1][1] - xy[k][1])
                      for k in range(len(xy) - 1))
         slopes = [self.slope[c] for c in path]
@@ -218,7 +248,7 @@ class NavGrid:
         gx, gy = self.to_xy(g)
         park = math.hypot(gx - goal_xy[0], gy - goal_xy[1])
         return dict(points=xy, length=length, max_slope=maxs, sustained=sust, park=park,
-                    cells=len(path), cost=gcost[g]), "ok"
+                    cells=len(xy), raw_cells=raw_cells, cost=gcost[g]), "ok"
 
 
 def main():
@@ -258,8 +288,8 @@ def main():
         print("起点", a.start, "→ 目标", goal, "：", msg)
         return
     print("起点 %s → 目标 %s" % (a.start, goal))
-    print("路径长 %.1f m，%d 个航点，最大坡度 %.1f°"
-          % (r["length"], r["cells"], r["max_slope"]))
+    print("路径长 %.1f m，%d 个航点（原始 %d 格），最大坡度 %.1f°"
+          % (r["length"], r["cells"], r["raw_cells"], r["max_slope"]))
     print("前 8 个航点:", [tuple(round(v, 1) for v in p) for p in r["points"][:8]])
 
 

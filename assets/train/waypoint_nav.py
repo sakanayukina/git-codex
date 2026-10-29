@@ -16,6 +16,7 @@ import torch
 BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
 sys.path.insert(0, os.path.join(BASE, "..", "_tools"))
+from nav_grid import NavGrid  # noqa: E402
 from run_ref import DEFAULT, KP, KD, clip_torque_speed, gravity  # noqa: E402
 
 GO2_JOINTS = ["FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
@@ -45,7 +46,32 @@ def main():
     ap.add_argument("--yaw-sign", type=float, default=1.0,
                     help="闭环转向符号；当前策略实测为 +1")
     ap.add_argument("--tolerance", type=float, default=1.0)
+    ap.add_argument("--astar", action="store_true",
+                    help="先用 NavGrid/A* 规划，再串联多航点实走")
+    ap.add_argument("--grid-scene", default=os.path.join(BASE, "..", "village_duo.xml"))
+    ap.add_argument("--max-slope", type=float, default=10.0)
+    ap.add_argument("--slope-soft", type=float, default=8.0)
+    ap.add_argument("--grid-res", type=float, default=1.0)
+    ap.add_argument("--robot-radius", type=float, default=0.35)
+    ap.add_argument("--waypoint-tolerance", type=float, default=0.6)
     a = ap.parse_args()
+
+    goal = np.array(a.goal, dtype=float)
+    start = np.array(a.at, dtype=float)
+    plan = None
+    if a.astar:
+        grid = NavGrid(scene=a.grid_scene, res=a.grid_res,
+                       robot_radius=a.robot_radius)
+        plan, message = grid.plan(
+            start, goal, max_slope=a.max_slope, slope_soft=a.slope_soft)
+        if plan is None:
+            print("A* 规划失败:", message)
+            return
+        path = [np.asarray(point, dtype=float) for point in plan["points"]]
+        print("A*: %.1f m, %d waypoints, max slope %.1f deg"
+              % (plan["length"], len(path), plan["max_slope"]))
+    else:
+        path = [goal]
 
     m = mujoco.MjModel.from_xml_path(a.xml)
     m.opt.timestep = 0.005
@@ -83,8 +109,10 @@ def main():
     net = torch.jit.load(a.policy); net.eval()
     obs = np.zeros(45, dtype=np.float32); a_ = np.zeros(12, dtype=np.float32); tgt = DEFAULT.copy()
 
-    goal = np.array(a.goal, dtype=float)
-    start = np.array([a.at[0], a.at[1]], dtype=float)
+    waypoint = 0
+    while (waypoint < len(path)
+           and np.linalg.norm(path[waypoint] - start) < a.waypoint_tolerance):
+        waypoint += 1
     best = 0.0
     reached_at = None
     fell_at = None
@@ -92,17 +120,24 @@ def main():
     n = int(a.seconds / 0.02)
     for k in range(n):
         pos = np.array([d.qpos[bq], d.qpos[bq+1]])
-        to_goal = goal - pos
-        dist_goal = float(np.linalg.norm(to_goal))
-        best = max(best, float(np.linalg.norm(pos - start)))
-        if dist_goal < a.tolerance and reached_at is None:
+        tolerance = (a.tolerance if waypoint == len(path) - 1
+                     else a.waypoint_tolerance)
+        while (waypoint < len(path)
+               and np.linalg.norm(path[waypoint] - pos) < tolerance):
+            waypoint += 1
+        if waypoint >= len(path):
             reached_at = k * 0.02
             break
+        target = path[waypoint]
+        to_goal = target - pos
+        dist_goal = float(np.linalg.norm(to_goal))
+        best = max(best, float(np.linalg.norm(pos - start)))
 
         err = wrap(np.arctan2(to_goal[1], to_goal[0]) - yaw_of(d.qpos[bq+3:bq+7]))
         yaw_cmd = float(np.clip(a.yaw_sign * a.kp_yaw * err, -1.5, 1.5))
-        # 接近目标时减速
-        vx = a.vx if dist_goal > 2.0 else a.vx * max(dist_goal / 2.0, 0.3)
+        # 航点前减速，转向误差大时降低前进速度。
+        vx = a.vx if dist_goal > 1.5 else a.vx * max(dist_goal / 1.5, 0.35)
+        vx *= max(0.25, np.cos(err) ** 2)
 
         for _ in range(4):
             d.ctrl[act] = clip_torque_speed(KP * (tgt - d.qpos[q]) - KD * d.qvel[dof], d.qvel[dof])
@@ -127,12 +162,14 @@ def main():
     pos = np.array([d.qpos[bq], d.qpos[bq+1]])
     final_dist = float(np.linalg.norm(pos - start))
     remain = float(np.linalg.norm(goal - pos))
-    status = ("到达目标 @ %.1f s" % reached_at) if reached_at else (
+    remaining_path = (float(np.linalg.norm(path[-1] - pos)) if path else 0.0)
+    status = ("到达路径终点 @ %.1f s" % reached_at) if reached_at else (
         ("摔倒 @ %.1f s" % fell_at) if fell_at else "超时未到达")
     print("起点 (%.1f, %.1f) → 目标 (%.1f, %.1f)"
           % (a.at[0], a.at[1], goal[0], goal[1]))
-    print("结果: %s | 里程 %.2f m | 距目标剩 %.2f m | 平均 %.2f m/s"
-          % (status, final_dist, remain, final_dist / max((reached_at or a.seconds), 1e-6)))
+    print("结果: %s | 里程 %.2f m | 航点 %d/%d | 距场地目标 %.2f m | 平均 %.2f m/s"
+          % (status, final_dist, min(waypoint, len(path)), len(path), remain,
+             final_dist / max((reached_at or a.seconds), 1e-6)))
 
 
 if __name__ == "__main__":

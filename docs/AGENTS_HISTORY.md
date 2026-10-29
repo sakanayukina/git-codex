@@ -990,3 +990,47 @@ Go2/G1 展示关节，保留瓦砾落地后的姿态。稳定后扫描：高于�
 
 **下一步**：把 A* 路径（1 m 间隔航点）喂给 `waypoint_nav.py`，实现多航点串联实走。
 
+### A* 路径实走打通（Codex 2026-10-29）
+
+已完成 `nav_grid.NavGrid.segment_clear()/simplify()` 和 `waypoint_nav.py --astar`：
+
+- A* 原始栅格路径先做可通行直线捷径化，减少转弯；
+- `waypoint_nav.py` 逐点闭环转向，同时按航点距离和航向误差降速；
+- 到达一个航点后自动切换下一个，不再把最终点当唯一目标；
+- 输出原始/简化航点数、实际里程、航点进度、场地中心剩余距离。
+
+**实测**：`(1,-20) → H1(15,-14)`，能力上限 `max_slope=10°`：
+
+| 项 | 结果 |
+|---|---|
+| A* 路径 | 16.0 m |
+| 航点 | 原始 14 格 → 简化 5 点 |
+| 路径点 | `(1.5,-20.5) → (4.5,-16.5) → (11.5,-21.5) → (12.5,-20.5) → (12.5,-19.5)` |
+| 实走 | 41.0 s，11.36 m |
+| 航点进度 | 5/5 ✅ |
+| 场地中心剩余 | 7.01 m（目标在建筑内，A* 自动停在外围空地） |
+
+这说明规划层与运动层已经闭环。任务分配可以直接把 `NavGrid.plan()` 返回的
+`length/max_slope/sustained/park` 当作物理代价特征，不需要重写导航。
+
+### 废弃场景归档（2026-10-29）
+
+已移到 `assets/_archive/`（保留可复现，不要再用）：
+
+| 归档文件 | 被谁取代 |
+|---|---|
+| `village_walk_props.xml`、`village_walk_props_all.xml`、`village_walk_rocks.xml` | `village_walk_final.xml` |
+| `village_walk4.xml` | `village_walk_final.xml` |
+| `village_walk.xml` | `village_walk_final.xml` |
+| `village_go2_plain.xml` | `village_walk_final.xml` |
+
+故意保留在主目录：
+
+| 文件 | 原因 |
+|---|---|
+| `village_walk4_patch.xml` | `make_twin_proxies_final.py` 的基准输入 |
+| `g1_terrain_plain.xml` | 生成 `g1_village_final.xml` 的 `--base` 输入 |
+| `demo_v7.xml` / `demo_v28.xml` | `_tools/*` 默认用例 |
+
+相关脚本默认值已同步到 `village_walk_final.xml`。
+
