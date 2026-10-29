@@ -19,6 +19,15 @@ sys.path.insert(0, BASE)
 sys.path.insert(0, os.path.join(BASE, "..", "_tools"))
 from nav_grid import NavGrid  # noqa: E402
 from run_ref import DEFAULT, KP, KD, clip_torque_speed, gravity  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "_tools"))
+import g1_policy as g1p  # noqa: E402
+
+G1_JOINTS = [
+    "left_hip_pitch_joint", "left_hip_roll_joint", "left_hip_yaw_joint",
+    "left_knee_joint", "left_ankle_pitch_joint", "left_ankle_roll_joint",
+    "right_hip_pitch_joint", "right_hip_roll_joint", "right_hip_yaw_joint",
+    "right_knee_joint", "right_ankle_pitch_joint", "right_ankle_roll_joint",
+]
 
 GO2_JOINTS = ["FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
               "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
@@ -38,7 +47,9 @@ def yaw_of(q):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--xml", default=os.path.join(BASE, "..", "village_walk_final.xml"))
-    ap.add_argument("--policy", default=os.path.join(BASE, "pretrained", "go2_cts_vanilla2_103.5k_0.5786.pt"))
+    ap.add_argument("--robot", choices=["go2", "g1"], default="go2")
+    ap.add_argument("--policy", default="", help="留空则 go2 用开源教师、g1 用 motion.pt")
+    ap.add_argument("--yaw-limit", type=float, default=0.0, help="转向指令上限（0=按机器人默认）")
     ap.add_argument("--at", nargs=2, type=float, default=[1.0, -20.0])
     ap.add_argument("--goal", nargs=2, type=float, default=[14.0, -20.0])
     ap.add_argument("--seconds", type=float, default=90.0)
@@ -76,21 +87,31 @@ def main():
     else:
         path = [goal]
 
+    is_g1 = (a.robot == "g1")
     m = mujoco.MjModel.from_xml_path(a.xml)
-    m.opt.timestep = 0.005
+    m.opt.timestep = 0.002 if is_g1 else 0.005
     d = mujoco.MjData(m)
     mujoco.mj_forward(m, d)
 
-    bb = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "base")
+    root = "pelvis" if is_g1 else "base"
+    joints = G1_JOINTS if is_g1 else GO2_JOINTS
+    decim = 10 if is_g1 else 4
+    default = np.array(g1p.DEFAULT if is_g1 else DEFAULT, dtype=np.float64)
+    spawn_h = 0.78 if is_g1 else 0.45
+
+    bb = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, root)
     bj = next(j for j in range(m.njnt) if m.jnt_type[j] == mujoco.mjtJoint.mjJNT_FREE
               and int(m.jnt_bodyid[j]) == bb)
     bq, bd = int(m.jnt_qposadr[bj]), int(m.jnt_dofadr[bj])
     q, dof, act = [], [], []
-    for jn in GO2_JOINTS:
+    for jn in joints:
         j = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, jn)
         q.append(int(m.jnt_qposadr[j])); dof.append(int(m.jnt_dofadr[j]))
         act.append(next(i for i in range(m.nu) if int(m.actuator_trnid[i][0]) == j))
     q, dof, act = np.array(q), np.array(dof), np.array(act)
+    if is_g1:
+        kp = np.array(g1p.KP, dtype=np.float32)
+        kd = np.array(g1p.KD, dtype=np.float32)
 
     hf = next(g for g in range(m.ngeom) if m.geom_type[g] == mujoco.mjtGeom.mjGEOM_HFIELD)
     gid = np.array([-1], dtype=np.int32); grp = np.ones(6, dtype=np.uint8)
@@ -104,13 +125,18 @@ def main():
         return 5.0
 
     gz = ground(*a.at)
-    d.qpos[bq:bq+3] = [a.at[0], a.at[1], gz + 0.45]
+    d.qpos[bq:bq+3] = [a.at[0], a.at[1], gz + spawn_h]
     d.qpos[bq+3:bq+7] = [1, 0, 0, 0]
-    d.qpos[q] = DEFAULT
+    d.qpos[q] = default
     mujoco.mj_forward(m, d)
 
-    net = torch.jit.load(a.policy); net.eval()
-    obs = np.zeros(45, dtype=np.float32); a_ = np.zeros(12, dtype=np.float32); tgt = DEFAULT.copy()
+    pol = a.policy or (os.path.join(BASE, "..", "props", "robots", "g1", "motion.pt") if is_g1
+                       else os.path.join(BASE, "pretrained", "go2_cts_vanilla2_103.5k_0.5786.pt"))
+    net = torch.jit.load(pol); net.eval()
+    if hasattr(net, "reset_memory"):
+        net.reset_memory()
+    obs = np.zeros(47 if is_g1 else 45, dtype=np.float32)
+    a_ = np.zeros(12, dtype=np.float32); tgt = default.copy()
 
     waypoint = 0
     while (waypoint < len(path)
@@ -157,13 +183,16 @@ def main():
         best = max(best, float(np.linalg.norm(pos - start)))
 
         err = wrap(np.arctan2(to_goal[1], to_goal[0]) - yaw_of(d.qpos[bq+3:bq+7]))
-        yaw_cmd = float(np.clip(a.yaw_sign * a.kp_yaw * err, -1.5, 1.5))
+        ylim = a.yaw_limit if a.yaw_limit > 0 else (0.18 if is_g1 else 1.5)
+        yaw_cmd = float(np.clip(a.yaw_sign * a.kp_yaw * err, -ylim, ylim))
         # 航点前减速，转向误差大时降低前进速度。
         vx = a.vx if dist_goal > 1.5 else a.vx * max(dist_goal / 1.5, 0.35)
         vx *= max(0.25, np.cos(err) ** 2)
 
-        for _ in range(4):
-            d.ctrl[act] = clip_torque_speed(KP * (tgt - d.qpos[q]) - KD * d.qvel[dof], d.qvel[dof])
+        for _ in range(decim):
+            tau = (kp * (tgt - d.qpos[q]) - kd * d.qvel[dof]) if is_g1 else \
+                  clip_torque_speed(KP * (tgt - d.qpos[q]) - KD * d.qvel[dof], d.qvel[dof])
+            d.ctrl[act] = np.clip(tau, -200, 200) if is_g1 else tau
             mujoco.mj_step(m, d)
         current_pos = np.array([d.qpos[bq], d.qpos[bq + 1]])
         travelled += float(np.linalg.norm(current_pos - previous_pos))
@@ -191,16 +220,29 @@ def main():
             fell_at = k * 0.02
             break
 
-        obs[0:3] = d.qvel[bd+3:bd+6] * 0.25
-        obs[3:6] = gravity(d.qpos[bq+3:bq+7])
-        obs[6:9] = [vx, 0.0, yaw_cmd * 0.25]
-        obs[9:21] = d.qpos[q] - DEFAULT
-        obs[21:33] = d.qvel[dof] * 0.05
-        obs[33:45] = a_
-        with torch.inference_mode():
-            out = net(torch.as_tensor(obs).unsqueeze(0))
-        a_ = (out[0].numpy() if isinstance(out, tuple) else out.numpy())[0]
-        tgt = DEFAULT + 0.25 * a_
+        if is_g1:
+            ph = (k * 0.02 % g1p.PERIOD) / g1p.PERIOD
+            obs[0:3] = d.qvel[bd+3:bd+6] * g1p.SCALE["ang_vel"]
+            obs[3:6] = g1p.gravity_orientation(d.qpos[bq+3:bq+7])
+            obs[6:9] = [vx, 0.0, yaw_cmd * 0.25]
+            obs[9:21] = (d.qpos[q] - default) * g1p.SCALE["dof_pos"]
+            obs[21:33] = d.qvel[dof] * g1p.SCALE["dof_vel"]
+            obs[33:45] = a_
+            obs[45:47] = [np.sin(2 * np.pi * ph), np.cos(2 * np.pi * ph)]
+            with torch.inference_mode():
+                a_ = net(torch.as_tensor(obs).unsqueeze(0)).detach().numpy().flatten()[:12]
+            tgt = default + g1p.SCALE["action"] * a_
+        else:
+            obs[0:3] = d.qvel[bd+3:bd+6] * 0.25
+            obs[3:6] = gravity(d.qpos[bq+3:bq+7])
+            obs[6:9] = [vx, 0.0, yaw_cmd * 0.25]
+            obs[9:21] = d.qpos[q] - DEFAULT
+            obs[21:33] = d.qvel[dof] * 0.05
+            obs[33:45] = a_
+            with torch.inference_mode():
+                out = net(torch.as_tensor(obs).unsqueeze(0))
+            a_ = (out[0].numpy() if isinstance(out, tuple) else out.numpy())[0]
+            tgt = DEFAULT + 0.25 * a_
 
     pos = np.array([d.qpos[bq], d.qpos[bq+1]])
     final_dist = float(np.linalg.norm(pos - start))
