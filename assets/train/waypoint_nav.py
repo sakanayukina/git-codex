@@ -208,7 +208,7 @@ def main():
                 ren.update_scene(d, camera=cam)
                 from pngutil import save_rgb
                 os.makedirs("shots", exist_ok=True)
-                out = os.path.join("shots", "nav_t%03.0f.png" % sec)
+                out = os.path.join("shots", "%s_nav_t%03.0f.png" % (a.robot, sec))
                 img = ren.render()
                 save_rgb(img, out)
                 print("  存图 %s @ %.0f s（已走 %.1f m，亮度均值 %.0f）"
