@@ -175,13 +175,13 @@ C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\yard.py --tier ful
 
 **可走村子场景（2026-10-27 锁定）**：
 
-- `assets/village_walk4.xml`：真实村子 hfield + Go2，**3.89 m / 10 s 不摔**
-- `assets/village_go2_plain.xml`：纯地形 + Go2
+- `assets/village_walk_final.xml`：真实村子 hfield + Go2 + 610 个碰撞代理（当前主场景）
+- `assets/_archive/village_go2_plain.xml`：归档的纯地形对照场景
 - `assets/g1_terrain_plain.xml`：G1 在 H1 台地平整区，**3.64 m / 8 s**
 - `assets/g1_village_final.xml`：G1 + 610 个村庄障碍代理（含 178 个接缝小石头），`(0,-17.5)` 起步 **2.59 m / 8 s**
 
 ```powershell
-C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\run_walk.py --xml assets\village_walk4.xml
+C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\run_walk.py --xml assets\village_walk_final.xml
 C:\Users\18967\anaconda3\envs\mujoco\python.exe assets\_tools\g1_policy.py --xml assets\g1_village_final.xml --vx 0.4 --seconds 8 --at 0 -17.5
 ```
 
