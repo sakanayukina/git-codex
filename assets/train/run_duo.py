@@ -2,7 +2,7 @@
 
     python run_duo.py --seconds 8            # headless，报两台位移/倾角/间距
     python run_duo.py --shot 6               # 存图（直接渲染 village_duo：地形+机器人，无房子外观）
-    python run_duo.py --go2-at 0 -20 --g1-at 15 -2
+    python run_duo.py --go2-at 5 -24 --g1-at 0 -17.5
 """
 import argparse
 import os
@@ -22,6 +22,7 @@ import g1_policy as g1p  # noqa: E402
 BASE = os.path.dirname(os.path.abspath(__file__))
 XML = os.path.join(BASE, "..", "village_duo.xml")
 GO2_CKPT = os.path.join(BASE, "ckpt", "bc.pt")
+GO2_TEACHER = os.path.join(BASE, "pretrained", "go2_cts_vanilla2_103.5k_0.5786.pt")
 G1_POLICY = os.path.join(BASE, "..", "props", "robots", "g1", "motion.pt")
 
 GO2_JOINTS = ["FL_hip", "FL_thigh", "FL_calf", "FR_hip", "FR_thigh", "FR_calf",
@@ -44,13 +45,18 @@ def find_freejoint(m, body):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seconds", type=float, default=8.0)
-    ap.add_argument("--go2-at", nargs=2, type=float, default=[0.0, -20.0])
-    ap.add_argument("--g1-at", nargs=2, type=float, default=[15.0, -2.0])
+    ap.add_argument("--go2-policy", choices=["teacher", "student"], default="teacher")
+    ap.add_argument("--go2-at", nargs=2, type=float, default=[5.0, -24.0])
+    ap.add_argument("--g1-at", nargs=2, type=float, default=[0.0, -17.5])
     ap.add_argument("--shot", type=float, default=0.0)
+    ap.add_argument("--timestep", type=float, default=0.002)
+    ap.add_argument("--substeps", type=int, default=10,
+                    help="每个 50 Hz 控制周期的物理子步数")
     a = ap.parse_args()
 
     m = mujoco.MjModel.from_xml_path(XML)
-    m.opt.timestep = 0.001
+    m.opt.timestep = a.timestep
+    ctrl_dt = a.timestep * a.substeps
     d = mujoco.MjData(m)
 
     # Go2 索引
@@ -93,8 +99,12 @@ def main():
     mujoco.mj_forward(m, d)
 
     # 策略
-    g2net = ActorCritic()
-    g2net.load_state_dict(torch.load(GO2_CKPT, map_location="cpu")["net"]); g2net.eval()
+    if a.go2_policy == "teacher":
+        g2net = torch.jit.load(GO2_TEACHER)
+    else:
+        g2net = ActorCritic()
+        g2net.load_state_dict(torch.load(GO2_CKPT, map_location="cpu")["net"])
+    g2net.eval()
     g1net = torch.jit.load(G1_POLICY)
     if hasattr(g1net, "reset_memory"):
         g1net.reset_memory()
@@ -107,14 +117,14 @@ def main():
     g1_cmd = np.array([0.5, 0.0, 0.0], dtype=np.float32)
     g1_step = 0
 
-    n_ctrl = int(a.seconds / 0.02)
+    n_ctrl = int(a.seconds / ctrl_dt)
     min_sep = 1e9
     g2x0, g2y0 = float(d.qpos[g2q0]), float(d.qpos[g2q0+1])
     g1x0, g1y0 = float(d.qpos[g1q0]), float(d.qpos[g1q0+1])
 
     for k in range(n_ctrl):
-        # 20 × 0.001 = 0.02 s，两台在同一 mj_step 里推进
-        for _ in range(20):
+        # 默认 20 × 0.001 = 0.02 s，两台在同一 mj_step 里推进
+        for _ in range(a.substeps):
             q = d.qpos[g2q]; qd = d.qvel[g2dof]
             d.ctrl[g2a] = clip_torque_speed(KP * (g2_tgt - q) - KD * qd, qd)
             q1 = d.qpos[g1q]; qd1 = d.qvel[g1dof]
@@ -129,11 +139,12 @@ def main():
         g2_obs[21:33] = d.qvel[g2dof] * 0.05
         g2_obs[33:45] = g2_act
         with torch.inference_mode():
-            mu, _ = g2net(torch.as_tensor(g2_obs).unsqueeze(0))
-        g2_act = mu.numpy()[0]; g2_tgt = DEFAULT + 0.25 * g2_act
+            out = g2net(torch.as_tensor(g2_obs).unsqueeze(0))
+        g2_act = (out[0].numpy() if isinstance(out, tuple) else out.numpy())[0]
+        g2_tgt = DEFAULT + 0.25 * g2_act
 
         # G1 观测/策略
-        ph = (g1_step * 0.02 % g1p.PERIOD) / g1p.PERIOD
+        ph = (g1_step * ctrl_dt % g1p.PERIOD) / g1p.PERIOD
         g1_obs[0:3] = d.qvel[g1d0+3:g1d0+6] * g1p.SCALE["ang_vel"]
         g1_obs[3:6] = g1p.gravity_orientation(d.qpos[g1q0+3:g1q0+7])
         g1_obs[6:9] = g1_cmd * g1p.CMD_SCALE

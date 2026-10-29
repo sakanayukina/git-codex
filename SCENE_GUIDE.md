@@ -16,6 +16,10 @@
 | `run_scene.py` | 默认启动 Go2 + G1 行走演示；`--static` 加载 `demo_v32.xml` 静态展示，`--headless` 做静态自检 |
 | `outdoor_scene.py` | 场景启动入口；v27 不存在时回退到程序化户外场景 |
 | `assets/demo_v32.xml` | 最终 MJCF 场景（地形 + 道路 + 建筑 + 植被 + 道具 + 机器人 + 相机 + site） |
+| `assets/village_duo.xml` | Go2 + G1 统一物理世界（地形 + 610 碰撞代理，nq=38 / nu=24） |
+| `assets/train/run_duo.py` | 在同一 `mj_step` 中驱动 Go2 + G1；默认 `dt=0.002 × 10` |
+| `assets/train/longrun_test.py` | 长时行动基准：存活时间、里程、均速、是否摔倒 |
+| `assets/train/waypoint_nav.py` | Go2 闭环航点导航；默认转向符号已校准为 `+1` |
 | `assets/buildings.json` | 村落布局配置：7 栋房、主路折线、封路点、堆积锥 |
 | `assets/_tools/` | 全部生成、导入、后处理工具（下节逐个说明） |
 | `assets/_tools/terrain.py` | 统一地形采样：`HfieldSampler`（demo，row 0=-Y）与 `FloatDEMSampler`（`terrain/dem_float.npz`，row 0=+Y） |
@@ -116,6 +120,15 @@ C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_s
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --walk --headless 18
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --settle-steps 0
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --min-separation 1.5
+```
+
+统一双机器人物理世界与长时导航基准：
+
+```powershell
+cd C:\Users\18967\Desktop\git\assets\train
+C:\Users\18967\anaconda3\envs\mujoco\python.exe run_duo.py --seconds 12
+C:\Users\18967\anaconda3\envs\mujoco\python.exe longrun_test.py --robot go2 --policy teacher --xml ../village_walk_final.xml --seconds 60
+C:\Users\18967\anaconda3\envs\mujoco\python.exe waypoint_nav.py --xml ../village_walk_final.xml --at 1 -20 --goal 14 -20 --seconds 45
 ```
 
 机器狗 Go2（独立场景，home 姿态起步）：

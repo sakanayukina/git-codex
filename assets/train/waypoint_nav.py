@@ -42,7 +42,8 @@ def main():
     ap.add_argument("--seconds", type=float, default=90.0)
     ap.add_argument("--vx", type=float, default=1.0, help="前进指令（obs[6] = vx*2）")
     ap.add_argument("--kp-yaw", type=float, default=1.2)
-    ap.add_argument("--yaw-sign", type=float, default=-1.0, help="转向符号（实测通道是反的）")
+    ap.add_argument("--yaw-sign", type=float, default=1.0,
+                    help="闭环转向符号；当前策略实测为 +1")
     ap.add_argument("--tolerance", type=float, default=1.0)
     a = ap.parse_args()
 

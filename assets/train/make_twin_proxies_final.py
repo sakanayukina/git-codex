@@ -10,6 +10,7 @@
 """
 import argparse
 import os
+import re
 
 import mujoco
 import numpy as np
@@ -36,6 +37,8 @@ def main():
     ap.add_argument("--demo", default=DEMO)
     ap.add_argument("--base", default=TWIN,
                     help="被追加代理的轻量物理场景")
+    ap.add_argument("--hfield",
+                    help="覆盖 base 场景的 hfield 文件路径（相对 XML 所在目录）")
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--rock-scale", type=float, default=0.9)
     ap.add_argument("--seam-min-r", type=float, default=0.15,
@@ -105,6 +108,13 @@ def main():
             n_prop += 1
 
     s = open(a.base, encoding="utf-8").read()
+    if a.hfield:
+        s, count = re.subn(
+            r'(<hfield\b[^>]*\bfile=")[^"]+(")',
+            lambda m: m.group(1) + a.hfield + m.group(2),
+            s, count=1)
+        if count != 1:
+            raise SystemExit("找不到可替换的 hfield 文件路径")
     s = s.replace("</worldbody>", "\n".join(parts) + "\n  </worldbody>", 1)
     open(a.out, "w", encoding="utf-8").write(s)
     print("生成 %s：建筑 %d / 石头 %d（其中接缝小石头 %d）/ 其它道具 %d"
