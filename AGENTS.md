@@ -862,6 +862,40 @@ Go2/G1 展示关节，保留瓦砾落地后的姿态。稳定后扫描：高于�
 5. 二次坍塌联动：触发器框架已有，但可塌结构与机器人感知/决策尚未连接；
 6. 任务层：搜索点分配、路径规划、到达判定和救援行为还没有接入。
 
+### village_duo.xml：Go2 + G1 同一物理世界（DSH 2026-10-29）
+
+按“合并双机器人到单一 MuJoCo 世界”的路线，已交付第一步：
+
+**产物**：
+- `assets/village_duo.xml`：Go2 + G1 + 地形（height_field_patch）+ 610 碰撞代理，**同一个 mjModel**；
+  加载通过 nbody=27 / ngeom=730 / **nq=38 / nu=24**（Go2 19+19，两套 freejoint + 12 电机各一套，无命名冲突）。
+- `train/make_village_duo.py`：合并生成器（从 village_walk_final + g1_village_final 抽取 G1 网格/body/电机）。
+- `train/run_duo.py`：在**单一 mj_step** 里同时驱动两台（共享接触/求解器），headless 报位移/倾角/间距。
+
+**合并要点（踩坑）**：
+- G1 官方默认 `damping=0.001 armature=0.01 frictionloss=0.1` 必须内联到 12 个腿关节上；
+  用 `childclass="g1"` 不生效（只作用于直接子元素，不递归到腿关节），`class` 不是 body 的合法属性。
+- 不能设全局 `meshdir`（会把 hfield/texture 的相对路径也解析到 meshdir 下）；G1 网格改写成
+  `props/robots/g1/meshes/X.STL` 相对 XML 目录。
+- 统一 timestep=0.001（Go2 20 子步 / G1 20 子步 = 都是 0.02 s 控制周期）。
+
+**实测**：
+| 项 | 结果 |
+|---|---|
+| Go2 @ (0,−20) 统一世界 | **2.81 m / 8 s，up=0.999** ✅ |
+| G1 @ (15,−14) H1 台地中心 | 1.43 m 后 up=0.159 ❌ 塌 |
+| G1 @ (0,−17.5) 车道 | 1.01 m 后 up=0.294 ❌ 塌 |
+| G1 在自身 g1_village_final（dem_wenchuan_flat 地形）同点 | **3.46 m 稳定** ✅ |
+
+**关键结论**：G1 在统一场景里塌，不是合并/时间步的问题（dt 0.002 与 0.005 都测过，都塌），
+而是**地形**——duo 用 height_field_patch（与 demo_v32 一致），G1 官方 motion.pt 是平地策略，
+在 patch 地形的台地边缘/代理周围会失去平衡。**这正好证明路线里的 step 5（G1 粗糙地形训练）是解锁
+“双机器人真实同场行走”的必要前提，不是可选项。**
+
+**下一步建议**：先做 step 5（G1 蒸馏 + DAgger，像 Go2 那样），或先把 step 3 的“机器人间碰撞”
+用两台都能走的机器人（如两台 Go2）验证。
+
+
 ## 历史
 
 - 2026-10-20 分工确立
