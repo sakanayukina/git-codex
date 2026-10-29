@@ -1,7 +1,7 @@
 """全量碰撞代理：把 demo_v32 里除地形/机器人外的所有实体 geom（半径 >= 0.2 m）
 做成不可见球代理，写进孪生场景，避免机器人穿过瓦砾/木板/石头。
 
-    python make_twin_proxies_all.py [--out ../village_walk_props_all.xml]
+    python make_twin_proxies_all.py [--out ../_archive/village_walk_props_all.xml]
 """
 import argparse
 import os
@@ -12,7 +12,7 @@ import numpy as np
 BASE = os.path.dirname(os.path.abspath(__file__))
 DEMO = os.path.join(BASE, "..", "demo_v32.xml")
 TWIN = os.path.join(BASE, "..", "village_walk4_patch.xml")
-DEFAULT_OUT = os.path.join(BASE, "..", "village_walk_props_all.xml")
+DEFAULT_OUT = os.path.join(BASE, "..", "_archive", "village_walk_props_all.xml")
 
 
 def robot_bodies(m):

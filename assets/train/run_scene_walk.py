@@ -1,6 +1,6 @@
 """在 demo_v32（完整村子展示场景）里看 Go2 和 G1 持续走路。
 
-做法：物理分别在 `village_walk4.xml`（Go2）和 `g1_terrain_plain.xml`（G1）里闭环，
+做法：物理分别在 `village_walk_final.xml`（Go2）和 `g1_village_final.xml`（G1）里闭环，
 每一帧把两台机器人的位姿/关节角“镜像”到 demo_v32 的展示机器人上。
 原因：demo_v32 里道具 body 数量太多，直接在那里跑策略机器人走不动（已在 AGENTS 记录）。
 

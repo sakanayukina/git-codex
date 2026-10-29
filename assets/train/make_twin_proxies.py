@@ -1,7 +1,7 @@
 """给物理孪生场景加“粗碰撞代理”：把展示场景里的建筑碰撞体 / 大石头搬成静态几何，
 这样机器人在孪生里会被真的挡住，镜像到展示场景就不会穿墙。
 
-    python make_twin_proxies.py            # 生成 ../village_walk_props.xml
+    python make_twin_proxies.py            # 生成 ../_archive/village_walk_props.xml（已被 make_twin_proxies_final 取代）
 """
 import os
 import re
@@ -12,7 +12,7 @@ import numpy as np
 BASE = os.path.dirname(os.path.abspath(__file__))
 DEMO = os.path.join(BASE, "..", "demo_v32.xml")
 TWIN = os.path.join(BASE, "..", "village_walk4_patch.xml")
-OUT = os.path.join(BASE, "..", "village_walk_props.xml")
+OUT = os.path.join(BASE, "..", "_archive", "village_walk_props.xml")
 
 
 def quat_rot(q):

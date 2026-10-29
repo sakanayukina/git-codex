@@ -73,6 +73,6 @@ def run(xml, zero_mass=False, seconds=8, at=(12.0, -18.0)):
 
 
 if __name__ == "__main__":
-    run("../village_go2_plain.xml", False)
+    run("../village_walk_final.xml", False)
     run("../village_walk2.xml", False)
     run("../village_walk2.xml", True)

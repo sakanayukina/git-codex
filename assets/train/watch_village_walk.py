@@ -1,6 +1,6 @@
 """在交互窗口里看 Go2 在村子地形上走（真实物理 + 策略闭环）。
 
-    python watch_village_walk.py                        # 默认 village_walk4.xml，H1 门前
+    python watch_village_walk.py                        # 默认 village_walk_final.xml（含 610 碰撞代理）
     python watch_village_walk.py --at 0 -20 --cmd 1.0   # 换位置 / 换速度指令
     python watch_village_walk.py --headless --seconds 5 # 不开窗口，只报数字
 
@@ -24,7 +24,7 @@ JOINTS = ["FL_hip", "FL_thigh", "FL_calf", "FR_hip", "FR_thigh", "FR_calf",
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--xml", default=os.path.join("..", "village_walk4.xml"))
+    ap.add_argument("--xml", default=os.path.join("..", "village_walk_final.xml"))
     ap.add_argument("--ckpt", default="ckpt/bc.pt")
     ap.add_argument("--at", nargs=2, type=float, default=[12.0, -18.0])
     ap.add_argument("--cmd", type=float, default=1.0, help="obs 里的速度指令（1.0 ≈ 0.5 m/s）")

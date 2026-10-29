@@ -1,6 +1,6 @@
 """把训练好的策略（train/ckpt/bc.pt）放进村子场景，测它能走多远。
 
-    python village_walk_test.py --xml ../village_walk.xml --seconds 10
+    python village_walk_test.py --xml ../village_walk_final.xml --seconds 10
 """
 import argparse
 import os
@@ -20,13 +20,15 @@ CMD = np.array([1.0, 0.0, 0.0], dtype=np.float32)
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--xml", default="../village_walk.xml")
+    ap.add_argument("--xml", default="../village_walk_final.xml")
     ap.add_argument("--ckpt", default="ckpt/bc.pt")
     ap.add_argument("--seconds", type=float, default=10.0)
     ap.add_argument("--shots", default="")
     ap.add_argument("--n", type=int, default=1)
     ap.add_argument("--at", nargs=2, type=float, default=None, help="出生 x y")
     ap.add_argument("--village-physics", action="store_true", help="保留村子原始接触设置")
+    ap.add_argument("--no-prop-collision", action="store_true",
+                    help="关掉植被/碎石/道具的碰撞，只保留地形与建筑")
     a = ap.parse_args()
 
     dev = "cuda" if torch.cuda.is_available() else "cpu"
@@ -36,7 +38,21 @@ def main():
     print("策略:", a.ckpt)
 
     m = mujoco.MjModel.from_xml_path(a.xml)
+    if a.no_prop_collision:
+        kw = ("tree", "grass", "rock", "debris", "seam", "stone", "trunk", "cone",
+              "tire", "barrier", "car", "bush", "shrub", "wood", "plank")
+        off = 0
+        for g in range(m.ngeom):
+            bn = mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, int(m.geom_bodyid[g])) or ""
+            gn = mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, g) or ""
+            low = (bn + " " + gn).lower()
+            if any(k in low for k in kw):
+                m.geom_contype[g] = 0
+                m.geom_conaffinity[g] = 0
+                off += 1
+        print("  关掉 %d 个道具几何的碰撞" % off)
     m.opt.timestep = 0.005
+    m.opt.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
     # 与训练环境对齐接触/求解设置（村子场景默认是 elliptic cone + impratio 10）
     if not a.village_physics:
         m.opt.cone = mujoco.mjtCone.mjCONE_PYRAMIDAL
