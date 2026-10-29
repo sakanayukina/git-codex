@@ -30,6 +30,8 @@ def main():
     ap.add_argument("--rx", type=float, default=4.0)
     ap.add_argument("--ry", type=float, default=3.0)
     ap.add_argument("--feather", type=float, default=1.5)
+    ap.add_argument("--height-world", type=float,
+                    help="目标世界高度（米）；省略时使用区域中位高度")
     a = ap.parse_args()
 
     xml = open(a.xml, encoding="utf-8").read()
@@ -67,8 +69,11 @@ def main():
         for x in xs:
             u, v = to_px(x, y)
             vals.append(arr[int(round(v)), int(round(u))])
-    target = float(np.median(vals))
-    print(f"目标高度（灰度）= {target:.1f}")
+    if a.height_world is None:
+        target = float(np.median(vals))
+    else:
+        target = float((a.height_world - base) / ztop * 255.0)
+    print(f"目标高度：world={base + target / 255.0 * ztop:.3f} m, gray={target:.1f}")
 
     # 逐像素重写：区域内置为目标值，外围 feather 宽度 smoothstep 过渡
     uu, vv = np.meshgrid(np.arange(W), np.arange(H))

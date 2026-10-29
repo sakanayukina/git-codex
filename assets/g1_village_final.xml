@@ -386,21 +386,21 @@
     <geom name="pr_214" type="sphere" pos="15.570 -8.156 5.678" size="0.199" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
     <geom name="pr_215" type="sphere" pos="14.974 -9.740 7.524" size="2.749" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
     <geom name="pr_216" type="sphere" pos="19.520 -14.716 8.646" size="4.789" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_217" type="sphere" pos="-22.223 -8.957 11.973" size="5.783" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_218" type="sphere" pos="-23.685 -7.409 12.441" size="5.251" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_219" type="sphere" pos="-26.215 -8.017 12.529" size="6.230" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_220" type="sphere" pos="-26.000 24.000 15.767" size="2.773" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_221" type="sphere" pos="-27.970 26.522 17.347" size="2.146" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_222" type="sphere" pos="-24.030 21.478 17.347" size="2.146" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_223" type="sphere" pos="-29.152 21.537 17.347" size="1.779" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_224" type="sphere" pos="-22.848 26.463 17.347" size="1.779" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_225" type="sphere" pos="-26.000 24.000 19.047" size="2.843" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_226" type="sphere" pos="2.000 36.000 14.463" size="2.524" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_227" type="sphere" pos="-0.814 35.298 15.893" size="1.932" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_228" type="sphere" pos="4.814 36.702 15.893" size="1.932" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_229" type="sphere" pos="2.871 32.507 15.893" size="1.611" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_230" type="sphere" pos="1.129 39.493 15.893" size="1.611" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
-    <geom name="pr_231" type="sphere" pos="2.000 36.000 17.443" size="2.593" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_217" type="sphere" pos="-22.223 -8.957 11.793" size="5.783" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_218" type="sphere" pos="-23.685 -7.409 12.261" size="5.251" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_219" type="sphere" pos="-26.215 -8.017 12.349" size="6.230" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_220" type="sphere" pos="-26.000 24.000 15.587" size="2.773" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_221" type="sphere" pos="-27.970 26.522 17.167" size="2.146" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_222" type="sphere" pos="-24.030 21.478 17.167" size="2.146" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_223" type="sphere" pos="-29.152 21.537 17.167" size="1.779" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_224" type="sphere" pos="-22.848 26.463 17.167" size="1.779" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_225" type="sphere" pos="-26.000 24.000 18.867" size="2.843" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_226" type="sphere" pos="2.000 36.000 14.283" size="2.524" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_227" type="sphere" pos="-0.814 35.298 15.713" size="1.932" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_228" type="sphere" pos="4.814 36.702 15.713" size="1.932" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_229" type="sphere" pos="2.871 32.507 15.713" size="1.611" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_230" type="sphere" pos="1.129 39.493 15.713" size="1.611" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
+    <geom name="pr_231" type="sphere" pos="2.000 36.000 17.263" size="2.593" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
     <geom name="pr_232" type="sphere" pos="31.529 3.449 7.244" size="2.818" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
     <geom name="pr_233" type="sphere" pos="31.876 3.293 8.753" size="3.826" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>
     <geom name="pr_234" type="sphere" pos="34.112 2.294 6.870" size="0.487" rgba="0 0 0 0" contype="1" conaffinity="1" friction="0.9 0.01 0.001"/>

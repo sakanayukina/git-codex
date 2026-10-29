@@ -24,6 +24,7 @@
 | `assets/_tools/` | 全部生成、导入、后处理工具（下节逐个说明） |
 | `assets/_tools/terrain.py` | 统一地形采样：`HfieldSampler`（demo，row 0=-Y）与 `FloatDEMSampler`（`terrain/dem_float.npz`，row 0=+Y） |
 | `assets/_tools/fix_visual_grounding.py` | 用世界 AABB + hfield 精确修正指定建筑/石头的 z 位置 |
+| `assets/_tools/flatten_patch.py` | 局部压平 hfield；`--height-world` 可指定精确平台高度 |
 | `assets/props/imported/` | 真实扫描模型：H1/H2/H5/H6/H7、枫树、草块等 |
 | `assets/props/` | Poly Haven 道具：岩石、树桩、枯枝、报废车、隔离墩、轮胎 |
 | `assets/terrain/` | 汶川 DEM 高度图和平滑/整平后的 PNG |

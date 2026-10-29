@@ -48,6 +48,11 @@ def main():
     parser.add_argument("--xml", required=True)
     parser.add_argument("--out", help="output XML; defaults to in-place")
     parser.add_argument("--bodies", nargs="+", default=list(DEFAULT_BODIES))
+    parser.add_argument("--skip-grounding", action="store_true",
+                        help="skip AABB grounding; apply --shift operations only")
+    parser.add_argument("--shift", nargs="*", default=[],
+                        metavar="BODY=DELTA",
+                        help="optional manual z shifts, e.g. H2=-0.18")
     parser.add_argument("--clearance", type=float, default=0.03,
                         help="positive embeds the lowest point by this much")
     args = parser.parse_args()
@@ -59,7 +64,7 @@ def main():
     ground = terrain_fn(args.xml)
     xml = open(args.xml, encoding="utf-8").read()
 
-    for name in args.bodies:
+    for name in ([] if args.skip_grounding else args.bodies):
         body_id = mujoco.mj_name2id(
             model, mujoco.mjtObj.mjOBJ_BODY, name)
         if body_id < 0:
@@ -90,6 +95,22 @@ def main():
         print("%-26s z %+.3f -> %+.3f" %
               (name, float(model.body_pos[body_id][2]),
                float(model.body_pos[body_id][2]) + delta))
+
+    for spec in args.shift:
+        if "=" not in spec:
+            raise SystemExit("invalid --shift: " + spec)
+        name, raw_delta = spec.rsplit("=", 1)
+        delta = float(raw_delta)
+        pattern = re.compile(
+            r'(<body\b[^>]*\bname="' + re.escape(name) +
+            r'"[^>]*\bpos="[-\d.]+ [-\d.]+ )([-\d.]+)(")')
+        xml, count = pattern.subn(
+            lambda match: match.group(1) +
+            f"{float(match.group(2)) + delta:.3f}" + match.group(3),
+            xml, count=1)
+        if count != 1:
+            raise SystemExit("could not shift body: " + name)
+        print("%-26s manual z %+.3f" % (name, delta))
 
     with open(out, "w", encoding="utf-8") as handle:
         handle.write(xml)
