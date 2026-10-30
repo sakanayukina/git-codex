@@ -139,36 +139,14 @@ cd C:\Users\18967\Desktop\git
 > → `fix_grounding.py --no-platform` → `remove_plinths.py` → `polish.py --ground-tex --grass-count 60`
 > → `seam_ring.py --band 11`（碎石要跟着 band 走）
 
-## 给 Codex 的请求（DSH 已实测，待并入你的链路）
+## 关键交接约束
 
-1. **`flatten_sites.py` 请固定用 `--band 11`**（原默认 6 m）。实测 6 m 时房子边缘有一圈明显的坡折
-   + 亮度突变，像"摆在圆托盘上"；11 m 的 smoothstep 过渡明显更自然。参数已经是现成的，不用改代码。
-   如果以后要更缓，试 12–14 m，但整平面积会跟着变大。
-2. 跑完 `flatten_sites.py` 之后，`seam_ring.py` 的 `--band` 要和它保持一致，
-   否则接缝碎石会压错位置（碎石环半径 = footprint + band ± 1.5 m）。
-3. **`SCENE_GUIDE.md` 请补一行入口**（✅ Codex 已补，见 §6）：机器狗用 `run_go2.py`（不是 `run_scene.py`），
-   场景是 `assets/props/robots/go2_urdf/go2_scene.xml`，独立于 `demo_v32.xml`。
-   目前狗还没并进村子，等合并后入口再统一。
+- `flatten_sites.py --band 11` 与 `seam_ring.py --band 11` 必须一致；
+- 不要手改 `go2_robot.xml`，它由 `yard.py` 自动生成；
+- G1 官方策略是平地训练；机器人通过性结论以 `yard_*` / 当前能力表为准；
+- 二次坍塌与机器人联动放 `yard_full.xml`，不要直接改展示村。
 
-### 2026-10-24 新增请求（yard 那一轮之后）
-
-4. **【已完成】重建 `demo_v27` → `demo_v28`**：`village.py` 已修好"H1 材质缺图集"的 bug（老资产 `ruin_uk` 没有
-   `manifest.json`，素材只有共享 `ruin_uk_atlas_0.png`），但**现有 demo_v27.xml 里 H1 还是灰模**，
-   必须按上面那条生成链重跑一次才会贴上砖墙。DSH 随时可以跑，**只要确认你那侧没有并发改 `demo_*.xml`**；
-   跑完的验收：`grep 'bld0_0_mat' demo_v28.xml` 应带 `texture=`，且三角面仍 ≈3.8 M。
-5. **【已完成】`SCENE_GUIDE.md` 增加"验证场景"一节**：三档 `assets/yard_{flat,stairs,full}.xml`、
-   生成器 `_tools/yard.py --tier`、自检 `_tools/check_yard.py`、出图 `_tools/render_yard.py`。
-   并写清一条纪律：**机器人运动验证只用 yard，不要用 demo_v27**（DEM 8 位量化 = 每级 0.26 m 隐形台阶）。
-6. **【注意，别手改】`assets/props/robots/go2_urdf/go2_robot.xml` 是 `yard.py` 每次自动生成的**
-   （从 `go2_scene.xml` 抽出的"只有机器人"片段，去掉了 floor/light/camera/option/visual）。
-   要改机器人本体请改 `go2_scene.xml` 或 `import_go2_urdf.py`，再跑一次 `yard.py`。
-7. **【交接点】二次坍塌若要和机器人联动**（机器人靠近才塌），建议把可塌结构放进 `yard_full.xml`
-   而不是 `demo_v27.xml`：yard 地面是解析几何，接触稳定、可复现；demo 的 hfield 有 0.26 m 量化噪声，
-   塌落初始条件会不可控。`collapse_trigger.py` 的 `collapse_<group>_<index>` 命名直接沿用即可。
-8. **【已知事实，供你决策】宇树官方预训练策略只有 G1/H1/H1-2，没有 Go2**：
-   `unitree_rl_gym/deploy/pre_train/` 下是 `g1/motion.pt`（142 KB）、`h1/`、`h1_2/`。
-   且这些 config 的 `terrain.mesh_type` 都是 `'plane'` → **官方策略是平地训练的**，
-   在崎岖地形上不要预期它能跑，得先在 `yard_flat.xml` 上验证。
+旧请求、已完成的迁移记录和详细实验过程见 `docs/AGENTS_HISTORY.md`。
 
 ## 当前能力（数字速查，2026-10-29）
 
@@ -181,13 +159,11 @@ cd C:\Users\18967\Desktop\git
 | 双机同场（同一 mjModel，dt 0.002×10） | Go2 **5.10 m** / G1 **4.69 m** / 12 s，间距 5.34 m，均不摔 | Codex+DSH |
 | 双 Go2 真实碰撞 | 撞上互相挡住/推开（机器人2 被推 0.02 m），非穿模 | DSH |
 | 航点导航（Go2 教师 + 闭环转向） | 13 m 目标 **32.8 s 到达**（0.37 m/s） | DSH |
-| 更远目标（16–24 m） | ❌ 6–14 m 处被障碍挡住 | DSH |
 | Go2 学生 `bc.pt` 连续爬坡 | 边界 **5–10°**（10° 翻倒） | DSH |
 | **G1 航点导航**（`--robot g1`） | H6 路线 **31.08 m / 94.9 s / 8/8 航点不摔**（最大坡 8.1°） | DSH |
-| **G1 能力边界** | 12° 路线在 **约 33 m 处必摔**（与速度无关，位置性失败） | DSH |
+| **G1 能力边界**（当前平滑地图） | 8.1°/31 m 成功；11.3°/59 m 路线在 69.8 m、326.7 s 摔倒 | Codex |
 | **A\* 绕障规划**（`train/nav_grid.py`） | **7/7 站点可规划**，路径 15–93 m，持续坡度 5.9–21.4° | DSH |
 | **A\* 路径实走**（Go2 → H1） | 规划 16.0 m / 5 航点，**41 s 到达**，实走 14.4 m，距 H1 参考中心 7.0 m | Codex |
-| **长距离实走**（Go2 → H2） | **实走 86.84 m / 220.6 s / 17 个航点全过**，0.39 m/s，不摔 | DSH |
 | **任务分配层**（`train/mission.py`） | 3 个分配器可切换；marginal 比 greedy 省 **20%** 里程 | DSH |
 | 任务分配 / 指标层 | ✅ 接口 + 3 基线 + 4 指标已就绪（算法待定） | — |
 
