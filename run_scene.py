@@ -11,7 +11,8 @@ XML = os.path.join(BASE_DIR, "assets", "demo_v32.xml")
 
 def run(headless=False):
     # 默认直接进入行走演示；--static 保留原来的静态展示场景。
-    use_walk = "--walk" in sys.argv or "--static" not in sys.argv
+    use_walk = ("--walk" in sys.argv or "--mission" in sys.argv
+                or "--static" not in sys.argv)
     if use_walk and not headless:
         sys.argv = [x for x in sys.argv if x not in ("--walk", "--static")]
         print("Loading walking scene and robot policies, please wait...", flush=True)
@@ -46,4 +47,6 @@ def run(headless=False):
 
 
 if __name__ == "__main__":
-    run(headless=("--headless" in sys.argv and "--walk" not in sys.argv))
+    run(headless=("--headless" in sys.argv
+                  and "--walk" not in sys.argv
+                  and "--mission" not in sys.argv))

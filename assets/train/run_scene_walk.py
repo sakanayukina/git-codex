@@ -5,6 +5,7 @@
 原因：demo_v32 里道具 body 数量太多，直接在那里跑策略机器人走不动（已在 AGENTS 记录）。
 
     python run_scene_walk.py                 # 开窗口看，默认两台机器人循环演示
+    python run_scene_walk.py --mission       # Go2→H2 + G1→H6 同时执行 A* 任务
     python run_scene_walk.py --headless 5    # 不开窗口，报位移
 """
 import argparse
@@ -13,9 +14,12 @@ import sys
 import time
 
 import mujoco
+
+import terrain_road
 import numpy as np
 import torch
 
+from nav_grid import NavGrid, SITES
 from ppo import ActorCritic
 from run_ref import DEFAULT, KP, KD, clip_torque_speed, gravity
 
@@ -26,6 +30,8 @@ DEMO = os.path.join(BASE, "..", "demo_v32.xml")
 PHYS = os.path.join(BASE, "..", "village_walk_final.xml")
 G1_PHYS = os.path.join(BASE, "..", "g1_village_final.xml")
 G1_POLICY = os.path.join(BASE, "..", "props", "robots", "g1", "motion.pt")
+GO2_TEACHER = os.path.join(
+    BASE, "pretrained", "go2_cts_vanilla2_103.5k_0.5786.pt")
 G1_JOINTS = [
     "left_hip_pitch_joint", "left_hip_roll_joint", "left_hip_yaw_joint",
     "left_knee_joint", "left_ankle_pitch_joint", "left_ankle_roll_joint",
@@ -46,6 +52,15 @@ def quat_mul(a, b):
                      w1*z2 + x1*y2 - y1*x2 + z1*w2])
 
 
+def wrap_angle(angle):
+    return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
+def yaw_of(quat):
+    w, x, y, z = quat
+    return np.arctan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--headless", type=float, default=0.0)
@@ -62,16 +77,51 @@ def main():
                     help="展示模式自动复位周期，单位秒；0 表示关闭")
     ap.add_argument("--settle-steps", type=int, default=2500,
                     help="启动前让楼板/瓦砾落地稳定的物理步数；0 表示关闭")
-    ap.add_argument("--go2-start", nargs=2, type=float, default=[-12.0, -17.0],
+    ap.add_argument("--go2-start", nargs=2, type=float, default=None,
                     metavar=("X", "Y"), help="Go2 出生坐标")
-    ap.add_argument("--g1-start", nargs=2, type=float, default=[0.0, -17.5],
+    ap.add_argument("--g1-start", nargs=2, type=float, default=None,
                     metavar=("X", "Y"), help="G1 出生坐标")
     ap.add_argument("--min-separation", type=float, default=1.5,
                     help="两台机器人小于该距离时立即复位")
+    ap.add_argument("--mission", action="store_true",
+                    help="执行 A* 任务路线：Go2→H2，G1→H6")
+    ap.add_argument("--go2-goal", nargs=2, type=float,
+                    default=list(SITES["H2"]))
+    ap.add_argument("--g1-goal", nargs=2, type=float,
+                    default=list(SITES["H6"]))
+    ap.add_argument("--go2-max-slope", type=float, default=25.0)
+    ap.add_argument("--g1-max-slope", type=float, default=10.0)
+    ap.add_argument("--grid-scene",
+                    default=os.path.join(BASE, "..", "village_duo.xml"))
     a = ap.parse_args()
+    if a.go2_start is None:
+        a.go2_start = [1.0, -20.0] if a.mission else [-12.0, -17.0]
+    if a.g1_start is None:
+        a.g1_start = [0.0, -17.5]
+    if a.mission:
+        a.demo_reset = False
+        grid = NavGrid(scene=a.grid_scene, res=1.0, robot_radius=0.35)
+        go2_plan, go2_msg = grid.plan(
+            a.go2_start, a.go2_goal,
+            max_slope=a.go2_max_slope, slope_soft=min(10.0, a.go2_max_slope))
+        g1_plan, g1_msg = grid.plan(
+            a.g1_start, a.g1_goal,
+            max_slope=a.g1_max_slope, slope_soft=min(10.0, a.g1_max_slope))
+        if go2_plan is None or g1_plan is None:
+            raise SystemExit("mission planning failed: Go2=%s G1=%s"
+                             % (go2_msg, g1_msg))
+        go2_path = [np.asarray(point, dtype=float)
+                    for point in go2_plan["points"]]
+        g1_path = [np.asarray(point, dtype=float)
+                   for point in g1_plan["points"]]
+        print("mission: Go2 %.1f m/%d wp, G1 %.1f m/%d wp"
+              % (go2_plan["length"], len(go2_path),
+                 g1_plan["length"], len(g1_path)), flush=True)
+    else:
+        go2_path, g1_path = None, None
 
     # 展示模型（只用来看）
-    dm = mujoco.MjModel.from_xml_path(DEMO)
+    dm = terrain_road.load_model(DEMO)
     dd = mujoco.MjData(dm)
     mujoco.mj_forward(dm, dd)
     demo_qpos0 = dd.qpos.copy()
@@ -81,7 +131,7 @@ def main():
                  for j in JOINTS]
 
     # 物理模型（策略闭环）
-    m = mujoco.MjModel.from_xml_path(PHYS)
+    m = terrain_road.load_model(PHYS)
     m.opt.timestep = 0.005
     d = mujoco.MjData(m)
     bb = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "base")
@@ -110,12 +160,19 @@ def main():
     d.qpos[qadr] = DEFAULT
     mujoco.mj_forward(m, d)
 
-    net = ActorCritic(); net.load_state_dict(torch.load(os.path.join(BASE, "ckpt", "bc.pt"), map_location="cpu")["net"]); net.eval()
+    if a.mission:
+        net = torch.jit.load(GO2_TEACHER)
+    else:
+        net = ActorCritic()
+        net.load_state_dict(torch.load(
+            os.path.join(BASE, "ckpt", "bc.pt"),
+            map_location="cpu")["net"])
+    net.eval()
     obs = np.zeros(45, dtype=np.float32); action = np.zeros(12, dtype=np.float32); target = DEFAULT.copy()
     x0 = float(d.qpos[bq]); y0 = float(d.qpos[bq+1])
 
     # G1 物理孪生：官方 12 自由度平地策略，在 H1 台地平整区闭环。
-    gm = mujoco.MjModel.from_xml_path(G1_PHYS)
+    gm = terrain_road.load_model(G1_PHYS)
     gm.opt.timestep = 0.002
     gd = mujoco.MjData(gm)
     if gm.nkey > 0:
@@ -204,6 +261,13 @@ def main():
 
     sim_age = 0.0
     reset_count = 0
+    go2_waypoint = 0
+    g1_waypoint = 0
+    mission_time = 0.0
+    last_mission_report = 0.0
+    mission_min_separation = float("inf")
+    mission_go2_done = False
+    mission_g1_done = False
 
     def robot_center():
         if a.g1:
@@ -214,10 +278,27 @@ def main():
         return float(np.linalg.norm(
             dd.xpos[gid_body] - dd.xpos[g1_demo_body]))
 
+    def path_command(pos, quat, path, index, max_vx, yaw_limit, tolerance=0.6):
+        while index < len(path) and np.linalg.norm(path[index] - pos) < tolerance:
+            index += 1
+        if index >= len(path):
+            return 0.0, 0.0, index, True
+        delta = path[index] - pos
+        distance = float(np.linalg.norm(delta))
+        error = wrap_angle(np.arctan2(delta[1], delta[0]) - yaw_of(quat))
+        yaw_cmd = float(np.clip(1.2 * error, -yaw_limit, yaw_limit))
+        vx = max_vx if distance > 1.5 else max_vx * max(distance / 1.5, 0.35)
+        vx *= max(0.25, np.cos(error) ** 2)
+        return float(vx), yaw_cmd, index, False
+
     def step_all():
         nonlocal obs, action, target, g1_action, g1_target, g1_obs, g1_step_i
         nonlocal sim_age, reset_count
+        nonlocal go2_waypoint, g1_waypoint, mission_time, last_mission_report
+        nonlocal mission_min_separation
+        nonlocal mission_go2_done, mission_g1_done
         sim_age += 0.02
+        mission_time += 0.02
         go2_up = float(1.0 - 2.0 * (
             d.qpos[bq + 4] ** 2 + d.qpos[bq + 5] ** 2))
         g1_up = float(1.0 - 2.0 * (
@@ -236,6 +317,32 @@ def main():
             reset_count += 1
             print("[showcase] reset #%d: Go2/G1 respawn" % reset_count, flush=True)
 
+        go2_vx, go2_yaw = ((0.0, 0.0) if a.mission else (1.0, 0.0))
+        g1_vx, g1_yaw = ((0.0, 0.0) if a.mission else (0.5, 0.0))
+        if a.mission and not mission_go2_done:
+            go2_pos = np.array([d.qpos[bq], d.qpos[bq + 1]], dtype=float)
+            go2_vx, go2_yaw, go2_waypoint, mission_go2_done = path_command(
+                go2_pos, d.qpos[bq + 3:bq + 7], go2_path,
+                go2_waypoint, 1.0, 1.5)
+            if mission_go2_done:
+                print("mission: Go2 reached H2 path endpoint at %.1f s"
+                      % mission_time, flush=True)
+        if a.mission and a.g1 and not mission_g1_done:
+            g1_pos = np.array([gd.qpos[0], gd.qpos[1]], dtype=float)
+            g1_vx, g1_yaw, g1_waypoint, mission_g1_done = path_command(
+                g1_pos, gd.qpos[3:7], g1_path,
+                g1_waypoint, 1.0, 0.18)
+            if mission_g1_done:
+                print("mission: G1 reached H6 path endpoint at %.1f s"
+                      % mission_time, flush=True)
+        if a.mission and mission_time - last_mission_report >= 20.0:
+            g1_count = len(g1_path) if g1_path is not None else 0
+            g1_progress = min(g1_waypoint, g1_count) if a.g1 else 0
+            print("mission %.0f s: Go2 %d/%d, G1 %d/%d"
+                  % (mission_time, min(go2_waypoint, len(go2_path)),
+                     len(go2_path), g1_progress, g1_count), flush=True)
+            last_mission_report = mission_time
+
         # ---- Go2：4 × 5 ms = 20 ms ----
         for _ in range(4):
             q, qd = d.qpos[qadr], d.qvel[dadr]
@@ -243,13 +350,14 @@ def main():
             mujoco.mj_step(m, d)
         obs[0:3] = d.qvel[bd+3:bd+6]*0.25
         obs[3:6] = gravity(d.qpos[bq+3:bq+7])
-        obs[6:9] = [1.0, 0.0, 0.0]
+        obs[6:9] = [go2_vx, 0.0, go2_yaw * 0.25]
         obs[9:21] = d.qpos[qadr] - DEFAULT
         obs[21:33] = d.qvel[dadr]*0.05
         obs[33:45] = action
         with torch.inference_mode():
-            mu, _ = net(torch.as_tensor(obs).unsqueeze(0))
-        action = mu.numpy()[0]
+            out = net(torch.as_tensor(obs).unsqueeze(0))
+        action = (out[0].numpy() if isinstance(out, tuple)
+                  else out.numpy())[0]
         target = DEFAULT + 0.25*action
 
         # ---- G1（可选，实验性）----
@@ -258,7 +366,9 @@ def main():
                 ph = (g1_step_i * gm.opt.timestep % g1p.PERIOD) / g1p.PERIOD
                 g1_obs[0:3] = gd.qvel[3:6] * g1p.SCALE["ang_vel"]
                 g1_obs[3:6] = g1p.gravity_orientation(gd.qpos[3:7])
-                g1_obs[6:9] = g1_cmd * g1p.CMD_SCALE
+                g1_obs[6:9] = (
+                    g1_cmd * g1p.CMD_SCALE if not a.mission
+                    else np.array([g1_vx, 0.0, g1_yaw * 0.25]))
                 g1_obs[9:21] = (gd.qpos[g1_qadr] - g1_default) * g1p.SCALE["dof_pos"]
                 g1_obs[21:33] = gd.qvel[g1_dadr] * g1p.SCALE["dof_vel"]
                 g1_obs[33:45] = g1_action
@@ -283,6 +393,9 @@ def main():
             for k, adr in enumerate(g1_demo_jadr):
                 dd.qpos[adr] = gd.qpos[g1_qadr[k]]
         mujoco.mj_forward(dm, dd)
+        if a.mission and a.g1:
+            mission_min_separation = min(
+                mission_min_separation, robot_separation())
 
     if a.check > 0:
         trace = {}
@@ -396,7 +509,8 @@ def main():
             f"display distance Go2={go2_dist:.2f} m "
             f"(z={dd.xpos[gid_body][2]:.2f}), "
             f"G1={g1_dist:.2f} m (z={dd.xpos[g1_demo_body][2]:.2f}), "
-            f"separation={robot_separation():.2f} m, resets={reset_count}")
+            f"separation={robot_separation():.2f} m, "
+            f"min_separation={mission_min_separation:.2f} m, resets={reset_count}")
         return
 
     with mujoco.viewer.launch_passive(dm, dd) as v:
@@ -412,7 +526,13 @@ def main():
             step_all()
             if a.follow:
                 v.cam.lookat[:] = robot_center()
+                if a.mission:
+                    v.cam.distance = max(10.0, 1.1 * robot_separation())
             v.sync()
+            if a.mission and mission_go2_done and mission_g1_done:
+                print("mission complete: Go2+H2, G1+H6, min separation %.2f m"
+                      % mission_min_separation, flush=True)
+                break
             t_next += 0.02
             dt = t_next - time.perf_counter()
             time.sleep(dt) if dt > 0 else None

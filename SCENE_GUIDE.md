@@ -122,6 +122,7 @@ C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_s
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --walk --headless 18
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --settle-steps 0
 C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --min-separation 1.5
+C:\Users\18967\anaconda3\envs\mujoco\python.exe C:\Users\18967\Desktop\git\run_scene.py --mission
 ```
 
 统一双机器人物理世界与长时导航基准：
