@@ -28,31 +28,10 @@
 $py     = "C:/Users/18967/anaconda3/python.exe"          # PIL/requests
 $mjpy   = "C:/Users/18967/anaconda3/envs/mujoco/python.exe"   # 仿真/渲染
 
-# 村子展示（默认 Go2 + G1 持续行走；每 8 s 自动复位）
-cd C:\Users\18967\Desktop\git
-& $mjpy run_scene.py                 # 打开双机器人持续演示窗口
-& $mjpy run_scene.py --static --headless  # 原静态场景加载自检
-
-# 机器狗 Go2（URDF 导入版，独立场景）
-& $mjpy run_go2.py                   # 打开窗口，home 姿态站住
-& $mjpy run_go2.py --headless --sim 2   # 无窗口：跑 2 s 物理并汇报机身高度
-& $mjpy run_go2.py --sim 5           # 先跑 5 s 再开窗口
-
-# 人形 G1（官方 g1_29dof.xml + STL 导入版，独立场景）
-& $mjpy run_g1.py                    # fixed 基座版：站着不动，当场景 NPC 用
-& $mjpy run_g1.py --free             # 带 freejoint：没有平衡控制器会摔（正常现象）
-& $mjpy run_g1.py --headless --sim 1 # 无窗口自检
-
-# 通用（不用写脚本，直接看任意 MJCF）
-& $mjpy -m mujoco.viewer --mjcf=assets/yard_flat.xml   # 另有 yard_stairs / yard_full
-
-# 验证场景 yard（30 m 小院：0.15 m 台阶 / 碎石阵 / Perlin 起伏 / H1 房子 / Go2）
-& $py  assets/_tools/yard.py         # 重新生成（**必须 base python**）
-& $mjpy -m mujoco.viewer --mjcf=assets/yard_flat.xml
-& $mjpy assets/_tools/render_yard.py # 出图（自由相机取景）
-
-# 出图（不弹窗）
-& $mjpy assets/_tools/render_scene.py assets/demo_v32.xml out.png 1100 650 2500 2
+# 机器狗 / 人形 / yard 三档 / 出图 的入口见 SCENE_GUIDE.md（run_go2.py、run_g1.py、assets/_tools/yard.py）
+& $mjpy run_scene.py --mission --go2-goal -26 -44   # A* 任务演示：Go2 沿村道走到 H7（展示层+物理层同步）
+& $mjpy run_scene.py --static --headless  # 静态场景加载自检
+& $mjpy assets/train/waypoint_nav.py --robot go2 --astar --goal -26 -44 --viewer   # 物理层实时窗口
 ```
 
 > `run_go2.py` 会先 `mj_resetDataKeyframe(..., 0)` 用 home 姿态起步；
@@ -86,7 +65,7 @@ cd C:\Users\18967\Desktop\git
 | 缺 | 影响 | 谁来补 |
 |---|---|---|
 | **H3/H4 的民房废墟模型** | 现在还是方盒占位房，论文图里一眼假 | 用户找素材（6–10 m 宽、有门窗、≤25 万面、glTF） |
-| **机器人本体** | ✅ Go2：`props/robots/go2_urdf/go2_scene.xml`（URDF 导入，nq=19 / 12 电机 / 16.28 kg / 20.8 万面）。✅ G1：`props/robots/g1/g1_scene.xml`（官方 MJCF+STL，nq=29 / 29 电机 / 35.1 kg / 59.8 万面 / 脚底 z=0.0004 m） | ✅ 已放进 demo_v32（H1 门前，固定基座）；行走验证用 yard |
+| **机器人本体** | ✅ Go2 `props/robots/go2_urdf/go2_scene.xml`（nq 19 / 12 电机）；✅ G1 `props/robots/g1/g1_scene.xml`（nq 29 / 29 电机）——均已放进 `demo_v32`（固定基座出图），行走用 `village_walk_final` | ✅ 已完成 |
 | **二次坍塌触发** | 场景是静态的，没有动态事件 | Codex 主责（DSH 出可塌结构）；触发器框架 `_tools/collapse_trigger.py` 已就绪，等 v8 的 `collapse_*` 结构接入 |
 | **地面细节** | 2048² 覆盖 200 m，草偏糊 | 升 4096 可解（25 MB） |
 | **动态物体物理** | 废墟块是静态的，不会二次塌落 | 需把部分块改成 free joint |
@@ -125,11 +104,9 @@ cd C:\Users\18967\Desktop\git
 
 **不再优先**：步态训练 —— 长时「不摔」已由开源教师策略和 G1 官方策略满足，见「当前能力」一节。
 
-> 生成顺序：`village.py` → `slim_rocks.py --keep 24 --drop-grass --apply --in-place`
-> → `optimize_trees.py`（Codex 的树优化）→ 如需碰撞：`add_collision.py --xml demo_v7.xml --apply`
-> → 局部整平：`flatten_sites.py --band 11`（**过渡带 11 m**，6 m 会留明显坡折）→ `reground_props.py`
-> → `fix_grounding.py --no-platform` → `remove_plinths.py` → `polish.py --ground-tex --grass-count 60`
-> → `seam_ring.py --band 11`（碎石要跟着 band 走）
+> 完整生成链（village → slim_rocks → optimize_trees → add_collision → flatten_sites → reground_props
+> → fix_grounding → remove_plinths → polish → seam_ring）与每步参数见 `SCENE_GUIDE.md`；
+> `flatten_sites.py --band 11` 与 `seam_ring.py --band 11` 必须一致。
 
 ## 关键交接约束
 
