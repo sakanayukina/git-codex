@@ -94,7 +94,7 @@ def main():
     ap.add_argument("--go2-goal", nargs=2, type=float,
                     default=list(SITES["H7"]))
     ap.add_argument("--g1-goal", nargs=2, type=float,
-                    default=[3.6, -22.0])
+                    default=None, help="默认与 G1 起点相同（原地站桩）")
     ap.add_argument("--go2-max-slope", type=float, default=25.0)
     ap.add_argument("--g1-max-slope", type=float, default=5.0)
     ap.add_argument("--grid-scene",
@@ -104,6 +104,8 @@ def main():
         a.go2_start = [1.0, -20.0] if a.mission else [-12.0, -17.0]
     if a.g1_start is None:
         a.g1_start = [0.0, -17.5]
+    if a.g1_goal is None:
+        a.g1_goal = list(a.g1_start)
     if a.mission:
         a.demo_reset = False
         grid = NavGrid(scene=a.grid_scene, res=1.0, robot_radius=0.35)

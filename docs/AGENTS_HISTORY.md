@@ -1188,6 +1188,22 @@ cd C:\Users\18967\Desktop\git\assets\train
 **326.7 s、69.77 m、第 7/18 航点**处摔倒。因此能力过滤必须对当前场景重新计算，
 不能把旧角度或旧里程硬编码进分配器。
 
+### 修复 `run_scene.py` 默认无法启动（Codex 2026-10-31）
+
+两个独立问题：
+
+1. 默认 mission 参数拼接到 `sys.argv` 时被插到了 `sys.argv[0]` 前面，
+   argparse 将脚本路径 `.\run_scene.py` 误判为未知参数并立即退出；
+   修复为先保留 program name，再拼接 mission 参数。
+2. 显式 `--mission` 时 G1 使用旧的不可达默认目标，联合规划失败；
+   现在 G1 默认 `goal=start`（原地站桩），只有显式传 `--g1-goal` 才执行任务。
+
+复测：
+
+- `run_scene.py --mission --headless 5` 正常规划并启动；
+- `run_scene.py` 默认窗口正常打开；
+- 默认任务是 Go2 A* `68.0 m / 16 航点`，G1 原地站桩。
+
 ### `run_scene --mission`：两台机器人联合 A* 执行（Codex 2026-10-30）
 
 `run_scene_walk.py` 新增 `--mission`：
