@@ -149,6 +149,24 @@ cd C:\Users\18967\Desktop\git
 
 旧请求、已完成的迁移记录和详细实验过程见 `docs/AGENTS_HISTORY.md`。
 
+## Codex 必读：2026-10-31 地形与加载方式已变
+
+1. **地形换过一次**：`demo_v32.xml` / `village_walk_final.xml` / `g1_terrain_plain.xml` / `g1_village_final.xml` /
+   `village_duo.xml` / `village_duo_go2x2.xml` / `village_walk4_patch.xml` 的 hfield 现在都指向
+   `assets/terrain/height_field_road.png`（由 `assets/terrain/hf_road.npz` 落盘，334×334 / 0.601 m 栅格）。
+   村道按 **8° 限坡**削填过（主路 cut 3.48 m，最陡 8.00°），地形其余部分未动。
+2. **加载场景必须用 `assets/train/terrain_road.py` 的 `load_model(xml)`**，不要直接 `mujoco.MjModel.from_xml_path()`。
+   原因：8-bit PNG 只有 256 级（0.26 m 量化），真实路面在 `hf_road.npz` 里，`load_model()` 会把它注入
+   `model.hfield_data`。用 PNG 加载出来的地形和规划/实测用的不是同一个。
+3. **碰撞代理从 610 减到 439 个**：`assets/train/roadmask.py` 把压在路面上的 171 个清掉了
+   （`RoadMask.intrudes(x, y, r+0.15)`）。改代理生成器后要按顺序重跑：
+   `make_twin_proxies_final.py` →（G1 用 `--base ../g1_terrain_plain.xml --out ../g1_village_final.xml`）→ `make_village_duo.py`。
+4. **G1 场景的 hfield 必须是绝对路径**（G1 模型带全局 `meshdir`，相对路径会被解析到 `props/robots/g1/meshes/`）。
+5. `mission.py`：`--g1-slope` 默认 **5.0**、`--g1-speed` 0.20 m/s（G1 实测能力，见下）。
+6. **演示**：`python run_scene.py`（默认 walk 模式；展示层 `demo_v32` 与物理层 `village_walk_final` 地形已一致）。
+7. 已知遗留：`demo_v32.xml` 里的**展示道具**没有按 RoadMask 挪过，镜像展示时机器人可能"穿过"路面上残留的石头；
+   物理层已没有这些代理，所以只影响观感。
+
 ## 当前能力（数字速查，2026-10-31）
 
 | 能力 | 结果 | 谁测的 |
