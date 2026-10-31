@@ -94,23 +94,14 @@ cd C:\Users\18967\Desktop\git
 
 ## 关键结论（踩过的坑）
 
-1. **MuJoCo 不读 glTF**、也不支持 Draco → 必须转 OBJ。
-2. **hfield**：`size` 四个数全须为正（base≥0.01）；PNG 第 0 行 = +Y；只吃 8 位灰度。
-3. **hfield 的 `texrepeat` 按“米”计**：1:1 覆盖 200 m 要填 `1/200 = 0.005`，填 `1 1` 等于每米铺一次（路会缩成噪声）。
-4. **MuJoCo 3.3.2 没有 PBR**：metallic/roughness/normal layer 编译通过但渲染像素差为 0，只认 albedo + specular/shininess。
-5. **薄片 mesh 必须 `inertia="shell"`**，否则 `mesh volume is too small`。
-6. **OBJ 面索引从 1 开始**，不能写 `f a/b/c`（会被当成一个顶点的 v/vt/vn）。
-7. **照片扫描树进不了 MuJoCo**（698 万面，降面成灰团）；扫描件（墙、石头）可以减面。
-8. **GLB 的贴图可能内嵌在 bufferView 里**，不抽出来就是灰模。
-9. **多材质共用一张图集**：导出必须去重（曾 90 MB → 4.3 MB）。
-10. **`site` 会渲染成球** → `group="3"`；相机要避开门洞，否则近景全灰。
-11. **GBK 控制台**：脚本里写 `²` 会抛 UnicodeEncodeError，被 try/except 吞掉后静默失败。
-12. **贴地道路网格会抖/锯齿** → 改烘进地面贴图；但别忘了删旧网格，否则它盖在上面。
-13. **DEM hfield 有 0.26 m 的隐形台阶**：66.5 m 落差 ÷ 8 位灰度 255 级 = 0.26 m/级，且沿网格正交排列。
-    用 demo_v32 测机器人通过性会被这个量化伪影污染 → 机器人验证一律用 `yard_flat.xml`（0.15 m 显式台阶）。
-14. **H1 之前一直是灰模**：`ruin_uk` 的 15 个 material 只有 `rgba`（没接图集），因为老资产没有
-    `manifest.json`。已在 `village.py` 加"共享 `<name>_atlas_N.png` 兜底"，`yard.py` 里已验证有效；
-    **demo_v27 要重跑生成链才会变**。
+1. **MuJoCo 不读 glTF / 不支持 Draco** → 必须转 OBJ；**OBJ 面索引从 1 开始**（不能写 `f a/b/c`）。
+2. **hfield**：`size` 四个数全须为正（base≥0.01）；PNG 第 0 行 = +Y；**只吃 8 位灰度**（66.5 m ÷ 255 级 = 0.26 m 隐形台阶，故路面走 npz 注入）；`texrepeat` 按米计，覆盖 200 m 要填 `0.005`。
+3. **MuJoCo 3.3.2 没有 PBR**：metallic/roughness/normal 编译通过但像素差为 0，只认 albedo + specular/shininess。
+4. **导入资产**：薄片 mesh 必须 `inertia="shell"`；GLB 贴图可能内嵌在 bufferView（不抽出来是灰模）；多材质共用图集要先去重（曾 90 MB → 4.3 MB）；照片扫描树进不了 MuJoCo（698 万面 → 灰团），扫描件（墙、石头）可减面。
+5. **场景**：`site` 会渲染成球 → `group="3"`；贴地道路网格会抖/锯齿 → 烘进地面贴图并**删旧网格**；H1 曾是灰模（老资产无 `manifest.json`），已在 `village.py` 加共享图集兜底。
+6. **GBK 控制台**：脚本里写 `²` 会 UnicodeEncodeError，被 try/except 吞掉后静默失败；改 `.py` 一律用 Python 读写（PowerShell `Set-Content` 会按 GBK 重编码毁中文）。
+
+> 每条坑的实测过程见 `docs/AGENTS_HISTORY.md`。
 
 ## 下一步（按优先级，2026-10-29 更新）
 
