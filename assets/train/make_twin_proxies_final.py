@@ -15,6 +15,8 @@ import re
 import mujoco
 import numpy as np
 
+from roadmask import RoadMask
+
 BASE = os.path.dirname(os.path.abspath(__file__))
 DEMO = os.path.join(BASE, "..", "demo_v32.xml")
 TWIN = os.path.join(BASE, "..", "village_walk4_patch.xml")
@@ -63,6 +65,8 @@ def main():
                 stack.extend(j for j in range(m.nbody) if int(m.body_parentid[j]) == x)
 
     parts, n_box, n_rock, n_small, n_prop = [], 0, 0, 0, 0
+    rm = RoadMask()          # 修路后：路面上不放碰撞代理（否则石头会横在路中间）
+    n_cleared = 0
     for g in range(m.ngeom):
         bid = int(m.geom_bodyid[g])
         bn = names[bid]
@@ -86,6 +90,11 @@ def main():
             continue
 
         r = float(m.geom_rbound[g])
+
+        # 路面上（含路肩 0.15 m）的石头/道具一律不放代理：修路时已经清过场
+        if rm.intrudes(p[0], p[1], r * a.rock_scale + 0.15):
+            n_cleared += 1
+            continue
 
         # 2) 石头（贴合一点）
         is_rock = any(k in low for k in ROCK_KEYS) and r >= 0.4
@@ -117,8 +126,8 @@ def main():
             raise SystemExit("找不到可替换的 hfield 文件路径")
     s = s.replace("</worldbody>", "\n".join(parts) + "\n  </worldbody>", 1)
     open(a.out, "w", encoding="utf-8").write(s)
-    print("生成 %s：建筑 %d / 石头 %d（其中接缝小石头 %d）/ 其它道具 %d"
-          % (a.out, n_box, n_rock, n_small, n_prop), flush=True)
+    print("生成 %s：建筑 %d / 石头 %d（其中接缝小石头 %d）/ 其它道具 %d / 让路清掉 %d"
+          % (a.out, n_box, n_rock, n_small, n_prop, n_cleared), flush=True)
 
 
 if __name__ == "__main__":

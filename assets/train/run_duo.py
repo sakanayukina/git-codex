@@ -9,6 +9,8 @@ import os
 import sys
 
 import mujoco
+
+import terrain_road
 import numpy as np
 import torch
 
@@ -54,7 +56,7 @@ def main():
                     help="每个 50 Hz 控制周期的物理子步数")
     a = ap.parse_args()
 
-    m = mujoco.MjModel.from_xml_path(XML)
+    m = terrain_road.load_model(XML)
     m.opt.timestep = a.timestep
     ctrl_dt = a.timestep * a.substeps
     d = mujoco.MjData(m)

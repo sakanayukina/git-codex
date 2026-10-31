@@ -6,6 +6,8 @@ import argparse
 import os
 
 import mujoco
+
+import terrain_road
 import numpy as np
 import torch
 
@@ -37,7 +39,7 @@ def main():
     net.eval()
     print("策略:", a.ckpt)
 
-    m = mujoco.MjModel.from_xml_path(a.xml)
+    m = terrain_road.load_model(a.xml)
     if a.no_prop_collision:
         kw = ("tree", "grass", "rock", "debris", "seam", "stone", "trunk", "cone",
               "tire", "barrier", "car", "bush", "shrub", "wood", "plank")

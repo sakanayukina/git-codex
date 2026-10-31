@@ -26,6 +26,8 @@ import mujoco
 import numpy as np
 import torch
 
+import terrain_road
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.dirname(HERE)
 DEFAULT_POLICY = os.path.join(ASSETS, "props", "robots", "g1", "motion.pt")
@@ -51,9 +53,16 @@ def gravity_orientation(q):
 
 
 class G1Walker:
-    """宇树官方 G1 12 自由度腿策略的行走控制器（与 g1_policy.py 时序一致）。"""
+    """宇树官方 G1 12 自由度腿策略的行走控制器（与 g1_policy.py 时序一致）。
 
-    def __init__(self, model, data, policy_path=None, decim=10, device="cpu"):
+    gravity_frame:
+        "world" —— 观测里喂真实重力方向，即官方训练时的口径（默认，与 g1_policy.py 逐位一致）
+        "road"  —— 把重力旋到"路面坐标系"（用脚下地形法向代替世界 +Z），
+                   让平地训练出来的策略在坡面上"以为自己在平地"，用来测坡面补偿能不能救
+    """
+
+    def __init__(self, model, data, policy_path=None, decim=10, device="cpu",
+                 gravity_frame="world", policy_fn=None):
         if model.nq != 19 or model.nu != 12:
             raise SystemExit("G1 控制器需要 nq=19 / nu=12 的模型（当前 %d / %d）"
                              % (model.nq, model.nu))
@@ -65,11 +74,28 @@ class G1Walker:
         self.policy.eval()
         if hasattr(self.policy, "reset_memory"):
             self.policy.reset_memory()
+        # 可选：用普通 nn.Module / callable 替换官方 TorchScript（蒸馏出来的学生策略），
+        # 官方策略的输入输出都是 (1, 47) -> (1, 12)。
+        self.policy_fn = None
+        if policy_fn is not None:
+            if isinstance(policy_fn, str):
+                mod = torch.jit.load(policy_fn, map_location=device)
+                mod.eval()
+                self.policy_fn = lambda o: mod(o).detach().cpu().numpy().flatten()[:NUM_ACT]
+            elif isinstance(policy_fn, torch.nn.Module):
+                policy_fn.eval()
+                self.policy_fn = lambda o: policy_fn(o).detach().cpu().numpy().flatten()[:NUM_ACT]
+            else:
+                self.policy_fn = policy_fn
+        self.record = None        # 列表：记录 (obs, action)，用于 BC 蒸馏
         self.default = DEFAULT.copy()
         self.action = np.zeros(NUM_ACT, dtype=np.float32)
         self.target = self.default.copy()
         self.steps = 0            # 物理步计数（相位靠它，必须连续）
         self.cmd = np.zeros(3, dtype=np.float64)
+        self.gravity_frame = gravity_frame
+        self._normal = np.array([0.0, 0.0, 1.0])
+        self._normal_at = None
         # 每侧 [hip_pitch, hip_roll, hip_yaw, knee, ankle_pitch, ankle_roll]
         self.perm = np.arange(NUM_ACT)
         self.inv = np.argsort(self.perm)
@@ -94,6 +120,30 @@ class G1Walker:
         bid = mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_BODY, "pelvis")
         return float(self.d.xmat[bid].reshape(3, 3)[2, 2])
 
+    # ---- 观测里的重力方向 ----
+    def _body_rot(self):
+        """世界<-机体的旋转矩阵（由 pelvis 四元数）。"""
+        qw, qx, qy, qz = self.d.qpos[3:7]
+        return np.array([
+            [1 - 2 * (qy * qy + qz * qz), 2 * (qx * qy - qz * qw), 2 * (qx * qz + qy * qw)],
+            [2 * (qx * qy + qz * qw), 1 - 2 * (qx * qx + qz * qz), 2 * (qy * qz - qx * qw)],
+            [2 * (qx * qz - qy * qw), 2 * (qy * qz + qx * qw), 1 - 2 * (qx * qx + qy * qy)],
+        ], dtype=np.float64)
+
+    def _gravity_obs(self):
+        """策略观测 obs[3:6]。
+
+        world：R^T·(0,0,-1)，与 gravity_orientation 完全等价（逐位一致，默认口径）。
+        road ：R^T·(-n)，n 为脚下地形法向 —— 坡面上策略"看到"的重力与平地一致。
+        """
+        if self.gravity_frame != "road":
+            return gravity_orientation(self.d.qpos[3:7])
+        p = self.pos()
+        if self._normal_at is None or float(np.hypot(*(p - self._normal_at))) > 0.15:
+            self._normal = terrain_road.plane_normal(self.m, self.d, float(p[0]), float(p[1]))
+            self._normal_at = p.copy()
+        return (self._body_rot().T @ (-self._normal)).astype(np.float32)
+
     # ---- 控制 ----
     def _apply(self):
         tau = KP * (self.target - self.q) - KD * self.dq
@@ -106,16 +156,22 @@ class G1Walker:
         ph = (t % PERIOD) / PERIOD
         obs = np.zeros(NUM_OBS, dtype=np.float32)
         obs[0:3] = self.d.qvel[3:6] * SCALE["ang_vel"]
-        obs[3:6] = gravity_orientation(self.d.qpos[3:7])
+        obs[3:6] = self._gravity_obs()
         obs[6:9] = self.cmd * CMD_SCALE
         obs[9:21] = (self.q - self.default)[self.perm] * SCALE["dof_pos"]
         obs[21:33] = self.dq[self.perm] * SCALE["dof_vel"]
         obs[33:45] = self.action
         obs[45:47] = [math.sin(2 * math.pi * ph), math.cos(2 * math.pi * ph)]
         with torch.no_grad():
-            act = self.policy(torch.from_numpy(obs).unsqueeze(0)).numpy().flatten()[:NUM_ACT]
+            if self.policy_fn is not None:
+                act = np.asarray(self.policy_fn(torch.from_numpy(obs).unsqueeze(0)),
+                                 dtype=np.float32)
+            else:
+                act = self.policy(torch.from_numpy(obs).unsqueeze(0)).numpy().flatten()[:NUM_ACT]
         self.action = act
         self.target = self.default + SCALE["action"] * act[self.inv]
+        if self.record is not None:
+            self.record.append((obs.copy(), np.array(act, dtype=np.float32).copy()))
 
     def step(self, vx=0.0, vyaw=0.0):
         """走一个控制块（默认 20 ms）。vx 单位 m/s，vyaw 单位 rad/s（策略内部再乘 0.25）。"""

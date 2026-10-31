@@ -13,6 +13,8 @@ import os
 import sys
 
 import mujoco
+
+import terrain_road
 import numpy as np
 import torch
 
@@ -59,7 +61,7 @@ def main():
     ap.add_argument("--seeds", type=int, default=1, help="重复次数（不同初始扰动）")
     a = ap.parse_args()
 
-    m = mujoco.MjModel.from_xml_path(a.xml)
+    m = terrain_road.load_model(a.xml)
     if a.robot == "go2":
         m.opt.timestep = 0.005
         root, joints, decim, default = "base", GO2_JOINTS, 4, DEFAULT

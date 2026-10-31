@@ -75,6 +75,27 @@ def ray_height(model, data, x, y, z0=400.0):
     return z0 - dist
 
 
+def plane_normal(model, data, x, y, radius=1.5):
+    """用机器人周围四个轴向 hfield 采样点算地形法向（世界系，向上单位向量）。
+
+    采样半径默认 1.5 m，比 G1 站立占地大得多，不会命中机器人自身几何。
+    只用中心差分，**不调用 numpy.linalg.lstsq**：本机在 mujoco+torch 一起加载后
+    lstsq 会触发 Windows fatal exception 0xc06d007f（LAPACK 延迟加载失败）。
+    """
+    for r in (radius, radius * 1.7, 0.9, 2.6):
+        hx1 = ray_height(model, data, x + r, y)
+        hx0 = ray_height(model, data, x - r, y)
+        hy1 = ray_height(model, data, x, y + r)
+        hy0 = ray_height(model, data, x, y - r)
+        if not (np.isfinite(hx1) and np.isfinite(hx0) and np.isfinite(hy1) and np.isfinite(hy0)):
+            continue
+        gx = (hx1 - hx0) / (2.0 * r)
+        gy = (hy1 - hy0) / (2.0 * r)
+        n = np.array([-gx, -gy, 1.0])
+        return n / np.linalg.norm(n)
+    return np.array([0.0, 0.0, 1.0])
+
+
 def _roads():
     import json
     cfg = json.load(open(os.path.join(ASSETS, "buildings.json"), encoding="utf-8"))

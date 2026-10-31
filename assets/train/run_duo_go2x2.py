@@ -8,6 +8,8 @@ import os
 import sys
 
 import mujoco
+
+import terrain_road
 import numpy as np
 import torch
 
@@ -55,7 +57,7 @@ def main():
     ap.add_argument("--gap", type=float, default=1.3)
     a = ap.parse_args()
 
-    m = mujoco.MjModel.from_xml_path(XML)
+    m = terrain_road.load_model(XML)
     m.opt.timestep = 0.005
     d = mujoco.MjData(m)
     mujoco.mj_forward(m, d)  # 先 forward，raycast 才能拿到 geom 位置

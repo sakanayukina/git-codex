@@ -12,6 +12,8 @@ import os
 import time
 
 import mujoco
+
+import terrain_road
 import numpy as np
 import torch
 
@@ -34,7 +36,7 @@ def main():
     ap.add_argument("--noprop", action="store_true", help="关掉村子道具/植被的碰撞（只留地形与建筑）")
     a = ap.parse_args()
 
-    m = mujoco.MjModel.from_xml_path(a.xml)
+    m = terrain_road.load_model(a.xml)
     m.opt.timestep = 0.005
     m.opt.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
     m.opt.cone = mujoco.mjtCone.mjCONE_PYRAMIDAL

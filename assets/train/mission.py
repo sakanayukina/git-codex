@@ -212,7 +212,7 @@ def build_world(args):
     ]
     agents = [
         Agent("go2", "go2", (1.0, -20.0), max_slope=args.go2_slope, speed=0.35, can_manip=False),
-        Agent("g1", "g1", (0.0, -17.5), max_slope=args.g1_slope, speed=0.25, can_manip=True),
+        Agent("g1", "g1", (0.0, -17.5), max_slope=args.g1_slope, speed=0.20, can_manip=True),
     ]
     return tasks, agents
 
@@ -221,7 +221,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dispatchers", default="greedy,marginal,naive")
     ap.add_argument("--go2-slope", type=float, default=15.0)
-    ap.add_argument("--g1-slope", type=float, default=10.0)
+    ap.add_argument("--g1-slope", type=float, default=5.0,
+                    help="G1 可通行坡度上限（实测：官方策略 + 微调后仍只稳定到 5 度；村道 6.7 度双向都摔）")
     ap.add_argument("--res", type=float, default=1.0)
     ap.add_argument("--radius", type=float, default=0.35)
     a = ap.parse_args()

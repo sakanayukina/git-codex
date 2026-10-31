@@ -16,6 +16,8 @@ import os
 import sys
 
 import mujoco
+
+import terrain_road
 import numpy as np
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -34,7 +36,7 @@ SITES = {
 
 class NavGrid:
     def __init__(self, scene=SCENE, size=100.0, res=1.0, robot_radius=0.35):
-        self.m = mujoco.MjModel.from_xml_path(scene)
+        self.m = terrain_road.load_model(scene)
         self.d = mujoco.MjData(self.m)
         mujoco.mj_forward(self.m, self.d)
 

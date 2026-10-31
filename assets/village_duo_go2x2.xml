@@ -11,7 +11,7 @@
     <texture name="gtex" type="2d" file="tex/ground_baked_hd.png"/>
     <material name="gmat" texture="gtex" rgba="1 1 1 1" texrepeat="0.005 0.005" texuniform="true"/>
 
-    <hfield name="terrain" file="terrain/height_field_patch.png"
+    <hfield name="terrain" file="terrain/height_field_road.png"
             size="100.0 100.0 66.50 0.01"/>
     
     <material name="metal" rgba=".9 .95 .95 1" />

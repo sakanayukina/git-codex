@@ -10,6 +10,8 @@ import os
 import sys
 
 import mujoco
+
+import terrain_road
 import mujoco.viewer
 import numpy as np
 import torch
@@ -55,6 +57,8 @@ def main():
     ap.add_argument("--seconds", type=float, default=90.0)
     ap.add_argument("--vx", type=float, default=1.0, help="前进指令（obs[6] = vx*2）")
     ap.add_argument("--kp-yaw", type=float, default=1.2)
+    ap.add_argument("--turn-gate", type=float, default=0.0,
+                    help="转向误差超过该角度（rad）时停止前进先原地转（0=关闭）。G1 边走边转会绕小圈，建议 0.4")
     ap.add_argument("--yaw-sign", type=float, default=1.0,
                     help="闭环转向符号；当前策略实测为 +1")
     ap.add_argument("--tolerance", type=float, default=1.0)
@@ -88,7 +92,7 @@ def main():
         path = [goal]
 
     is_g1 = (a.robot == "g1")
-    m = mujoco.MjModel.from_xml_path(a.xml)
+    m = terrain_road.load_model(a.xml)
     m.opt.timestep = 0.002 if is_g1 else 0.005
     d = mujoco.MjData(m)
     mujoco.mj_forward(m, d)
@@ -132,9 +136,33 @@ def main():
 
     pol = a.policy or (os.path.join(BASE, "..", "props", "robots", "g1", "motion.pt") if is_g1
                        else os.path.join(BASE, "pretrained", "go2_cts_vanilla2_103.5k_0.5786.pt"))
-    net = torch.jit.load(pol); net.eval()
-    if hasattr(net, "reset_memory"):
-        net.reset_memory()
+    walker = None
+    if is_g1:
+        from g1_walker import G1Walker
+        ck = None
+        ck_is_sd = False
+        if pol and pol.endswith(".pt"):
+            try:
+                ck = torch.load(pol, map_location="cpu")
+                ck_is_sd = isinstance(ck, dict) and any(
+                    str(k).startswith("memory.") for k in ck)
+            except Exception:
+                ck_is_sd = False
+        if ck_is_sd:
+            from g1_policy_net import G1Actor
+            netg = G1Actor()
+            netg.load_state_dict(ck)
+            netg.eval()
+            netg.reset(1)
+            walker = G1Walker(m, d, policy_fn=netg)
+            print("[policy] state_dict -> G1Actor:", pol)
+        else:
+            walker = G1Walker(m, d, policy_path=pol or None)
+    net = None
+    if not is_g1:
+        net = torch.jit.load(pol); net.eval()
+        if hasattr(net, "reset_memory"):
+            net.reset_memory()
     obs = np.zeros(47 if is_g1 else 45, dtype=np.float32)
     a_ = np.zeros(12, dtype=np.float32); tgt = default.copy()
 
@@ -188,12 +216,34 @@ def main():
         # 航点前减速，转向误差大时降低前进速度。
         vx = a.vx if dist_goal > 1.5 else a.vx * max(dist_goal / 1.5, 0.35)
         vx *= max(0.25, np.cos(err) ** 2)
+        if a.turn_gate > 0 and abs(err) > a.turn_gate:
+            vx = 0.0
+        if os.environ.get("NAV_DEBUG") and k % 100 == 0:
+            print("  t %5.1f s pos (%.2f, %.2f) yaw %.2f err %.2f cmd %.2f vx %.2f up %.2f"
+                  % (k * 0.02, d.qpos[bq], d.qpos[bq + 1],
+                     yaw_of(d.qpos[bq+3:bq+7]), err, yaw_cmd, vx,
+                     float(d.xmat[bb].reshape(3, 3)[2, 2])))
 
-        for _ in range(decim):
-            tau = (kp * (tgt - d.qpos[q]) - kd * d.qvel[dof]) if is_g1 else \
-                  clip_torque_speed(KP * (tgt - d.qpos[q]) - KD * d.qvel[dof], d.qvel[dof])
-            d.ctrl[act] = np.clip(tau, -200, 200) if is_g1 else tau
-            mujoco.mj_step(m, d)
+        if is_g1:
+            # G1 的时序细节（什么时候算策略、什么时候写 ctrl）非常敏感：
+            # 这里直接调用 g1_walker.G1Walker，它是 assets/_tools/g1_policy.py 内循环的逐行移植，
+            # 已逐物理步验证与参考实现完全一致（qpos 差 0、ctrl 差 1e-6）。
+            walker.step(vx, yaw_cmd)
+        else:
+            obs[0:3] = d.qvel[bd+3:bd+6] * 0.25
+            obs[3:6] = gravity(d.qpos[bq+3:bq+7])
+            obs[6:9] = [vx, 0.0, yaw_cmd * 0.25]
+            obs[9:21] = d.qpos[q] - DEFAULT
+            obs[21:33] = d.qvel[dof] * 0.05
+            obs[33:45] = a_
+            with torch.inference_mode():
+                out = net(torch.as_tensor(obs).unsqueeze(0))
+            a_ = (out[0].numpy() if isinstance(out, tuple) else out.numpy())[0]
+            tgt = DEFAULT + 0.25 * a_
+            for _ in range(decim):
+                tau = clip_torque_speed(KP * (tgt - d.qpos[q]) - KD * d.qvel[dof], d.qvel[dof])
+                d.ctrl[act] = tau
+                mujoco.mj_step(m, d)
         current_pos = np.array([d.qpos[bq], d.qpos[bq + 1]])
         travelled += float(np.linalg.norm(current_pos - previous_pos))
         previous_pos = current_pos
@@ -219,30 +269,6 @@ def main():
         if up < 0.5:
             fell_at = k * 0.02
             break
-
-        if is_g1:
-            ph = (k * 0.02 % g1p.PERIOD) / g1p.PERIOD
-            obs[0:3] = d.qvel[bd+3:bd+6] * g1p.SCALE["ang_vel"]
-            obs[3:6] = g1p.gravity_orientation(d.qpos[bq+3:bq+7])
-            obs[6:9] = [vx, 0.0, yaw_cmd * 0.25]
-            obs[9:21] = (d.qpos[q] - default) * g1p.SCALE["dof_pos"]
-            obs[21:33] = d.qvel[dof] * g1p.SCALE["dof_vel"]
-            obs[33:45] = a_
-            obs[45:47] = [np.sin(2 * np.pi * ph), np.cos(2 * np.pi * ph)]
-            with torch.inference_mode():
-                a_ = net(torch.as_tensor(obs).unsqueeze(0)).detach().numpy().flatten()[:12]
-            tgt = default + g1p.SCALE["action"] * a_
-        else:
-            obs[0:3] = d.qvel[bd+3:bd+6] * 0.25
-            obs[3:6] = gravity(d.qpos[bq+3:bq+7])
-            obs[6:9] = [vx, 0.0, yaw_cmd * 0.25]
-            obs[9:21] = d.qpos[q] - DEFAULT
-            obs[21:33] = d.qvel[dof] * 0.05
-            obs[33:45] = a_
-            with torch.inference_mode():
-                out = net(torch.as_tensor(obs).unsqueeze(0))
-            a_ = (out[0].numpy() if isinstance(out, tuple) else out.numpy())[0]
-            tgt = DEFAULT + 0.25 * a_
 
     pos = np.array([d.qpos[bq], d.qpos[bq+1]])
     final_dist = float(np.linalg.norm(pos - start))
