@@ -6,11 +6,15 @@ should stay out of the default target list unless explicitly requested.
 import argparse
 import os
 import re
+import sys
 
 import mujoco
 import numpy as np
 
 from polish import terrain_fn
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "train"))
+import terrain_road
 
 
 DEFAULT_BODIES = (
@@ -19,6 +23,7 @@ DEFAULT_BODIES = (
     "boulder_01_2",
     "boulder_01_8",
 )
+ROCK_KEYS = ("rock", "boulder", "slab", "stone", "stump", "rk_", "seam_")
 
 
 def body_world_aabb(model, data, body_id):
@@ -55,16 +60,56 @@ def main():
                         help="optional manual z shifts, e.g. H2=-0.18")
     parser.add_argument("--clearance", type=float, default=0.03,
                         help="positive embeds the lowest point by this much")
+    parser.add_argument("--terrain", choices=("auto", "road", "png"),
+                        default="auto",
+                        help="height source; auto prefers terrain/hf_road.npz")
+    parser.add_argument("--auto-rocks", action="store_true",
+                        help="find and ground every floating static rock/stump")
+    parser.add_argument("--rock-threshold", type=float, default=0.08)
     args = parser.parse_args()
     out = args.out or args.xml
 
-    model = mujoco.MjModel.from_xml_path(args.xml)
+    use_road = (args.terrain == "road"
+                or (args.terrain == "auto" and os.path.exists(terrain_road.NPZ)))
+    model = (terrain_road.load_model(args.xml)
+             if use_road else mujoco.MjModel.from_xml_path(args.xml))
     data = mujoco.MjData(model)
     mujoco.mj_forward(model, data)
-    ground = terrain_fn(args.xml)
+    if use_road:
+        ground = lambda x, y: terrain_road.ray_height(model, data, x, y)
+    else:
+        ground = terrain_fn(args.xml)
     xml = open(args.xml, encoding="utf-8").read()
 
-    for name in ([] if args.skip_grounding else args.bodies):
+    bodies = list(args.bodies)
+    if args.auto_rocks:
+        dynamic = {
+            int(model.jnt_bodyid[j]) for j in range(model.njnt)
+            if model.jnt_type[j] == mujoco.mjtJoint.mjJNT_FREE
+        }
+        bodies = []
+        for body_id in range(1, model.nbody):
+            if body_id in dynamic:
+                continue
+            name = mujoco.mj_id2name(
+                model, mujoco.mjtObj.mjOBJ_BODY, body_id) or ""
+            if not any(key in name.lower() for key in ROCK_KEYS):
+                continue
+            try:
+                points = body_world_aabb(model, data, body_id)
+            except RuntimeError:
+                continue
+            heights = []
+            for x in np.linspace(points[:, 0].min(), points[:, 0].max(), 7):
+                for y in np.linspace(points[:, 1].min(), points[:, 1].max(), 7):
+                    height = ground(float(x), float(y))
+                    if height is not None and np.isfinite(height):
+                        heights.append(float(height))
+            if heights and float(points[:, 2].min()) - max(heights) > args.rock_threshold:
+                bodies.append(name)
+        print("auto rocks:", len(bodies))
+
+    for name in ([] if args.skip_grounding else bodies):
         body_id = mujoco.mj_name2id(
             model, mujoco.mjtObj.mjOBJ_BODY, name)
         if body_id < 0:
@@ -77,7 +122,7 @@ def main():
         for x in np.linspace(xmin, xmax, 7):
             for y in np.linspace(ymin, ymax, 7):
                 height = ground(float(x), float(y))
-                if height is not None:
+                if height is not None and np.isfinite(height):
                     heights.append(float(height))
         if not heights:
             raise SystemExit("no terrain under body: " + name)

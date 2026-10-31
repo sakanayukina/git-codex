@@ -1,8 +1,13 @@
 """Render an MJCF scene to PNG (for eyeballing the assembled rescue scene)."""
+import os
 import sys
 
 import mujoco
 import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "..", "train"))
+import terrain_road
 
 
 def save_png(arr, path):
@@ -26,7 +31,7 @@ w, h = (int(sys.argv[3]), int(sys.argv[4])) if len(sys.argv) > 4 else (1100, 620
 steps = int(sys.argv[5]) if len(sys.argv) > 5 else 0
 cam_idx = int(sys.argv[6]) if len(sys.argv) > 6 else 0
 
-model = mujoco.MjModel.from_xml_string(open(xml_path, encoding="utf-8").read())
+model = terrain_road.load_model(xml_path)
 data = mujoco.MjData(model)
 print(f"nbody={model.nbody} ngeom={model.ngeom} nmesh={model.nmesh} ntex={model.ntex}")
 # 有 keyframe 就先按它摆好姿态（否则机器人从零位起步会瘫成一坨）

@@ -6,25 +6,27 @@
 
 - 场景文件：`assets/demo_v32.xml`（v28 环境 + H1 门前的 Go2 与 G1，固定基座展示；相机 `cam_robots` / `cam_hero` / `cam_hero2`）
 - 规模：670 body / 1154 geom / 15 相机 / 10 site，约 4.62 M 三角面
-- 入口：`run_scene.py`（默认在完整村子里演示 Go2 + G1 行走，`--static` 查看静态展示场景）、`outdoor_scene.py`（优先加载 v29，缺失时回退程序化场景）
+- 入口：`run_scene.py`（默认在完整村子里执行 Go2 绕障巡逻，`--static` 查看静态展示场景）、`outdoor_scene.py`（优先加载 v29，缺失时回退程序化场景）
 - 解释器：`C:/Users/18967/anaconda3/envs/mujoco/python.exe`（MuJoCo 3.3.2）
 
 ## 2. 文件地图
 
 | 路径 | 作用 |
 |---|---|
-| `run_scene.py` | 默认启动 Go2 + G1 行走演示；`--static` 加载 `demo_v32.xml` 静态展示，`--headless` 做静态自检 |
+| `run_scene.py` | 默认启动 Go2 A* 绕障巡逻；`--static` 加载静态展示，`--headless` 做静态自检 |
 | `outdoor_scene.py` | 场景启动入口；v27 不存在时回退到程序化户外场景 |
 | `assets/demo_v32.xml` | 最终 MJCF 场景（地形 + 道路 + 建筑 + 植被 + 道具 + 机器人 + 相机 + site） |
 | `assets/village_duo.xml` | Go2 + G1 统一物理世界（地形 + 610 碰撞代理，nq=38 / nu=24） |
 | `assets/train/run_duo.py` | 在同一 `mj_step` 中驱动 Go2 + G1；默认 `dt=0.002 × 10` |
 | `assets/train/longrun_test.py` | 长时行动基准：存活时间、里程、均速、是否摔倒 |
-| `assets/train/waypoint_nav.py` | Go2 闭环航点导航；默认转向符号已校准为 `+1` |
+| `assets/train/waypoint_nav.py` | Go2/G1 闭环航点导航；默认转向符号已校准为 `+1` |
 | `assets/buildings.json` | 村落布局配置：7 栋房、主路折线、封路点、堆积锥 |
 | `assets/_tools/` | 全部生成、导入、后处理工具（下节逐个说明） |
 | `assets/_tools/terrain.py` | 统一地形采样：`HfieldSampler`（demo，row 0=-Y）与 `FloatDEMSampler`（`terrain/dem_float.npz`，row 0=+Y） |
-| `assets/_tools/fix_visual_grounding.py` | 用世界 AABB + hfield 精确修正指定建筑/石头的 z 位置 |
+| `assets/_tools/fix_visual_grounding.py` | 默认用 `hf_road.npz`；`--auto-rocks` 自动吸附所有悬空石头/树桩 |
 | `assets/_tools/smooth_hfield.py` | 对高度图做轻度高斯平滑，减少小尺度起伏且不生成平台 |
+| `assets/train/terrain_road.py` | 把 float `hf_road.npz` 注入场景；所有加载/渲染入口必须使用 |
+| `assets/train/carve_roads.py` | 按 6° 目标纵坡、10 m 过渡修建村道 |
 | `assets/props/imported/` | 真实扫描模型：H1/H2/H5/H6/H7、枫树、草块等 |
 | `assets/props/` | Poly Haven 道具：岩石、树桩、枯枝、报废车、隔离墩、轮胎 |
 | `assets/terrain/` | 汶川 DEM 高度图和平滑/整平后的 PNG |

@@ -4,9 +4,14 @@ r"""用自由相机在指定位置取景出图。
 """
 import argparse
 import os
+import sys
 
 import mujoco
 import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "..", "train"))
+import terrain_road
 
 
 def save_png(arr, path):
@@ -36,7 +41,7 @@ def main():
     ap.add_argument("--h", type=int, default=700)
     a = ap.parse_args()
 
-    m = mujoco.MjModel.from_xml_path(a.xml)
+    m = terrain_road.load_model(a.xml)
     d = mujoco.MjData(m)
     if m.nkey > 0:
         mujoco.mj_resetDataKeyframe(m, d, 0)

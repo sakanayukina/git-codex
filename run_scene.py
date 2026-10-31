@@ -7,6 +7,8 @@ import mujoco.viewer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 XML = os.path.join(BASE_DIR, "assets", "demo_v32.xml")
+sys.path.insert(0, os.path.join(BASE_DIR, "assets", "train"))
+import terrain_road
 
 
 def run(headless=False):
@@ -31,7 +33,7 @@ def run(headless=False):
         run_scene_walk.main()
         return
 
-    model = mujoco.MjModel.from_xml_path(XML)
+    model = terrain_road.load_model(XML)
     data = mujoco.MjData(model)
     mujoco.mj_forward(model, data)
 

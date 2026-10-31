@@ -1287,3 +1287,24 @@ h0/c0 用当前权重 burn-in 重算）、`multiprocessing.Pipe` 被沙箱禁止
 
 **踩坑（工程）**：用 PowerShell `Set-Content` 改 `.py` 会按 GBK 重编码，把 22 行中文注释毁掉并吃掉字符串引号；
 恢复办法是删掉所有非 ASCII 字符并补齐引号（`ast.parse` 验证）。**改 .py 一律用 Python 读写**。
+
+### 地形、悬空石头与画面收尾（Codex 2026-10-31）
+
+- 修复 `fix_visual_grounding.py`：默认从 `terrain_road.load_model()` / `hf_road.npz` 取真实高度，
+  新增 `--auto-rocks`，自动检测并吸附所有静态 rock/boulder/slab/stump/seam 物体。
+- 道路重新生成：目标纵坡从 8° 收紧到 **6°**，路肩过渡带从 6 m 扩到 **10 m**；
+  `terrain_road --verify` 报告主路实际最大坡度 **9.46°**（此前 12.56°），横坡最大 0.261 m。
+- 最终 float 地形自动复检：悬空阈值 `>8 cm` 的石头/树桩为 **0**。
+- 光照和构图：fovy 50、雾 85–280 m、haze 0.12；天空改为深蓝到暖白渐变；
+  主光更暖更强，冷色补光和轮廓光保留；地面材质轻微暖灰压色。
+- 所有静态加载/渲染入口改用 `terrain_road.load_model()`：`run_scene.py --static`、
+  `render_at.py`、`render_scene.py`。
+- 文件精简：
+  - 删除根目录 13 张临时截图，并加入 `.gitignore`；
+  - `assets/train/shots` 从 22 个文件压到 9 个，仅保留关键证据与轨迹 CSV；
+  - `assets/train/ckpt` 从 36 个文件压到 11 个，删除旧实验权重/JSON/日志，保留
+    `bc.pt`、`last.pt`、G1 BC、v5 当前权重和配置；
+  - 清理 `.tmp`、`__pycache__`、MuJoCo 日志。
+
+回归：`run_scene --headless` 正常（670 body / 1154 geom）；
+`run_scene_walk --mission --headless 5` 正常规划；`run_duo.py --seconds 12` 两台均直立。
