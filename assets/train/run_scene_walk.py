@@ -5,7 +5,7 @@
 原因：demo_v32 里道具 body 数量太多，直接在那里跑策略机器人走不动（已在 AGENTS 记录）。
 
     python run_scene_walk.py                 # 开窗口看，默认两台机器人循环演示
-    python run_scene_walk.py --mission       # Go2→H2 + G1→H6 同时执行 A* 任务
+    python run_scene_walk.py --mission       # Go2→H7 + G1→近端平缓道路点
     python run_scene_walk.py --headless 5    # 不开窗口，报位移
 """
 import argparse
@@ -84,13 +84,13 @@ def main():
     ap.add_argument("--min-separation", type=float, default=1.5,
                     help="两台机器人小于该距离时立即复位")
     ap.add_argument("--mission", action="store_true",
-                    help="执行 A* 任务路线：Go2→H2，G1→H6")
+                    help="执行 A* 任务路线：Go2→H7，G1→近端平缓道路点")
     ap.add_argument("--go2-goal", nargs=2, type=float,
-                    default=list(SITES["H2"]))
+                    default=list(SITES["H7"]))
     ap.add_argument("--g1-goal", nargs=2, type=float,
-                    default=list(SITES["H6"]))
+                    default=[3.6, -22.0])
     ap.add_argument("--go2-max-slope", type=float, default=25.0)
-    ap.add_argument("--g1-max-slope", type=float, default=10.0)
+    ap.add_argument("--g1-max-slope", type=float, default=5.0)
     ap.add_argument("--grid-scene",
                     default=os.path.join(BASE, "..", "village_duo.xml"))
     a = ap.parse_args()
@@ -334,8 +334,9 @@ def main():
                 g1_pos, gd.qpos[3:7], g1_path,
                 g1_waypoint, 1.0, 0.18)
             if mission_g1_done:
-                print("mission: G1 reached H6 path endpoint at %.1f s"
-                      % mission_time, flush=True)
+                print("mission: G1 reached goal %s at %.1f s"
+                      % (tuple(round(v, 1) for v in a.g1_goal), mission_time),
+                      flush=True)
         if a.mission and mission_time - last_mission_report >= 20.0:
             g1_count = len(g1_path) if g1_path is not None else 0
             g1_progress = min(g1_waypoint, g1_count) if a.g1 else 0
