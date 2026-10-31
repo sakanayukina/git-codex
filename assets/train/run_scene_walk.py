@@ -69,6 +69,10 @@ def main():
     ap.add_argument("--check", type=float, default=0.0, help="跑 N 秒后测量身高/穿透")
     ap.add_argument("--dist", type=float, default=0.0,
                     help="存图相机距离（米）；0 表示按机器人间距自动计算")
+    ap.add_argument("--cam-elev", type=float, default=-18.0,
+                    help="存图相机俯角（度），越负越接近俯视")
+    ap.add_argument("--track", default="",
+                    help="把 Go2 实际走过的轨迹写成 CSV（t,x,y），用于画俯视图对照 A* 计划")
     ap.add_argument("--g1", action=argparse.BooleanOptionalAction, default=True,
                     help="同时驱动 G1（默认开启）")
     ap.add_argument("--demo-reset", action=argparse.BooleanOptionalAction, default=True,
@@ -85,6 +89,8 @@ def main():
                     help="两台机器人小于该距离时立即复位")
     ap.add_argument("--mission", action="store_true",
                     help="执行 A* 任务路线：Go2→H7，G1→近端平缓道路点")
+    ap.add_argument("--loop", action="store_true",
+                    help="到达目标后掉头返程，往返循环演示（不退出窗口）")
     ap.add_argument("--go2-goal", nargs=2, type=float,
                     default=list(SITES["H7"]))
     ap.add_argument("--g1-goal", nargs=2, type=float,
@@ -117,6 +123,17 @@ def main():
         print("mission: Go2 %.1f m/%d wp, G1 %.1f m/%d wp"
               % (go2_plan["length"], len(go2_path),
                  g1_plan["length"], len(g1_path)), flush=True)
+        # 出生点若正好压在石头上（展示层看得见、物理层也挡得住），
+        # 机器人会卡在障碍里原地打转 —— 吸附到 A* 给出的第一个可站立格。
+        for tag, key in (("Go2", "go2_start"), ("G1", "g1_start")):
+            want = np.asarray(getattr(a, key), dtype=float)
+            path0 = go2_path[0] if key == "go2_start" else g1_path[0]
+            shift = float(np.hypot(*(path0 - want)))
+            if shift > 0.05:
+                print("mission: %s 出生点 (%.2f, %.2f) 压在障碍里，吸附到 (%.2f, %.2f)（%.2f m）"
+                      % (tag, want[0], want[1], path0[0], path0[1], shift),
+                      flush=True)
+                setattr(a, key, [float(path0[0]), float(path0[1])])
     else:
         go2_path, g1_path = None, None
 
@@ -268,6 +285,16 @@ def main():
     mission_min_separation = float("inf")
     mission_go2_done = False
     mission_g1_done = False
+    track = []
+
+    def save_track():
+        if not a.track or not track:
+            return
+        with open(a.track, "w", encoding="utf-8") as f:
+            f.write("t,x,y\n")
+            for row in track:
+                f.write("%.2f,%.3f,%.3f\n" % row)
+        print("track -> %s（%d 点）" % (a.track, len(track)), flush=True)
 
     def robot_center():
         if a.g1:
@@ -295,10 +322,14 @@ def main():
         nonlocal obs, action, target, g1_action, g1_target, g1_obs, g1_step_i
         nonlocal sim_age, reset_count
         nonlocal go2_waypoint, g1_waypoint, mission_time, last_mission_report
+        nonlocal go2_path
         nonlocal mission_min_separation
         nonlocal mission_go2_done, mission_g1_done
         sim_age += 0.02
         mission_time += 0.02
+        if a.track and int(round(mission_time / 0.02)) % 10 == 0:
+            track.append((mission_time, float(dd.xpos[gid_body][0]),
+                          float(dd.xpos[gid_body][1])))
         go2_up = float(1.0 - 2.0 * (
             d.qpos[bq + 4] ** 2 + d.qpos[bq + 5] ** 2))
         g1_up = float(1.0 - 2.0 * (
@@ -328,6 +359,13 @@ def main():
                 print("mission: Go2 reached goal %s at %.1f s"
                       % (tuple(round(v, 1) for v in a.go2_goal), mission_time),
                       flush=True)
+                if a.loop:
+                    # 演示循环：走完一遍就回到起点重来（比反向重规划稳，
+                    # 回来时容易被路口石头卡住）
+                    reset_go2()
+                    go2_waypoint = 0
+                    mission_go2_done = False
+                    print("mission: Go2 回到起点重跑（往返循环）", flush=True)
         if a.mission and a.g1 and not mission_g1_done:
             g1_pos = np.array([gd.qpos[0], gd.qpos[1]], dtype=float)
             g1_vx, g1_yaw, g1_waypoint, mission_g1_done = path_command(
@@ -478,25 +516,29 @@ def main():
         return
 
     if a.shot:
-        sec = float(a.shot)
-        for _ in range(int(sec / 0.02)):
-            step_all()
+        times = sorted(float(x) for x in a.shot.split(",") if x.strip())
         ren = mujoco.Renderer(dm, 360, 640)
         cam = mujoco.MjvCamera(); mujoco.mjv_defaultFreeCamera(dm, cam)
-        cam.lookat[:] = robot_center()
-        distance = a.dist if a.dist > 0 else max(10.0, 1.2 * robot_separation())
-        cam.distance, cam.azimuth, cam.elevation = distance, 135, -10
-        ren.update_scene(dd, camera=cam)
         from pngutil import save_rgb
         os.makedirs("shots", exist_ok=True)
-        out = os.path.join("shots", "scene_walk_t%.1f.png" % sec)
-        save_rgb(ren.render(), out)
-        go2_dist = float(np.hypot(
-            dd.xpos[gid_body][0] - x0, dd.xpos[gid_body][1] - y0))
-        g1_dist = float(np.hypot(
-            dd.xpos[g1_demo_body][0] - g1x0,
-            dd.xpos[g1_demo_body][1] - g1y0))
-        print(f"saved {out}; distance Go2={go2_dist:.2f} m G1={g1_dist:.2f} m")
+        last = 0.0
+        for sec in times:
+            for _ in range(int(round((sec - last) / 0.02))):
+                step_all()
+            last = sec
+            cam.lookat[:] = dd.xpos[gid_body]   # 存图跟 Go2（mission 时两机可能相距几十米）
+            distance = a.dist if a.dist > 0 else max(10.0, 1.2 * robot_separation())
+            cam.distance, cam.azimuth, cam.elevation = distance, 135, a.cam_elev
+            ren.update_scene(dd, camera=cam)
+            out = os.path.join("shots", "scene_walk_t%.1f.png" % sec)
+            save_rgb(ren.render(), out)
+            go2_dist = float(np.hypot(
+                dd.xpos[gid_body][0] - x0, dd.xpos[gid_body][1] - y0))
+            g1_dist = float(np.hypot(
+                dd.xpos[g1_demo_body][0] - g1x0,
+                dd.xpos[g1_demo_body][1] - g1y0))
+            print(f"saved {out}; distance Go2={go2_dist:.2f} m G1={g1_dist:.2f} m")
+        save_track()
         return
 
     if a.headless > 0:
@@ -513,6 +555,7 @@ def main():
             f"G1={g1_dist:.2f} m (z={dd.xpos[g1_demo_body][2]:.2f}), "
             f"separation={robot_separation():.2f} m, "
             f"min_separation={mission_min_separation:.2f} m, resets={reset_count}")
+        save_track()
         return
 
     with mujoco.viewer.launch_passive(dm, dd) as v:
@@ -527,9 +570,14 @@ def main():
         while v.is_running():
             step_all()
             if a.follow:
-                v.cam.lookat[:] = robot_center()
-                if a.mission:
-                    v.cam.distance = max(10.0, 1.1 * robot_separation())
+                if a.mission and robot_separation() > 8.0:
+                    v.cam.lookat[:] = dd.xpos[gid_body]   # 两机分开时跟走动的 Go2
+                    v.cam.distance = 9.0
+                    v.cam.elevation = -28
+                else:
+                    v.cam.lookat[:] = robot_center()
+                    if a.mission:
+                        v.cam.distance = max(10.0, 1.1 * robot_separation())
             v.sync()
             if a.mission and mission_go2_done and mission_g1_done:
                 print("mission complete: Go2%s, G1%s, min separation %.2f m"
@@ -542,6 +590,7 @@ def main():
             time.sleep(dt) if dt > 0 else None
             if dt <= 0:
                 t_next = time.perf_counter()
+        save_track()
 
 
 if __name__ == "__main__":

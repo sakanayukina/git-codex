@@ -14,7 +14,16 @@ def run(headless=False):
     use_walk = ("--walk" in sys.argv or "--mission" in sys.argv
                 or "--static" not in sys.argv)
     if use_walk and not headless:
-        sys.argv = [x for x in sys.argv if x not in ("--walk", "--static")]
+        argv = [x for x in sys.argv if x not in ("--walk", "--static")]
+        if "--mission" not in argv:
+            # 默认演示：Go2 沿村道按 A* 路线绕障往返巡逻（展示层与物理层同步），
+            # G1 停在近端平缓路口。物理层已恢复全部 610 个碰撞代理，
+            # 所以看得见的石头也挡得住 —— 不会再穿模，路线由 A* 绕行。
+            argv = (["--mission", "--loop",
+                     "--go2-start", "3.6", "-22", "--go2-goal", "-26", "-44",
+                     "--g1-start", "0", "-15", "--g1-goal", "0", "-15"]
+                    + argv)
+        sys.argv = argv
         print("Loading walking scene and robot policies, please wait...", flush=True)
         sys.path.insert(0, os.path.join(BASE_DIR, "assets", "train"))
         import run_scene_walk

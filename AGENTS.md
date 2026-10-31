@@ -123,14 +123,18 @@ $mjpy   = "C:/Users/18967/anaconda3/envs/mujoco/python.exe"   # 仿真/渲染
 2. **加载场景必须用 `assets/train/terrain_road.py` 的 `load_model(xml)`**，不要直接 `mujoco.MjModel.from_xml_path()`。
    原因：8-bit PNG 只有 256 级（0.26 m 量化），真实路面在 `hf_road.npz` 里，`load_model()` 会把它注入
    `model.hfield_data`。用 PNG 加载出来的地形和规划/实测用的不是同一个。
-3. **碰撞代理从 610 减到 439 个**：`assets/train/roadmask.py` 把压在路面上的 171 个清掉了
-   （`RoadMask.intrudes(x, y, r+0.15)`）。改代理生成器后要按顺序重跑：
-   `make_twin_proxies_final.py` →（G1 用 `--base ../g1_terrain_plain.xml --out ../g1_village_final.xml`）→ `make_village_duo.py`。
+3. **碰撞代理是 610 个（展示与物理一一对应）**：路面上看得见的石头/道具**照样有碰撞**，
+   `make_twin_proxies_final.py` 默认 `--clear-road` 关闭。要恢复旧行为（把路上道具从物理里删掉）才需要显式
+   `--clear-road`，但那会**穿模**（看得见、挡不住），只在调试用。改代理生成器后按顺序重跑：
+   `make_twin_proxies_final.py --rock-scale 1.0` →（G1 同参数加 `--base ../g1_terrain_plain.xml --out ../g1_village_final.xml`）→ `make_village_duo.py`。
+   `--rock-scale 1.0` 用完整包围球，保证代理不小于可见石头。
 4. **G1 场景的 hfield 必须是绝对路径**（G1 模型带全局 `meshdir`，相对路径会被解析到 `props/robots/g1/meshes/`）。
 5. `mission.py`：`--g1-slope` 默认 **5.0**、`--g1-speed` 0.20 m/s（G1 实测能力，见下）。
-6. **演示**：`python run_scene.py`（默认 walk 模式；展示层 `demo_v32` 与物理层 `village_walk_final` 地形已一致）。
-7. 已知遗留：`demo_v32.xml` 里的**展示道具**没有按 RoadMask 挪过，镜像展示时机器人可能"穿过"路面上残留的石头；
-   物理层已没有这些代理，所以只影响观感。
+6. **演示**：`python run_scene.py` 现在**默认就是绕障巡逻**（`--mission --loop`，
+   Go2 从 (3.6,−22) 沿 A\* 航点走到 H7 的 (−26,−44)，展示层 `demo_v32` 与物理层 `village_walk_final` 地形一致）。
+   要静态场景用 `--static`；要自己指定任务用 `--mission --go2-goal X Y`。
+7. 出生点在障碍里会自动**吸附到 A\* 路径起点**（`waypoint_nav.py --no-snap-start` 可关），
+   例如 (3.6,−22) 落在 debris cone 球内会吸到 (3.5,−19.5)。
 
 ## 当前能力（数字速查，2026-10-31）
 
@@ -138,7 +142,8 @@ $mjpy   = "C:/Users/18967/anaconda3/envs/mujoco/python.exe"   # 仿真/渲染
 |---|---|---|
 | **修路后沿村道实走**（Go2，8° 限坡路面） | `(3.6,-22)→(5.5,2)` **22.77 m / 54 s**；`→(10,30)` **51.13 m / 121 s**，均 0.42 m/s 不摔 | DSH |
 | **路面纵向坡度**（`carve_roads.py --max-grade 8`） | worst **8.00°**，主路 cut 3.48 m；4° 版 worst 4.00° 但 cut 达 8 m | DSH |
-| Go2 长时行走（村子地形 + 439 代理） | **180 s 不摔**（旧测：被障碍堵在 6 m） | DSH |
+| Go2 长时行走（村子地形 + 610 代理） | **180 s 不摔**（旧测：被障碍堵在 6 m） | DSH |
+| **`run_scene.py` 默认巡逻**（展示+物理同步、610 代理） | `(3.6,-22)→H7(-26,-44)` **169.8 s，16/16 航点，净位移 42.33 m，0 复位不摔** | DSH |
 | **长距离行走**（A\* 绕障 + 航点串走） | **86.8 m / 220.6 s，17/17 航点，不摔** | DSH |
 | Go2 纯地形均速 | **0.41–0.43 m/s** | DSH |
 | G1 长时行走 | **180 s 不摔**，均速 0.03 m/s | DSH |

@@ -47,9 +47,13 @@ def main():
                     help="接缝小石头的碰撞代理最小半径")
     ap.add_argument("--prop-scale", type=float, default=0.5)
     ap.add_argument("--prop-min-r", type=float, default=0.35)
+    ap.add_argument("--clear-road", action="store_true",
+                    help="把压在路面上的物体从物理层里删掉（默认关闭："
+                         "物理必须与展示一致，否则镜像机器人会穿过石头）")
     a = ap.parse_args()
 
-    m = mujoco.MjModel.from_xml_path(a.demo)
+    import terrain_road
+    m = terrain_road.load_model(a.demo)   # 注入 float 地形，代理 z 与物理场景一致
     d = mujoco.MjData(m)
     mujoco.mj_forward(m, d)
     names = [mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, i) or "" for i in range(m.nbody)]
@@ -91,8 +95,10 @@ def main():
 
         r = float(m.geom_rbound[g])
 
-        # 路面上（含路肩 0.15 m）的石头/道具一律不放代理：修路时已经清过场
-        if rm.intrudes(p[0], p[1], r * a.rock_scale + 0.15):
+        # 路面上（含路肩 0.15 m）的石头/道具默认**照样放代理**：
+        # 展示层里它们看得见，物理层就必须挡得住，否则镜像机器人会穿过去。
+        # 路线绕行交给 A*（nav_grid.py）解决，不靠"把障碍删掉"。
+        if a.clear_road and rm.intrudes(p[0], p[1], r * a.rock_scale + 0.15):
             n_cleared += 1
             continue
 

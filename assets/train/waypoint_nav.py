@@ -70,6 +70,8 @@ def main():
     ap.add_argument("--grid-res", type=float, default=1.0)
     ap.add_argument("--robot-radius", type=float, default=0.35)
     ap.add_argument("--waypoint-tolerance", type=float, default=0.6)
+    ap.add_argument("--no-snap-start", dest="snap_start", action="store_false",
+                    help="关掉出生点吸附（默认开启：出生点压在石头上时自动挪到最近的空位）")
     ap.add_argument("--shot", default="", help="在指定模拟秒数存图，逗号分隔，如 60,150")
     ap.add_argument("--viewer", action="store_true", help="开交互窗口实时看机器人走（长时间演示用）")
     a = ap.parse_args()
@@ -88,6 +90,14 @@ def main():
         path = [np.asarray(point, dtype=float) for point in plan["points"]]
         print("A*: %.1f m, %d waypoints, max slope %.1f deg"
               % (plan["length"], len(path), plan["max_slope"]))
+        # 出生点如果正好压在石头上（展示层看得见、物理层也挡得住），
+        # 机器人会被卡在障碍里原地打转 —— 吸附到 A* 给出的第一个可站立格。
+        shift = float(np.hypot(*(path[0] - start)))
+        if a.snap_start and shift > 0.05:
+            print("出生点 (%.2f, %.2f) 压在障碍里，吸附到 (%.2f, %.2f)（偏移 %.2f m）"
+                  % (start[0], start[1], path[0][0], path[0][1], shift))
+            a.at = [float(path[0][0]), float(path[0][1])]
+            start = np.asarray(a.at, dtype=float)
     else:
         path = [goal]
 
