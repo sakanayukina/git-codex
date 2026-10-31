@@ -325,8 +325,9 @@ def main():
                 go2_pos, d.qpos[bq + 3:bq + 7], go2_path,
                 go2_waypoint, 1.0, 1.5)
             if mission_go2_done:
-                print("mission: Go2 reached H2 path endpoint at %.1f s"
-                      % mission_time, flush=True)
+                print("mission: Go2 reached goal %s at %.1f s"
+                      % (tuple(round(v, 1) for v in a.go2_goal), mission_time),
+                      flush=True)
         if a.mission and a.g1 and not mission_g1_done:
             g1_pos = np.array([gd.qpos[0], gd.qpos[1]], dtype=float)
             g1_vx, g1_yaw, g1_waypoint, mission_g1_done = path_command(
@@ -530,8 +531,10 @@ def main():
                     v.cam.distance = max(10.0, 1.1 * robot_separation())
             v.sync()
             if a.mission and mission_go2_done and mission_g1_done:
-                print("mission complete: Go2+H2, G1+H6, min separation %.2f m"
-                      % mission_min_separation, flush=True)
+                print("mission complete: Go2%s, G1%s, min separation %.2f m"
+                      % (tuple(round(v, 1) for v in a.go2_goal),
+                         tuple(round(v, 1) for v in a.g1_goal),
+                         mission_min_separation), flush=True)
                 break
             t_next += 0.02
             dt = t_next - time.perf_counter()
